@@ -62,42 +62,43 @@ const reactions = [
   }
 ];
 
-(async () => { 
-    try {
-        await mongoose.connect(process.env.MONGO_URI);
-        await Reaction.deleteMany();
+(async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    await Reaction.deleteMany();
+    let i = 1;
+    const allElements = await Element.find();
+    const symbolMap = {};
+    allElements.forEach(el => symbolMap[el.symbol] = el._id);
 
-        const allElements = await Element.find();
-        const symbolMap = {};
-        allElements.forEach(el => symbolMap[el.symbol] = el._id);
+    const formattedReactions = reactions.map(r => ({
+      reactants: r.reactants.map(item => {
+        const elementId = symbolMap[item.symbol];
+        if (!elementId) {
+          throw new Error(`Element with symbol '${item.symbol}' not found in DB`);
+        }
+        return {
+          element: elementId,
+          quantity: item.quantity
+        };
+      }),
+      product: r.product,
+      reactionType: r.reactionType,
+      compoundType: r.compoundType,
+      energyChange: r.energyChange,
+      unlockTier: r.unlockTier,
+      isReversible: r.isReversible,
+      discoveredByDefault: r.discoveredByDefault,
+      isActive: r.isActive,
+      reactionID: i++ 
+    }));
 
-        const formattedReactions = reactions.map(r => ({
-          reactants: r.reactants.map(item => {
-            const elementId = symbolMap[item.symbol];
-            if (!elementId) {
-              throw new Error(`Element with symbol '${item.symbol}' not found in DB`);
-            }
-            return {
-              element: elementId,
-              quantity: item.quantity
-            };
-          }),
-          product: r.product,
-          reactionType: r.reactionType,
-          compoundType: r.compoundType,
-          energyChange: r.energyChange,
-          unlockTier: r.unlockTier,
-          isReversible: r.isReversible,
-          discoveredByDefault: r.discoveredByDefault,
-          isActive: r.isActive
-        }));
-
-        await Reaction.insertMany(formattedReactions);
-    }
-    catch (err) {
-        console.log(err);
-    }
-    finally {
-        mongoose.disconnect();
-    }
+    await Reaction.insertMany(formattedReactions);
+}
+catch (err) {
+    console.log(err);
+}
+finally {
+    mongoose.disconnect();
+}
 })();

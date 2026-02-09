@@ -74,6 +74,11 @@ const reactionSchema = mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    reactionID: {
+        type: Number,
+        required: true,
+        unique: true
     }
 }, { timestamps: true });
 
