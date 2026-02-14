@@ -1,6 +1,6 @@
 const Reaction = require('./../models/Reaction');
 const User = require('./../models/User');
-const Element = require('./../models/Element');
+const Element = require('../models/Substance');
 
 function checkReactionEligibility(user, reaction) {
     for (const { element: reactantElement, quantity: reactionQuantity } of reaction.reactants) {

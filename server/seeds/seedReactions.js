@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Reaction = require('./../models/Reaction');
-const Element = require('./../models/Element');
+const Element = require('../models/Substance');
 require('dotenv').config({ path: __dirname + '/../.env' });
 
 const reactions = [

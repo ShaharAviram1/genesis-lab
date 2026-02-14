@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
-const { applyTimestamps } = require('./Element');
 
 const reactionSchema = mongoose.Schema({
     //recipe input
     reactants: {
         type: [{
-            element: { type: mongoose.Schema.Types.ObjectId, ref: 'Element', required: true },
-            quantity: { type: Number, required: true }
+            substance: { type: mongoose.Schema.Types.ObjectId, ref: 'Substance', required: true },
+            quantity: { type: Number, required: true, min: 1 }
         }],
         required: true
     },
@@ -17,22 +16,26 @@ const reactionSchema = mongoose.Schema({
 
     //Reaction output
     product: {
-        type: String,
-        quantity: { type: Number, required: true }
+        substance: { type: mongoose.Schema.Types.ObjectId, ref: 'Substance', required: true },
+        quantity: { type: Number, required: true, min: 1 }
     },
     compoundType: {
         type: String,
         enum: ["compound", "material", "structure"]
     },
     byproducts: {
-        type: [String],
+        type: [{
+            substance: { type: mongoose.Schema.Types.ObjectId, ref: 'Substance', required: true },
+            quantity: { type: Number, required: true, min: 1 }
+        }],
         default: []
     },
 
     //Reaction Characteristics
     reactionType: {
         type: String,
-        required: true
+        required: true,
+        enum: ["synthesis", "decomposition", "combustion", "fusion", "transmutation"]
     },
     isReversible: {
         type: Boolean,

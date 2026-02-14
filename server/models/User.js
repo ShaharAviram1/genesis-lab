@@ -7,9 +7,9 @@ const userSchema = mongoose.Schema({
         unique: true
     },
     inventory: [{
-            element: {
+            substance: {
                 type: mongoose.Schema.Types.ObjectId,
-                ref: 'Element',
+                ref: 'Substance',
                 required: true
             },
             quantity: {
