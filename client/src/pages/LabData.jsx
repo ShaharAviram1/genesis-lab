@@ -3,21 +3,21 @@ import { useState, useEffect } from "react";
 
 
 const LabData =  () => { 
-    const [elements, setElements] = useState([]);
+    const [substances, setSubstances] = useState([]);
     const [reactions, setReactions] = useState([]);
 
     useEffect(() => { 
-        const fetchElementsData = async () => {
+        const fetchsubstancesData = async () => {
             try {
-                const res = await fetch("http://localhost:3000/api/elements");
+                const res = await fetch("http://localhost:3000/api/substances");
                 const data = await res.json();
-                setElements(data);
+                setSubstances(data);
             }
             catch (err) {
                 console.log(err);
             }
         };
-        fetchElementsData();
+        fetchsubstancesData();
     }, []);
     useEffect(() => {
         const fetchReactionsData = async () => {
@@ -34,19 +34,19 @@ const LabData =  () => {
     }, []);
     return (
         <div>
-            <h2>Elements</h2>
-            {Array.isArray(elements) && elements.length > 0 ? (
-            elements.map((el, idx) =>
+            <h2>substances</h2>
+            {Array.isArray(substances) && substances.length > 0 ? (
+            substances.map((el, idx) =>
                 el && el._id && el.name && el.symbol ? (
                 <p key={el._id}>
                     {el.name} ({el.symbol})
                 </p>
                 ) : (
-                    <p key={`invalid-${idx}`}>Invalid element object</p>
+                    <p key={`invalid-${idx}`}>Invalid substance object</p>
                 )
             )
             ) : (
-            <p>No elements available.</p>
+            <p>No substances available.</p>
             )}
 
             <h2>Reactions</h2>
@@ -54,7 +54,7 @@ const LabData =  () => {
             reactions.map((rxn, idx) =>
                 rxn && rxn._id && rxn.reactants && rxn.product ? (
                 <p key={rxn._id}>
-                    {rxn.reactants.map((r)=>`${r.quantity} ${r.element.name}(${r.element.symbol})`).join(" + ")} → {rxn.product}
+                    {rxn.reactants.map((r)=>`${r.quantity} ${r.substance.name}(${r.substance.symbol})`).join(" + ")} → {rxn.product.quantity} {rxn.product.substance.name}({rxn.product.substance.symbol})
                 </p>
                 ) : (
                     <p key={`invalid-${idx}`}>Invalid reaction object</p>

@@ -1,20 +1,26 @@
 const Reaction = require('./../models/Reaction');
 const User = require('./../models/User');
-const Element = require('../models/Substance');
+const Substance = require('../models/Substance');
 
 function checkReactionEligibility(user, reaction) {
-    for (const { element: reactantElement, quantity: reactionQuantity } of reaction.reactants) {
+    for (const { substance: reactantSubstance, quantity: reactantQuantity } of reaction.reactants) {
         let hasEnough = false;
-        for (const { element: inventoryElement, quantity: userQuantity } of user.inventory) {
-            if (reactantElement.equals(inventoryElement) && userQuantity >= reactionQuantity) {
+
+        for (const { substance: inventorySubstance, quantity: userQuantity } of user.inventory) {
+            if (
+                reactantSubstance._id.toString() === inventorySubstance._id.toString() &&
+                userQuantity >= reactantQuantity
+            ) {
                 hasEnough = true;
                 break;
             }
         }
+
         if (!hasEnough) {
             return false;
         }
     }
+
     return true;
 }
 

@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
-const Element = require('../models/Element');
+const Substance = require('../models/Substance');
 require('dotenv').config({ path: __dirname + '/../.env' });
 
 
-const elements = [
+const substances = [
   {
+    type: "element",
     symbol: "H",
     name: "Hydrogen",
     atomicNumber: 1,
@@ -28,6 +29,7 @@ const elements = [
     isActive: true
   },
   {
+    type: "element",
     symbol: "O",
     name: "Oxygen",
     atomicNumber: 8,
@@ -51,6 +53,7 @@ const elements = [
     isActive: true
   },
   {
+    type: "element",
     symbol: "C",
     name: "Carbon",
     atomicNumber: 6,
@@ -74,6 +77,7 @@ const elements = [
     isActive: true
   },
   {
+    type: "element",
     symbol: "N",
     name: "Nitrogen",
     atomicNumber: 7,
@@ -95,14 +99,66 @@ const elements = [
     discoveryPrerequisites: ["H"],
     isBaseElement: true,
     isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "H2O",
+    name: "Water",
+    formula: "H2O",
+    composition: [],
+    color: "#4FC3F7",
+    size: 1.5,
+    unlockTier: 1,
+    discoveryPrerequisites: ["H", "O"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "CO2",
+    name: "Carbon Dioxide",
+    formula: "CO2",
+    composition: [],
+    color: "#B0BEC5",
+    size: 1.6,
+    unlockTier: 2,
+    discoveryPrerequisites: ["C", "O"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "NH3",
+    name: "Ammonia",
+    formula: "NH3",
+    composition: [],
+    color: "#AED581",
+    size: 1.4,
+    unlockTier: 2,
+    discoveryPrerequisites: ["N", "H"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "CH4",
+    name: "Methane",
+    formula: "CH4",
+    composition: [],
+    color: "#FFB74D",
+    size: 1.5,
+    unlockTier: 2,
+    discoveryPrerequisites: ["C", "H"],
+    isBaseElement: false,
+    isActive: true
   }
 ];
 
 (async () => { 
     try {
         await mongoose.connect(process.env.MONGO_URI);
-        await Element.deleteMany();
-        await Element.insertMany(elements)
+        await Substance.deleteMany();
+        await Substance.insertMany(substances)
     }
     catch (err) {
         console.log(err);

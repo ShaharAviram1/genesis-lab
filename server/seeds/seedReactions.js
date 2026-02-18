@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Reaction = require('./../models/Reaction');
-const Element = require('../models/Substance');
+const Substance = require('../models/Substance');
 require('dotenv').config({ path: __dirname + '/../.env' });
 
 const reactions = [
@@ -67,9 +67,9 @@ const reactions = [
     await mongoose.connect(process.env.MONGO_URI);
     await Reaction.deleteMany();
     let i = 1;
-    const allElements = await Element.find();
+    const allSubstances = await Substance.find();
     const symbolMap = {};
-    allElements.forEach(el => symbolMap[el.symbol] = el._id);
+    allSubstances.forEach(el => symbolMap[el.symbol] = el._id);
 
     const formattedReactions = reactions.map(r => ({
       reactants: r.reactants.map(item => {
@@ -78,11 +78,14 @@ const reactions = [
           throw new Error(`Element with symbol '${item.symbol}' not found in DB`);
         }
         return {
-          element: elementId,
+          substance: elementId,
           quantity: item.quantity
         };
       }),
-      product: r.product,
+      product: {
+        substance: symbolMap[r.product],
+        quantity: 1
+      },
       reactionType: r.reactionType,
       compoundType: r.compoundType,
       energyChange: r.energyChange,

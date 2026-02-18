@@ -3,14 +3,14 @@ const elementDB = require('../models/Substance');
 
 const router = express.Router();
 
-router.get("/elements", async (req, res) => {
+router.get("/substances", async (req, res) => {
     try {
-        const elements = await elementDB.find();
-        res.json(elements);
+        const substances = await elementDB.find();
+        res.json(substances);
     }
     catch (err) {
         console.log(err);
-        res.status(500).json({ error: "Failed to fetch elements" });
+        res.status(500).json({ error: "Failed to fetch substances" });
     }
 });
 
