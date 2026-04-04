@@ -1,11 +1,11 @@
 const express = require('express');
-const elementDB = require('../models/Substance');
+const Substance = require('../models/Substance');
 
 const router = express.Router();
 
 router.get("/substances", async (req, res) => {
     try {
-        const substances = await elementDB.find();
+        const substances = await Substance.find();
         res.json(substances);
     }
     catch (err) {

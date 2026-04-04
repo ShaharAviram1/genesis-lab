@@ -3,6 +3,7 @@ const User = require('./../models/User');
 const Substance = require('../models/Substance');
 
 function checkReactionEligibility(user, reaction) {
+    if (user.energy < reaction.energyCost || reaction.unlockTier>user.unlockTier) return false;
     for (const { substance: reactantSubstance, quantity: reactantQuantity } of reaction.reactants) {
         let hasEnough = false;
 

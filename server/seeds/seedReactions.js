@@ -6,59 +6,222 @@ require('dotenv').config({ path: __dirname + '/../.env' });
 const reactions = [
   {
     reactants: [
-      { symbol: "H", quantity: 2 },
-      { symbol: "O", quantity: 1 }
+      { name: "Hydrogen", quantity: 2 }
     ],
-    product: "H2O",
+    product: "Hydrogen Gas",
     reactionType: "synthesis",
     compoundType: "compound",
-    energyChange: -285.8,
+    energyChange: 0,
     unlockTier: 0,
     isReversible: false,
     discoveredByDefault: true,
-    isActive: true
+    isActive: true,
+    energyCost: 1
   },
   {
     reactants: [
-      { symbol: "C", quantity: 1 },
-      { symbol: "O", quantity: 2 }
+      { name: "Oxygen", quantity: 2 }
     ],
-    product: "CO2",
+    product: "Oxygen Gas",
+    reactionType: "synthesis",
+    compoundType: "compound",
+    energyChange: 0,
+    unlockTier: 0,
+    isReversible: false,
+    discoveredByDefault: true,
+    isActive: true,
+    energyCost: 1
+  },
+  {
+    reactants: [
+      { name: "Nitrogen", quantity: 2 }
+    ],
+    product: "Nitrogen Gas",
+    reactionType: "synthesis",
+    compoundType: "compound",
+    energyChange: 0,
+    unlockTier: 0,
+    isReversible: false,
+    discoveredByDefault: true,
+    isActive: true,
+    energyCost: 1
+  },
+  {
+    reactants: [
+      { name: "Hydrogen Gas", quantity: 1 },
+      { name: "Oxygen", quantity: 1 }
+    ],
+    product: "Water",
+    reactionType: "synthesis",
+    compoundType: "compound",
+    energyChange: -285.8,
+    unlockTier: 1,
+    isReversible: false,
+    discoveredByDefault: true,
+    isActive: true,
+    energyCost: 5
+  },
+  {
+    reactants: [
+      { name: "Oxygen Gas", quantity: 1 },
+      { name: "Oxygen", quantity: 1 }
+    ],
+    product: "Ozone",
+    reactionType: "synthesis",
+    compoundType: "compound",
+    energyChange: 0,
+    unlockTier: 1,
+    isReversible: false,
+    discoveredByDefault: false,
+    isActive: true,
+    energyCost: 6
+  },
+  {
+    reactants: [
+      { name: "Carbon", quantity: 1 },
+      { name: "Oxygen Gas", quantity: 1 }
+    ],
+    product: "Carbon Dioxide",
     reactionType: "synthesis",
     compoundType: "compound",
     energyChange: -393.5,
     unlockTier: 1,
     isReversible: false,
     discoveredByDefault: false,
-    isActive: true
+    isActive: true,
+    energyCost: 6
   },
   {
     reactants: [
-      { symbol: "N", quantity: 1 },
-      { symbol: "H", quantity: 3 }
+      { name: "Water", quantity: 1 }
     ],
-    product: "NH3",
-    reactionType: "synthesis",
+    product: "Steam",
+    reactionType: "transmutation",
     compoundType: "compound",
-    energyChange: -46.0,
+    energyChange: 40,
     unlockTier: 1,
-    isReversible: false,
+    isReversible: true,
     discoveredByDefault: false,
-    isActive: true
+    isActive: true,
+    energyCost: 3
   },
   {
     reactants: [
-      { symbol: "C", quantity: 1 },
-      { symbol: "H", quantity: 4 }
+      { name: "Water", quantity: 1 }
     ],
-    product: "CH4",
+    product: "Ice",
+    reactionType: "transmutation",
+    compoundType: "compound",
+    energyChange: -6,
+    unlockTier: 1,
+    isReversible: true,
+    discoveredByDefault: false,
+    isActive: true,
+    energyCost: 2
+  },
+  {
+    reactants: [
+      { name: "Carbon", quantity: 1 },
+      { name: "Hydrogen Gas", quantity: 1 }
+    ],
+    product: "Methane",
     reactionType: "synthesis",
     compoundType: "compound",
     energyChange: -74.8,
-    unlockTier: 1,
+    unlockTier: 2,
     isReversible: false,
     discoveredByDefault: false,
-    isActive: true
+    isActive: true,
+    energyCost: 8
+  },
+  {
+    reactants: [
+      { name: "Nitrogen Gas", quantity: 1 },
+      { name: "Hydrogen Gas", quantity: 1 }
+    ],
+    product: "Ammonia",
+    reactionType: "synthesis",
+    compoundType: "compound",
+    energyChange: -46.0,
+    unlockTier: 2,
+    isReversible: false,
+    discoveredByDefault: false,
+    isActive: true,
+    energyCost: 8
+  },
+  {
+    reactants: [
+      { name: "Ammonia", quantity: 1 },
+      { name: "Ozone", quantity: 1 }
+    ],
+    product: "Toxic Gas",
+    reactionType: "synthesis",
+    compoundType: "compound",
+    energyChange: 0,
+    unlockTier: 2,
+    isReversible: false,
+    discoveredByDefault: false,
+    isActive: true,
+    energyCost: 10
+  },
+  {
+    reactants: [
+      { name: "Methane", quantity: 1 }
+    ],
+    product: "Fuel",
+    reactionType: "transmutation",
+    compoundType: "compound",
+    energyChange: 0,
+    unlockTier: 2,
+    isReversible: false,
+    discoveredByDefault: false,
+    isActive: true,
+    energyCost: 12
+  },
+  {
+    reactants: [
+      { name: "Fuel", quantity: 1 },
+      { name: "Oxygen Gas", quantity: 1 }
+    ],
+    product: "Combustion Gas",
+    reactionType: "combustion",
+    compoundType: "compound",
+    energyChange: -200,
+    unlockTier: 2,
+    isReversible: false,
+    discoveredByDefault: false,
+    isActive: true,
+    energyCost: 10
+  },
+  {
+    reactants: [
+      { name: "Methane", quantity: 1 },
+      { name: "Ammonia", quantity: 1 }
+    ],
+    product: "Organic Matter",
+    reactionType: "synthesis",
+    compoundType: "compound",
+    energyChange: 0,
+    unlockTier: 3,
+    isReversible: false,
+    discoveredByDefault: false,
+    isActive: true,
+    energyCost: 15
+  },
+  {
+    reactants: [
+      { name: "Methane", quantity: 1 },
+      { name: "Fuel", quantity: 1 }
+    ],
+    product: "Complex Hydrocarbon",
+    reactionType: "synthesis",
+    compoundType: "compound",
+    energyChange: 0,
+    unlockTier: 3,
+    isReversible: false,
+    discoveredByDefault: false,
+    isActive: true,
+    energyCost: 18
   }
 ];
 
@@ -68,22 +231,22 @@ const reactions = [
     await Reaction.deleteMany();
     let i = 1;
     const allSubstances = await Substance.find();
-    const symbolMap = {};
-    allSubstances.forEach(el => symbolMap[el.symbol] = el._id);
+    const nameMap = {};
+    allSubstances.forEach(sub => nameMap[sub.name] = sub._id);
 
     const formattedReactions = reactions.map(r => ({
       reactants: r.reactants.map(item => {
-        const elementId = symbolMap[item.symbol];
-        if (!elementId) {
-          throw new Error(`Element with symbol '${item.symbol}' not found in DB`);
+        const substanceId = nameMap[item.name];
+        if (!substanceId) {
+          throw new Error(`Substance with name '${item.name}' not found in DB`);
         }
         return {
-          substance: elementId,
+          substance: substanceId,
           quantity: item.quantity
         };
       }),
       product: {
-        substance: symbolMap[r.product],
+        substance: nameMap[r.product],
         quantity: 1
       },
       reactionType: r.reactionType,
@@ -93,7 +256,8 @@ const reactions = [
       isReversible: r.isReversible,
       discoveredByDefault: r.discoveredByDefault,
       isActive: r.isActive,
-      reactionID: i++ 
+      reactionID: i++,
+      energyCost: r.energyCost
     }));
 
     await Reaction.insertMany(formattedReactions);

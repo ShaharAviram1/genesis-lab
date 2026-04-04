@@ -9,10 +9,6 @@ const reactionSchema = mongoose.Schema({
         }],
         required: true
     },
-    ratioLocked: {
-        type: Boolean,
-        default: false
-    },
 
     //Reaction output
     product: {
@@ -58,6 +54,11 @@ const reactionSchema = mongoose.Schema({
     requiredUserUnlock: {
         type: Boolean,
         default: false
+    },
+    energyCost: {
+        type: Number,
+        required: true,
+        min: 0
     },
 
     //progression

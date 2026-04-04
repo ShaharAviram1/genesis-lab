@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const substanceRouter = require('./routes/substances');
 const reactionsRouter = require('./routes/reactions');
 const userRouter = require('./routes/users');
+const atomsRouter = require('./routes/atoms');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/api', substanceRouter);
 app.use('/api', reactionsRouter);
 app.use('/api', userRouter);
+app.use('/api', atomsRouter);
 
 app.get('/health', (req, res) => {
   res.json('Genesis Lab backend is alive 🚀');

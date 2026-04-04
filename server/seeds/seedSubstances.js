@@ -4,6 +4,7 @@ require('dotenv').config({ path: __dirname + '/../.env' });
 
 
 const substances = [
+  // ===== ELEMENTS =====
   {
     type: "element",
     symbol: "H",
@@ -71,8 +72,8 @@ const substances = [
     radioactive: false,
     color: "#2E2E2E",
     size: 1.1,
-    unlockTier: 1,
-    discoveryPrerequisites: ["H", "O"],
+    unlockTier: 0,
+    discoveryPrerequisites: [],
     isBaseElement: true,
     isActive: true
   },
@@ -95,11 +96,91 @@ const substances = [
     radioactive: false,
     color: "#0000FF",
     size: 1,
-    unlockTier: 1,
-    discoveryPrerequisites: ["H"],
+    unlockTier: 0,
+    discoveryPrerequisites: [],
     isBaseElement: true,
     isActive: true
   },
+  {
+    type: "element",
+    symbol: "He",
+    name: "Helium",
+    atomicNumber: 2,
+    category: "noble_gas",
+    stateAtSTP: "gas",
+    density: 0.0001785,
+    meltingPoint: -272.2,
+    boilingPoint: -268.9,
+    valenceElectrons: 2,
+    maxBonds: 0,
+    electronegativity: 0,
+    reactivity: 0.0,
+    baseEnergy: 5,
+    stabilityFactor: 1.0,
+    radioactive: false,
+    color: "#FFD700",
+    size: 1,
+    unlockTier: 0,
+    discoveryPrerequisites: [],
+    isBaseElement: true,
+    isActive: true
+  },
+
+  // ===== BASIC GASES =====
+  {
+    type: "compound",
+    symbol: "H2",
+    name: "Hydrogen Gas",
+    formula: "H2",
+    composition: [],
+    color: "#E3F2FD",
+    size: 1.2,
+    unlockTier: 0,
+    discoveryPrerequisites: ["H"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "O2",
+    name: "Oxygen Gas",
+    formula: "O2",
+    composition: [],
+    color: "#FFCDD2",
+    size: 1.2,
+    unlockTier: 0,
+    discoveryPrerequisites: ["O"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "N2",
+    name: "Nitrogen Gas",
+    formula: "N2",
+    composition: [],
+    color: "#BBDEFB",
+    size: 1.2,
+    unlockTier: 0,
+    discoveryPrerequisites: ["N"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "O3",
+    name: "Ozone",
+    formula: "O3",
+    composition: [],
+    color: "#B39DDB",
+    size: 1.3,
+    unlockTier: 1,
+    discoveryPrerequisites: ["O2"],
+    isBaseElement: false,
+    isActive: true
+  },
+
+  // ===== WATER SYSTEM =====
   {
     type: "compound",
     symbol: "H2O",
@@ -109,10 +190,38 @@ const substances = [
     color: "#4FC3F7",
     size: 1.5,
     unlockTier: 1,
-    discoveryPrerequisites: ["H", "O"],
+    discoveryPrerequisites: ["H2", "O2"],
     isBaseElement: false,
     isActive: true
   },
+  {
+    type: "compound",
+    symbol: "H2O-S",
+    name: "Steam",
+    formula: "H2O(g)",
+    composition: [],
+    color: "#ECEFF1",
+    size: 1.4,
+    unlockTier: 1,
+    discoveryPrerequisites: ["H2O"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "H2O-I",
+    name: "Ice",
+    formula: "H2O(s)",
+    composition: [],
+    color: "#E1F5FE",
+    size: 1.4,
+    unlockTier: 1,
+    discoveryPrerequisites: ["H2O"],
+    isBaseElement: false,
+    isActive: true
+  },
+
+  // ===== ATMOSPHERIC COMPOUNDS =====
   {
     type: "compound",
     symbol: "CO2",
@@ -120,9 +229,22 @@ const substances = [
     formula: "CO2",
     composition: [],
     color: "#B0BEC5",
-    size: 1.6,
+    size: 1.5,
+    unlockTier: 1,
+    discoveryPrerequisites: ["C", "O2"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "CH4",
+    name: "Methane",
+    formula: "CH4",
+    composition: [],
+    color: "#FFB74D",
+    size: 1.4,
     unlockTier: 2,
-    discoveryPrerequisites: ["C", "O"],
+    discoveryPrerequisites: ["C", "H2"],
     isBaseElement: false,
     isActive: true
   },
@@ -135,20 +257,76 @@ const substances = [
     color: "#AED581",
     size: 1.4,
     unlockTier: 2,
-    discoveryPrerequisites: ["N", "H"],
+    discoveryPrerequisites: ["N2", "H2"],
     isBaseElement: false,
     isActive: true
   },
   {
     type: "compound",
-    symbol: "CH4",
-    name: "Methane",
-    formula: "CH4",
+    symbol: "TG",
+    name: "Toxic Gas",
+    formula: "Mixed Gas",
     composition: [],
-    color: "#FFB74D",
+    color: "#8BC34A",
     size: 1.5,
     unlockTier: 2,
-    discoveryPrerequisites: ["C", "H"],
+    discoveryPrerequisites: ["NH3", "O3"],
+    isBaseElement: false,
+    isActive: true
+  },
+
+  // ===== ENERGY COMPOUNDS =====
+  {
+    type: "compound",
+    symbol: "FUEL",
+    name: "Fuel",
+    formula: "Hydrocarbon Fuel",
+    composition: [],
+    color: "#FF7043",
+    size: 1.6,
+    unlockTier: 2,
+    discoveryPrerequisites: ["CH4"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "CG",
+    name: "Combustion Gas",
+    formula: "Combustion Products",
+    composition: [],
+    color: "#9E9E9E",
+    size: 1.5,
+    unlockTier: 2,
+    discoveryPrerequisites: ["FUEL", "O2"],
+    isBaseElement: false,
+    isActive: true
+  },
+
+  // ===== PROTO ORGANICS =====
+  {
+    type: "compound",
+    symbol: "ORG",
+    name: "Organic Matter",
+    formula: "Organic Compound",
+    composition: [],
+    color: "#6D4C41",
+    size: 1.6,
+    unlockTier: 3,
+    discoveryPrerequisites: ["CH4", "NH3"],
+    isBaseElement: false,
+    isActive: true
+  },
+  {
+    type: "compound",
+    symbol: "HCX",
+    name: "Complex Hydrocarbon",
+    formula: "CxHy",
+    composition: [],
+    color: "#5D4037",
+    size: 1.7,
+    unlockTier: 3,
+    discoveryPrerequisites: ["CH4", "FUEL"],
     isBaseElement: false,
     isActive: true
   }

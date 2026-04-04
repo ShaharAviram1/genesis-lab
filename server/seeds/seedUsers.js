@@ -13,8 +13,11 @@ require('dotenv').config({ path: __dirname + '/../.env' });
         {
             username: "alchemist",
             inventory: [
-            { substance: substances[0]._id, quantity: 10 },
-            { substance: substances[1]._id, quantity: 5 },
+                { substance: substances[0]._id, quantity: 10 },
+                { substance: substances[1]._id, quantity: 5 },
+                { substance: substances[2]._id, quantity: 5 },
+                { substance: substances[3]._id, quantity: 5 },
+                { substance: substances[4]._id, quantity: 5 }
             ]
         },
         {
