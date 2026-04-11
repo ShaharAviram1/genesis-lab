@@ -30,13 +30,7 @@ router.post("/bigbang", async (req, res) => {
     try {
         const user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
-        if (user.bigBangCount !== 0) {
-            if (user.unlockTier < 3)
-                return res.status(400).json({ error: "Unlock tier too low" });
-            if (user.energy < 1000)
-                return res.status(400).json({ error: "Not enough energy" });
-        }
-        user.genesisShards += calculateGenesisShards(user.runTotals);
+        user.genesisShards += calculateGenesisShards(user.runTotals, user.unlockTier);
         user.inventory = [];
         user.energy = 0;
         user.unlockTier = 1;
@@ -48,6 +42,19 @@ router.post("/bigbang", async (req, res) => {
     catch (err) {
         console.log(err);
         return res.status(500).json({ error: "Big Bang failed" });
+    }
+});
+
+router.get("/genesis-shards/:username", async (req, res) => {
+    try {
+        const user = await User.findOne({ username: req.params.username }).populate('runTotals.substance');
+        if (!user) { return res.status(404).json({ error: "User not found" }); }
+        const shards = calculateGenesisShards(user.runTotals, user.unlockTier);
+        return res.status(200).json({ genesisShards: shards });
+    }
+    catch (err) {
+        console.log(err);
+        return res.status(500).json({ error: "Failed to calculate genesis shards" });
     }
 });
 

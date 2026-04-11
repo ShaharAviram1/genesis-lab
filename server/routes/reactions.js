@@ -5,6 +5,13 @@ const checkReactionEligibility = require('../utils/checkReactionEligibility');
 const Substance = require('../models/Substance');
 const { calculateReactionCost } = require('./../utils/gameEconomy');
 
+const unlockTierSubstances = {
+    "Water": 2,
+    "Fuel": 3,
+    "Organic Matter": 4,
+    "Complex Hydrocarbon": 5
+};
+
 const router = express.Router();
 
 router.get("/reactions", async (req, res) => {
@@ -97,6 +104,9 @@ router.post("/perform/:reactionID", async (req, res) => {
                 hasExisted.produced += quantity;
             } else {
                 user.runTotals.push({ substance: substance._id, produced: quantity });
+                if (unlockTierSubstances[substance.name] && unlockTierSubstances[substance.name] > user.unlockTier) {
+                    user.unlockTier = unlockTierSubstances[substance.name];
+                }
             }
             user.inventory = user.inventory.filter(item => item.quantity > 0);
             await user.save();

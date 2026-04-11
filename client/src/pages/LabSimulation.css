@@ -1,0 +1,67 @@
+.game-shell{
+    display: grid;
+    grid-template-rows:
+        80px
+        1fr
+        100px;
+    grid-template-columns: 
+        minmax(180px, 220px)
+        minmax(600px, 1fr)
+        minmax(220px, 260px);
+    height: 100vh;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.top-bar {
+    grid-column: 1/-1;
+    grid-row: 1;
+    padding: 10px;
+    overflow: auto;
+    border-radius: 10px;
+}
+
+.bottom-bar {
+    grid-column: 1/-1;
+    grid-row: 3;
+    padding: 10px;
+    overflow: auto;
+    border-radius: 10px;
+}
+
+.left-panel {
+    grid-column: 1;
+    grid-row: 2;
+    padding: 10px;
+    overflow: auto;
+    border-radius: 10px;
+}
+
+.right-panel {
+    grid-column: 3;
+    grid-row: 2;
+    padding: 10px;
+    overflow: auto;
+    border-radius: 10px;
+}
+
+.center-scene{
+    grid-column: 2;
+    grid-row: 2;
+    padding: 10px;
+    border-radius: 12px;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #0b1020 0%, #111827 100%);
+}
+
+
+
+
+.top-bar { background: #222; }
+.left-panel { background: #333; }
+.center-scene { background: #111; }
+.right-panel { background: #333; }
+.bottom-bar { background: #222; }

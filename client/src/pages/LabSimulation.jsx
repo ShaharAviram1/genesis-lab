@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
-
+import "./LabSimulation.css";
+import InventoryPanel from "../../components/InventoryPanel";
+import AtomPanel from "../../components/AtomPanel";
+import ReactionPanel from "../../components/ReactionPanel";
+import SelectedReactionPanel from "../../components/SelectedReactionPanel";
+import EnergyPanel from "../../components/EnergyPanel";
+import PrestigePanel from "../../components/PrestigePanel";
+import HeaderPanel from "../../components/HeaderPanel";
+import BigBangPanel from "../../components/BigBangPanel";
+import GenesisScene from "../../components/GenesisScene";
 
 
 
@@ -20,7 +29,12 @@ const LabSimulation = () => {
     const [prestigeUpgrades, setPrestigeUpgrades] = useState({ energy: 0, matter: 0, chemistry: 0 });
     const [upgrading, setUpgrading] = useState("");
     const [bigBangInProgress, setBigBangInProgress] = useState(false);
+    const [expectedShards, setExpectedShards] = useState(0);
+    const [tierPopup, setTierPopup] = useState(false);
+    const [previousUnlockTier, setPreviousUnlockTier] = useState(0);
+    const [activityLevel, setActivityLevel] = useState(0); // New state for activity level
 
+    const isBusy = checking || performing || creatingAtom || upgrading || bigBangInProgress;
 
     const bigBang = async () => {
         try {
@@ -44,6 +58,46 @@ const LabSimulation = () => {
             setBigBangInProgress(false);
         }
     }
+
+    const handleTierUnlock = (newTier) => {
+        const tierMessages = {
+            1: "You’ve begun your journey",
+            2: "Basic Chemistry Expanded",
+            3: "Fuel Reactions Available",
+            4: "Organic Chemistry Unlocked",
+            5: "Complex Systems Emerging"
+        };
+        setTierPopup({ tier: newTier, message: tierMessages[newTier] || "New Tier Unlocked" });
+        // auto-hide after 3 seconds
+        setTimeout(() => {
+            setTierPopup(null);
+        }, 3000);
+};
+
+    const getCurrentGoal = () => {
+        if (inventory.length === 0) {
+            return "Create your first atom";
+        }
+
+        const hasCompound = inventory.some(item => item.substance.type === "compound");
+        if (!hasCompound) {
+            return "Try combining atoms to discover a new compound";
+        }
+
+        if (unlockTier === 1) {
+            return "Combine atoms to form simple compounds";
+        }
+
+        if (unlockTier === 2) {
+            return "Expand your inventory and unlock stronger reactions";
+        }
+
+        if (unlockTier >= 3) {
+            return "Build up resources and prepare for a Big Bang reset";
+        }
+
+        return "Explore and experiment";
+    };
 
     const createAtom = async (atom) => {
         try {
@@ -116,7 +170,7 @@ const LabSimulation = () => {
             const res = await fetch(`http://localhost:3000/api/reactions/${reaction}?user=${user}`);
             const data = await res.json();
             setSelectedReaction(data.reaction);
-            setResult(data.canPerform ? "✅ Can Perform" : "❌ Cannot Perform");
+            setResult(data.canPerform);
         }
         catch (err) {
             console.log(err);
@@ -142,6 +196,17 @@ const LabSimulation = () => {
             setPerforming(false);  
         }
         
+    };
+
+    const fetchExpectedShards = async () => {
+        try {
+            const res = await fetch(`http://localhost:3000/api/genesis-shards/${user}`);
+            const data = await res.json();
+            setExpectedShards(data.genesisShards);
+        }
+        catch (err) {
+            console.log(err);
+        }
     };
 
     const fetchUserData = async () => {
@@ -180,24 +245,42 @@ const LabSimulation = () => {
         }
     };
     
-    
+
+    useEffect(() => {
+        fetchExpectedShards();
+    }, [inventory, unlockTier, bigBangs]);
 
     useEffect(() => {
         fetchUserData();
     }, [user]);
 
+    useEffect(() => { 
+        const interval = setInterval(() => {
+            if (activityLevel > 2) {
+                generateEnergy();
+            }
+        }, 500); // Generate energy every half second
+        return () => clearInterval(interval); // Cleanup interval on unmount
+    }, []);
+
     useEffect(() => {
         fetchReactions();
-    }, [user]);
+    }, [user, unlockTier]);
 
     useEffect(() => {
         fetchAtoms();
     }, [user]);
 
+    useEffect(() => {
+        if (previousUnlockTier < unlockTier && previousUnlockTier !== 0) {
+            handleTierUnlock(unlockTier);
+        }
+        previousUnlockTier !== unlockTier && setPreviousUnlockTier(unlockTier);
+    }, [unlockTier]);
 
     useEffect(() => {
         async function checkSelectedReaction() {
-            if (checking || performing || creatingAtom || upgrading || bigBangInProgress) return;
+            if (isBusy) return;
             if (selectedReaction?.reactionID) {
                 await checkReaction(selectedReaction.reactionID);
             }
@@ -207,85 +290,48 @@ const LabSimulation = () => {
 
     return (
         <>
-            <h1>Genesis Lab Simulation</h1>
-            {/* BIG BANG CONTROL */}
-            <button onClick={bigBang} disabled={bigBangInProgress || (bigBangs > 0 && (unlockTier < 3 || energy < 1000))}>{bigBangInProgress ? "Big Bang in progress..." : "Perform Big Bang"}</button>
+            {tierPopup && (
+                <div className="tier-popup">
+                    🚀 Tier {tierPopup.tier} Unlocked: {tierPopup.message}
+                </div>
+            )}
             {!bigBangInProgress && ( 
-                <>
-                {/* HEADER */}
-                <h3>Unlock Tier: {unlockTier} --- Big Bangs: {bigBangs}</h3>
-                <h4>Genesis Shards: {genesisShards}</h4>
+                <div className="game-shell">
+                    <div className="top-bar">
+                    {/* HEADER */}
+                        <HeaderPanel unlockTier={unlockTier} bigBangs={bigBangs} genesisShards={genesisShards} getCurrentGoal={getCurrentGoal} />
+                    </div>
 
-                {/* PRESTIGE */}
-                {Object.entries(prestigeUpgrades).map(([key, value]) => (
-                    <p key={key}>{key.charAt(0).toUpperCase() + key.slice(1)} Prestige Upgrades: {value} <button onClick={() => upgradePrestige(key)} disabled={upgrading === key || genesisShards < ((prestigeUpgrades[key]+1) * 2) || creatingAtom || performing || checking || bigBangInProgress}>{`Upgrade ${key.charAt(0).toUpperCase() + key.slice(1)} (cost: ${(prestigeUpgrades[key]+1) * 2} Genesis Shards)`}</button></p>
-                ))}
+                    <div className="bottom-bar">
+                        {/* PRESTIGE */}
+                        <PrestigePanel prestigeUpgrades={prestigeUpgrades} upgradePrestige={upgradePrestige} genesisShards={genesisShards} upgrading={upgrading} isBusy={isBusy} />
+                        {/* BIG BANG CONTROL */}
+                        <BigBangPanel bigBang={bigBang} bigBangInProgress={bigBangInProgress} expectedShards={expectedShards} />
+                    </div>
 
-                {/* ENERGY */}
-                <p>Energy: {energy} <button onClick={() => generateEnergy()}>Generate Energy</button></p>
-
-                {/* ATOMS */}
-                <h2>Create atoms</h2>
-                {atoms.map((atom) => (
-                    <button key={atom.name} onClick={() => createAtom(atom.name)} disabled={creatingAtom || energy < atom.energyCost || performing || checking || upgrading || bigBangInProgress}>
-                        {creatingAtom === atom.name ? `Creating ${atom.name}` : `${atom.name} (cost ${atom.energyCost}⚡)`}
-                    </button>
-                ))}
-
-                {/* INVENTORY */}
-                <h2>Inventory</h2>
-                {inventory.length === 0 ? 
-                    (<p>Inventory empty</p>
-                    ) : (
-                        inventory.map((item) => (
-                            <div key={item.substance._id}>
-                                {item.substance.name} ({item.substance.symbol}) : {item.quantity}
+                    <div className="center-scene">
+                        <GenesisScene onCoreClick={generateEnergy} onActivityChange={setActivityLevel} />
+                        <div>
+                            {/* ENERGY */}
+                            <EnergyPanel energy={energy} generateEnergy={generateEnergy} />
+                            {/* ATOMS */}
+                            <AtomPanel atoms={atoms} createAtom={createAtom} energy={energy} creatingAtom={creatingAtom} isBusy={isBusy} />
                             </div>
-                        ))
-                    )}
+                    </div>
 
-                {/* REACTIONS */}
-                <h1>Reactions availability</h1>
-                {reactions.map((reaction) => (
-                    <button key={reaction.reactionID} disabled={checking || performing || creatingAtom || energy < reaction.energyCost || upgrading || bigBangInProgress} onClick={() => checkReaction(reaction.reactionID)}>
-                        {selectedReaction?.reactionID === reaction.reactionID ? "[Selected] " : ""}{reaction.reactants.map(r => `${r.quantity} ${r.substance.name}`).join(" + ")} → {reaction.product.quantity} {reaction.product.substance.name} (cost {reaction.energyCost} ⚡)
-                    </button>
-                ))}
-                {checking && !performing && (
-                    <div>
-                        <h3>Checking...</h3>
+                    <div className="left-panel"> 
+                        {/* INVENTORY */}
+                        <InventoryPanel inventory={inventory} />
                     </div>
-                )}
-                {performing && (
-                    <div>
-                        <h3>Performing...</h3>
-                    </div>
-                )}
 
-                {/* SELECTED REACTION */}
-                {selectedReaction && !checking && !performing &&(
-                    <div>
-                        <h3>Reaction Result</h3>
-                        <h4>Requirements</h4>
-                        {selectedReaction.reactants.map((reactant) => {
-                            const userItem = inventory.find(item => item.substance._id === reactant.substance._id);
-                            const userQuantity = userItem ? userItem.quantity : 0;
-                            const hasEnough = userQuantity >= reactant.quantity;
-                            return (
-                                <div key={reactant.substance._id}>
-                                    {reactant.substance.name}: {userQuantity}/{reactant.quantity} {hasEnough ? "✅" : "❌"}
-                                </div>
-                            );
-                        })}
-                        <p>{result}</p>
-                        {result === "✅ Can Perform" && (
-                            <button disabled={checking || performing || creatingAtom || upgrading || bigBangInProgress} onClick={() => performReaction(selectedReaction.reactionID)}>
-                                Perform reaction
-                            </button>
-                        )}
+                    <div className="right-panel">
+                        {/* REACTIONS */}
+                        <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} />
+                        {/* SELECTED REACTION */}
+                        <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} />
                     </div>
-                )}
-                </>
+
+                </div>
             )}
         </>
     );

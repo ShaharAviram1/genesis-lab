@@ -40,3 +40,17 @@
 .read-the-docs {
   color: #888;
 }
+
+.tier-popup {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    z-index: 999;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
