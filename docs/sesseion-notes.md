@@ -56,6 +56,174 @@ Creating logic to check whether a user has enough element quantities to perform 
 }
 ```
 
+---
+
+# 🧭 Genesis Lab — Full Project Dashboard
+
+This dashboard defines the **long-term structured path** for Genesis Lab.
+It follows a strict **"zero to hero" progression**, building a full-stack, portfolio-grade system step by step.
+
+---
+
+## 🧱 Phase 0 — Foundations (✅ DONE)
+
+### Backend
+- Express server
+- MongoDB Atlas + Mongoose
+- Schemas:
+  - Element
+  - Reaction
+  - User
+- Seeding system
+- REST endpoints for data fetching
+
+### Frontend
+- React + Vite
+- Data fetching and display
+- Basic UI
+
+---
+
+## ⚛️ Phase 1 — Reactor System (CURRENT)
+
+### ✅ Completed
+- Interactive 3D reactor (R3F)
+- Core click handling
+- Activity / Impulse / Kick system
+- Multi-ring structure
+- Lighting tied to activity
+- Core connected to gameplay input
+
+### 🔄 In Progress
+- Transition from click-based energy → system-based energy
+- Designing backend-authoritative reactor
+
+### 🎯 Goal
+Build a **real-time reactor system** where:
+- player input → affects reactor
+- reactor → generates energy
+- system feels alive and physical
+
+---
+
+## 🔌 Phase 2 — WebSocket Reactor (NEXT)
+
+### Objectives
+- Replace HTTP-based click handling
+- Implement real-time backend simulation
+
+### Tasks
+1. WebSocket server setup
+2. Client connection handling
+3. `core_click` event handling
+4. Server-side reactor state:
+   - activity
+   - decay
+   - energy generation
+5. Tick loop (5–10Hz)
+6. Broadcast `reactor_state` to client
+
+### Outcome
+- Backend authoritative reactor
+- No request spam
+- Smooth real-time gameplay
+
+---
+
+## 🧪 Phase 3 — Gameplay Loop Expansion
+
+### Systems to Add
+- Energy spending
+- Reaction crafting (existing backend model)
+- Inventory visualization
+- Unlock progression
+
+### Goal
+Connect reactor → resources → crafting → progression
+
+---
+
+## 🧬 Phase 4 — Core Progression System
+
+### Core Upgrades (Egg Inc style)
+Each core affects:
+- activity gain
+- decay rate
+- efficiency
+- thresholds
+
+### Goal
+Make cores feel like **distinct machines**, not stat upgrades
+
+---
+
+## 🌌 Phase 5 — Visual Evolution
+
+### Planned Upgrades
+- Replace placeholder geometry with 3D models
+- Advanced effects:
+  - bloom
+  - particles
+  - energy arcs
+- animation polish
+
+### Tech
+- React Three Fiber
+- Drei
+- Postprocessing
+
+---
+
+## 🧠 Phase 6 — System Depth
+
+### Advanced Mechanics
+- automation
+- upgrades
+- scaling systems
+- prestige (Big Bang)
+
+### Goal
+Turn prototype into a **deep incremental system**
+
+---
+
+## 🧪 Phase 7 — Software Engineering Layer
+
+### Portfolio Elements
+- ERD diagrams
+- architecture documentation
+- API documentation
+- design decisions log
+
+### Goal
+Showcase not just code, but **engineering thinking**
+
+---
+
+## 🎯 End Goal
+
+A fully interactive, visually rich, system-driven web game featuring:
+- real-time simulation
+- strong game feel
+- scalable progression
+- clean architecture
+
+---
+
+## 📌 Core Rules (DO NOT BREAK)
+
+- User writes all code
+- Assistant guides, teaches, corrects
+- No full implementations unless explicitly requested
+- Always prioritize:
+  - understanding
+  - system design
+  - long-term architecture
+
+---
+
+END OF DASHBOARD
+
 #### 🔬 Reaction Schema
 
 ```js
@@ -87,3 +255,240 @@ Creating logic to check whether a user has enough element quantities to perform 
   ]
 }
 ```
+
+# Genesis Lab: Reactor System Snapshot (April 2026)
+
+This document is the **canonical reference** for the current state of Genesis Lab. All future work should align with this snapshot unless explicitly changed.
+
+---
+
+## 🎯 Current Direction
+
+Genesis Lab has evolved from a UI-driven prototype into a **reactor-centric interactive system**.
+
+- The **core (center scene)** is now the primary gameplay interface
+- Gameplay is shifting from “click = reward” → **system-driven simulation**
+- Focus is on:
+  - game feel
+  - system depth
+  - visual–mechanical cohesion
+
+---
+
+## ⚛️ Frontend — Reactor Scene (R3F)
+
+### Implemented Systems
+
+#### Core
+- Sphere-based reactor core
+- Rotation driven by **activity**
+- Emissive glow driven by activity
+- Pulse animation (sin-based)
+
+#### Feedback Layers
+- **Impulse** → short-lived visual scale kick
+- **Kick** → physical wobble (tilt + slight displacement)
+- **Activity** → long-lived spool-up state
+
+#### Structure
+- Independent **aura shell** (not scaling with core)
+- 3 rotating **rings**:
+  - different axes
+  - different speeds
+  - layered motion
+
+#### Lighting
+- Point light reacts to activity + impulse
+- Scene brightness tied to reactor state
+
+---
+
+## 🧠 Architecture (Frontend)
+
+### GenesisScene
+Responsible for:
+- rendering
+- animation
+- click interaction
+
+Receives:
+- `onCoreClick`
+- `onActivityChange`
+
+Sends:
+- continuous activity updates (via `useFrame`)
+
+---
+
+### LabSimulation (Parent)
+Responsible for:
+- game state (energy, etc.)
+- backend communication
+
+Stores:
+- `activityLevel`
+
+---
+
+## 🔄 Gameplay Model (New Direction)
+
+### ❌ Old Model
+- click → +1 energy
+
+### ✅ New Model
+
+#### Core Mechanics
+- Clicks → increase **activity**
+- Activity → generates energy
+
+#### Hybrid System (Chosen)
+- clicks give **small immediate energy**
+- main energy comes from **sustained activity**
+
+---
+
+## ⚡ Reactor Behavior Model
+
+### Activity Zones
+
+#### Dormant
+- activity low
+- no passive energy
+
+#### Active
+- above threshold
+- starts generating energy
+
+#### Overdrive
+- high activity
+- strong energy output
+
+---
+
+## 📉 Core Formula (v1 Design)
+
+```text
+effectiveActivity = max(0, activity - threshold)
+energyGain = effectiveActivity * efficiency * deltaTime
+```
+
+### Parameters (v1)
+
+- threshold: 2
+- click activity gain: 0.8
+- direct click energy: 0.2
+- decay base: ~0.88
+- efficiency: ~0.5
+
+---
+
+## ❌ Rejected Approaches
+
+### Interval HTTP spam
+- calling backend every 250–500ms → rejected
+
+### Debounce batching
+- considered non-game-like
+- rejected
+
+### Client-only authoritative energy
+- rejected due to exploit risk
+
+---
+
+## 🚀 Chosen Solution: WebSockets
+
+### Reasoning
+- real-time input
+- no request spam
+- backend authoritative
+- aligns with game feel
+
+---
+
+## 🔌 WebSocket Plan (Phase 1)
+
+### Scope
+Only reactor system uses WebSockets:
+- core clicks
+- activity
+- energy generation
+
+Everything else remains HTTP:
+- atoms
+- reactions
+- prestige
+
+---
+
+## 🔄 Message Flow
+
+### Client → Server
+
+- `core_click`
+
+### Server → Client
+
+- `reactor_state`
+  - activity
+  - energy
+
+---
+
+## 🧠 Server Responsibilities
+
+- maintain reactor activity
+- apply decay
+- simulate energy generation
+- run tick loop (5–10Hz)
+- broadcast updated state
+
+---
+
+## 🧩 Design Philosophy
+
+### Goals
+- system-driven gameplay
+- “machine” feel
+- visual feedback tied to real state
+- scalable progression (Egg Inc inspiration)
+
+### Avoid
+- UI-driven logic
+- network spam
+- fake batching hacks
+- disconnected visuals/mechanics
+
+---
+
+## 🧠 Assistant Rules
+
+- DO NOT write full code unless explicitly asked
+- ALWAYS:
+  - explain concept first
+  - give small example
+  - guide step-by-step
+
+---
+
+## 🎯 Next Step
+
+Implement WebSocket reactor system (Phase 1):
+
+1. backend WebSocket setup
+2. handle `core_click`
+3. implement server-side activity + decay
+4. implement server tick loop
+5. push reactor state to client
+
+---
+
+## 📌 Notes
+
+- Current system is stable at **Reactor V1**
+- Further visual polish is intentionally paused
+- Focus is now on **system correctness + architecture**
+
+---
+
+END OF SNAPSHOT
