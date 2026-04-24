@@ -1,0 +1,85 @@
+.inventory-panel {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inventory-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: rgba(0, 212, 255, 0.03);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.inventory-item:hover {
+  border-color: var(--border);
+  background: rgba(0, 212, 255, 0.07);
+}
+
+.substance-symbol {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--teal);
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 4px;
+  padding: 2px 5px;
+  min-width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.substance-name {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.substance-qty {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--orange);
+  flex-shrink: 0;
+}
+
+.inventory-group-label {
+  font-family: var(--font-display);
+  font-size: 0.48rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 4px 2px 2px;
+  display: block;
+}
+
+.inventory-item--compound .substance-symbol {
+  color: var(--orange);
+  background: rgba(255, 107, 0, 0.1);
+  border-color: rgba(255, 107, 0, 0.25);
+}
+
+.inventory-empty {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px 0;
+  font-style: italic;
+}

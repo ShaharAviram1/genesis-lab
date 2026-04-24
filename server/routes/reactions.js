@@ -4,13 +4,7 @@ const User = require('../models/User');
 const checkReactionEligibility = require('../utils/checkReactionEligibility');
 const Substance = require('../models/Substance');
 const { calculateReactionCost } = require('./../utils/gameEconomy');
-
-const unlockTierSubstances = {
-    "Water": 2,
-    "Fuel": 3,
-    "Organic Matter": 4,
-    "Complex Hydrocarbon": 5
-};
+const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser } = require('./../realtime/reactorRuntime');
 
 const router = express.Router();
 
@@ -56,7 +50,7 @@ router.get("/reactions/:reactionID", async (req, res) => {
         if (!req.query.user) { 
             return res.status(400).json({ error: "Missing username" }); 
         }
-
+        await flushPendingMongoEnergyForUser(req.query.user);
         const user = await User.findOne({ username: req.query.user }).populate('inventory.substance');
         if (!user) { 
             return res.status(404).json({ error: "User not found" }); 
@@ -79,6 +73,7 @@ router.post("/perform/:reactionID", async (req, res) => {
         if (!req.query.user) {
             return res.status(400).json({ error: "missing username" });
         }
+        await flushPendingMongoEnergyForUser(req.query.user);
         const user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
         reaction = reaction.toObject();
@@ -104,12 +99,13 @@ router.post("/perform/:reactionID", async (req, res) => {
                 hasExisted.produced += quantity;
             } else {
                 user.runTotals.push({ substance: substance._id, produced: quantity });
-                if (unlockTierSubstances[substance.name] && unlockTierSubstances[substance.name] > user.unlockTier) {
-                    user.unlockTier = unlockTierSubstances[substance.name];
+                if (substance.unlocksUserTier && substance.unlocksUserTier > user.unlockTier) {
+                    user.unlockTier = substance.unlocksUserTier;
                 }
             }
             user.inventory = user.inventory.filter(item => item.quantity > 0);
             await user.save();
+            updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
             await user.populate(['inventory.substance','runTotals.substance']);
             return res.status(200).json({ success: true, inventory: user.inventory });
         }

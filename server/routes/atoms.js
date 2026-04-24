@@ -3,12 +3,14 @@ const User = require('./../models/User');
 const Substance = require('./../models/Substance');
 const atomCost = require('./../config/atomCost');
 const { calculateAtomCost } = require('./../utils/gameEconomy');
+const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser} = require('./../realtime/reactorRuntime');
 
 const router = express.Router();
 
 router.post('/atoms/create', async (req, res) => { 
     try {
         if (!req.query.user) { return res.status(400).json({ error: "Missing username" }); }
+        await flushPendingMongoEnergyForUser(req.query.user);
         const user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
         if (!req.body.atom) { return res.status(400).json({ error: "Missing atom to create" }); }
@@ -31,6 +33,7 @@ router.post('/atoms/create', async (req, res) => {
             user.runTotals.push({ substance: atom._id, produced: 1 });
         }
         await user.save();
+        updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
         await user.populate(['inventory.substance', 'runTotals.substance']);
         return res.status(200).json({ success: true, energy: user.energy, inventory: user.inventory });
     }

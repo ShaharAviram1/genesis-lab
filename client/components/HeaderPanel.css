@@ -1,0 +1,103 @@
+.header-panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 18px;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.header-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--teal);
+  text-shadow: 0 0 18px var(--teal-glow);
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.header-stats {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.stat-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 12px;
+  min-width: 70px;
+}
+
+.stat-chip.shard {
+  border-color: rgba(155, 89, 182, 0.35);
+  background: rgba(155, 89, 182, 0.07);
+}
+
+.stat-label {
+  font-family: var(--font-display);
+  font-size: 0.48rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-chip.shard .stat-value {
+  color: var(--violet);
+}
+
+.stat-tier-name {
+  font-size: 0.6rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.header-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.header-goal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.goal-label {
+  font-family: var(--font-display);
+  font-size: 0.46rem;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.goal-text {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

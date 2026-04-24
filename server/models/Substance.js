@@ -81,6 +81,14 @@ const substanceSchema = new mongoose.Schema({
 
     // Progression
     unlockTier: Number,
+    unlocksUserTier: {
+        type: Number,
+        default: 0   // 0 = does not unlock a new tier when first produced
+    },
+    shardValue: {
+        type: Number,
+        default: 0   // base Genesis Shards awarded per BigBang for producing this substance
+    },
     discoveryPrerequisites: {
         type: [String],
         default: []

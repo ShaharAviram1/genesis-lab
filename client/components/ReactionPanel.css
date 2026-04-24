@@ -1,0 +1,83 @@
+.reaction-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.reaction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.reaction-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.reaction-card:hover:not(:disabled) {
+  border-color: var(--teal);
+  box-shadow: 0 0 10px var(--teal-glow);
+  background: var(--surface-hover);
+}
+
+.reaction-card.selected {
+  border-color: var(--orange);
+  box-shadow: 0 0 12px var(--orange-glow);
+  background: rgba(255, 107, 0, 0.07);
+}
+
+.reaction-card:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.reaction-formula {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--text);
+  flex: 1;
+  line-height: 1.4;
+}
+
+.reaction-arrow {
+  color: var(--teal);
+  font-weight: 600;
+}
+
+.reaction-cost {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  color: var(--orange);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.reaction-byproducts {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+
+.reaction-status {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px 0;
+}

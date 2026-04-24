@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./LabSimulation.css";
+import fetchWithTimeout, { FetchTimeoutError } from "../utils/fetchWithTimeout";
+import { useToast } from "../context/ToastContext";
 import InventoryPanel from "../../components/InventoryPanel";
 import AtomPanel from "../../components/AtomPanel";
 import ReactionPanel from "../../components/ReactionPanel";
@@ -30,16 +32,21 @@ const LabSimulation = () => {
     const [upgrading, setUpgrading] = useState("");
     const [bigBangInProgress, setBigBangInProgress] = useState(false);
     const [expectedShards, setExpectedShards] = useState(0);
-    const [tierPopup, setTierPopup] = useState(false);
     const [previousUnlockTier, setPreviousUnlockTier] = useState(0);
-    const [activityLevel, setActivityLevel] = useState(0); // New state for activity level
+    const [activityLevel, setActivityLevel] = useState(0);
+    const [energyRate, setEnergyRate] = useState(0);
+    const [creationEvent, setCreationEvent] = useState(null);
+    const wsRef = useRef(null);
+    const wsEnergyActiveRef = useRef(false);
+    const showToast = useToast();
+ // WS owns energy once it sends the first update
 
     const isBusy = checking || performing || creatingAtom || upgrading || bigBangInProgress;
 
     const bigBang = async () => {
         try {
             setBigBangInProgress(true);
-            const res = await fetch(`http://localhost:3000/api/bigbang?user=${user}`, { method: "POST" });
+            const res = await fetchWithTimeout(`http://localhost:3000/api/bigbang?user=${user}`, { method: "POST" });
             const data = await res.json();
             if (data.success) {
                 setUser(data.username);
@@ -52,7 +59,7 @@ const LabSimulation = () => {
             }
         }
         catch (err) {
-            console.log(err);
+            showToast('error', err instanceof FetchTimeoutError ? 'Big Bang timed out' : 'Big Bang failed');
         }
         finally {
             setBigBangInProgress(false);
@@ -67,12 +74,9 @@ const LabSimulation = () => {
             4: "Organic Chemistry Unlocked",
             5: "Complex Systems Emerging"
         };
-        setTierPopup({ tier: newTier, message: tierMessages[newTier] || "New Tier Unlocked" });
-        // auto-hide after 3 seconds
-        setTimeout(() => {
-            setTierPopup(null);
-        }, 3000);
-};
+        const message = tierMessages[newTier] || "New Tier Unlocked";
+        showToast("milestone", `\u2726 Tier ${newTier} Unlocked: ${message}`);
+    };
 
     const getCurrentGoal = () => {
         if (inventory.length === 0) {
@@ -102,7 +106,7 @@ const LabSimulation = () => {
     const createAtom = async (atom) => {
         try {
             setCreatingAtom(atom);
-            const res = await fetch(`http://localhost:3000/api/atoms/create?user=${user}`, {
+            const res = await fetchWithTimeout(`http://localhost:3000/api/atoms/create?user=${user}`, {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json'
@@ -112,17 +116,24 @@ const LabSimulation = () => {
             if (data.success) {
                 setInventory(data.inventory);
                 setEnergy(data.energy);
+                setCreationEvent({
+                    type: "atom_creation",
+                    atom,
+                    strength: 1,
+                    timestamp: Date.now()
+                });
+                showToast('success', `${atom} created`);
             }
         }
         catch (err) {
-            console.log(err);
+            showToast('error', err instanceof FetchTimeoutError ? 'Atom creation timed out' : 'Failed to create atom');
         }
         finally {
             setCreatingAtom("");
         }
     }
 
-    const generateEnergy = async () => {
+ /*    const generateEnergy = async () => {
         try {
             const res = await fetch(`http://localhost:3000/api/generate-energy?user=${user}`, { method: "POST" });
             const data = await res.json();
@@ -132,6 +143,17 @@ const LabSimulation = () => {
         }
         catch (err) {
             console.log(err);
+        }
+    }
+ */
+    const handleCoreClick = async () => { 
+        try {
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ type: 'core_click' }));
+            }
+        }
+        catch (err) {
+            console.error(err);
         }
     }
 
@@ -146,16 +168,17 @@ const LabSimulation = () => {
             else if (type === "chemistry") {
                 setUpgrading("chemistry");
             }
-            const res = await fetch(`http://localhost:3000/api/prestige/upgrade/${user}`, { method: "POST" , body: JSON.stringify({ upgrade: type }), headers: { 'Content-Type': 'application/json' }});
+            const res = await fetchWithTimeout(`http://localhost:3000/api/prestige/upgrade/${user}`, { method: "POST" , body: JSON.stringify({ upgrade: type }), headers: { 'Content-Type': 'application/json' }});
             const data = await res.json();
             if (data.success) {
                 await fetchUserData();
                 await fetchReactions();
                 await fetchAtoms();
+                showToast('success', `${type.charAt(0).toUpperCase() + type.slice(1)} upgrade purchased`);
             }
         }
         catch (err) {
-            console.log(err);
+            showToast('error', err instanceof FetchTimeoutError ? 'Upgrade timed out' : 'Upgrade failed');
         }
         finally {
             setUpgrading("");
@@ -163,17 +186,22 @@ const LabSimulation = () => {
     }
 
 
-    const checkReaction = async (reaction) => {
+    const checkReaction = async (reactionID) => {
+        if (selectedReaction?.reactionID === reactionID) {
+            setSelectedReaction(null);
+            setResult("");
+            return;
+        }
         try {
             setChecking(true);
             setResult("");
-            const res = await fetch(`http://localhost:3000/api/reactions/${reaction}?user=${user}`);
+            const res = await fetchWithTimeout(`http://localhost:3000/api/reactions/${reactionID}?user=${user}`);
             const data = await res.json();
             setSelectedReaction(data.reaction);
             setResult(data.canPerform);
         }
         catch (err) {
-            console.log(err);
+            showToast('error', err instanceof FetchTimeoutError ? 'Reaction check timed out' : 'Failed to check reaction');
         }
         finally {
             setChecking(false);
@@ -183,65 +211,69 @@ const LabSimulation = () => {
     const performReaction = async (reactionID) => {
         try {
             setPerforming(true);
-            const res = await fetch(`http://localhost:3000/api/perform/${reactionID}?user=${user}`,{method: "POST"});
+            const res = await fetchWithTimeout(`http://localhost:3000/api/perform/${reactionID}?user=${user}`, { method: "POST" });
             const data = await res.json();
             if (data.success) {
                 await fetchUserData();
+                showToast('success', selectedReaction ? `${selectedReaction.product.substance.name} synthesized` : 'Reaction complete');
             }
         }
         catch (err) {
-            console.log(err);
+            showToast('error', err instanceof FetchTimeoutError ? 'Reaction timed out' : 'Reaction failed');
         }
         finally {
-            setPerforming(false);  
+            setPerforming(false);
         }
         
     };
 
     const fetchExpectedShards = async () => {
         try {
-            const res = await fetch(`http://localhost:3000/api/genesis-shards/${user}`);
+            const res = await fetchWithTimeout(`http://localhost:3000/api/genesis-shards/${user}`);
             const data = await res.json();
             setExpectedShards(data.genesisShards);
         }
         catch (err) {
-            console.log(err);
+            console.error(err);
         }
     };
 
     const fetchUserData = async () => {
         try {
-            const res = await fetch(`http://localhost:3000/api/users/${user}`);
+            const res = await fetchWithTimeout(`http://localhost:3000/api/users/${user}`);
             const data = await res.json();
             setInventory(data.inventory);
-            setEnergy(data.energy);
+            // WS owns energy once connected — REST only sets it on initial load
+            if (!wsEnergyActiveRef.current) {
+                setEnergy(data.energy);
+            }
             setBigBangs(data.bigBangCount);
             setUnlockTier(data.unlockTier);
             setGenesisShards(data.genesisShards);
             setPrestigeUpgrades(data.prestigeUpgrades);
         }
         catch (err) {
-            console.log(err);
+            console.error(err);
         }
     };
     const fetchReactions = async () => {
         try {
-            const res = await fetch(`http://localhost:3000/api/reactions/available?user=${user}`);
+            const res = await fetchWithTimeout(`http://localhost:3000/api/reactions/available?user=${user}`);
             const data = await res.json();
             setReactions(data);
         }
         catch (err) {
-            console.log(err);
+            console.error(err);
         }
     };
     const fetchAtoms = async () => {
         try {
-            const res = await fetch(`http://localhost:3000/api/atoms/${user}`);
+            const res = await fetchWithTimeout(`http://localhost:3000/api/atoms/${user}`);
             const data = await res.json();
             setAtoms(data);
-        }  
+        }
         catch (err) {
-            console.log(err);
+            console.error(err);
         }
     };
     
@@ -255,13 +287,28 @@ const LabSimulation = () => {
     }, [user]);
 
     useEffect(() => { 
-        const interval = setInterval(() => {
-            if (activityLevel > 2) {
-                generateEnergy();
+        if(wsRef.current) return; // Prevent multiple connections
+        const ws = new WebSocket('ws://localhost:3000?user=' + user);
+        wsRef.current = ws;
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+        };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'reactor_state') {
+                wsEnergyActiveRef.current = true;
+                setActivityLevel(data.activityLevel);
+                setEnergy(data.energy);
+                setEnergyRate(data.energyPerSecond ?? 0);
             }
-        }, 500); // Generate energy every half second
-        return () => clearInterval(interval); // Cleanup interval on unmount
-    }, []);
+        };
+        return () => {
+            if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                ws.close();
+            }
+            wsRef.current = null;
+        };
+    }, [user]);
 
     useEffect(() => {
         fetchReactions();
@@ -286,16 +333,11 @@ const LabSimulation = () => {
             }
         }
         checkSelectedReaction();
-    }, [inventory, energy, unlockTier, prestigeUpgrades]);
+    }, [inventory, unlockTier, prestigeUpgrades]);
 
     return (
         <>
-            {tierPopup && (
-                <div className="tier-popup">
-                    🚀 Tier {tierPopup.tier} Unlocked: {tierPopup.message}
-                </div>
-            )}
-            {!bigBangInProgress && ( 
+            {!bigBangInProgress && (
                 <div className="game-shell">
                     <div className="top-bar">
                     {/* HEADER */}
@@ -310,13 +352,15 @@ const LabSimulation = () => {
                     </div>
 
                     <div className="center-scene">
-                        <GenesisScene onCoreClick={generateEnergy} onActivityChange={setActivityLevel} />
-                        <div>
+                        <div className="scene-canvas">
+                            <GenesisScene onCoreClick={handleCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} />
+                        </div>
+                        <div className="scene-controls">
                             {/* ENERGY */}
-                            <EnergyPanel energy={energy} generateEnergy={generateEnergy} />
+                            <EnergyPanel energy={energy} energyRate={energyRate} />
                             {/* ATOMS */}
                             <AtomPanel atoms={atoms} createAtom={createAtom} energy={energy} creatingAtom={creatingAtom} isBusy={isBusy} />
-                            </div>
+                        </div>
                     </div>
 
                     <div className="left-panel"> 
@@ -328,7 +372,7 @@ const LabSimulation = () => {
                         {/* REACTIONS */}
                         <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} />
                         {/* SELECTED REACTION */}
-                        <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} />
+                        <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} />
                     </div>
 
                 </div>

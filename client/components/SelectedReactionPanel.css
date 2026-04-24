@@ -1,0 +1,132 @@
+.selected-reaction-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.selected-reaction-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  padding: 2px 5px;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.close-btn:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.07);
+}
+
+.requirements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.requirement-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border-left: 2px solid transparent;
+  background: rgba(255,255,255,0.03);
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+}
+
+.requirement-row.met {
+  border-left-color: #22c55e;
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.requirement-row.unmet {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.req-name {
+  flex: 1;
+  color: var(--text);
+}
+
+.req-qty {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.req-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  width: 16px;
+  text-align: center;
+}
+
+.requirement-row.met .req-status   { color: #22c55e; }
+.requirement-row.unmet .req-status { color: #ef4444; }
+
+.byproducts-row {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 3px 6px;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+}
+
+.byproducts-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.byproducts-list {
+  color: var(--teal);
+}
+
+.perform-status {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 4px;
+}
+
+.perform-status.can-perform {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.perform-status.cannot-perform {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.perform-btn {
+  width: 100%;
+  padding: 9px;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  border-color: var(--orange);
+  color: var(--orange);
+  box-shadow: 0 0 10px var(--orange-glow);
+}
+
+.perform-btn:hover:not(:disabled) {
+  border-color: var(--orange);
+  color: #fff;
+  background: rgba(255, 107, 0, 0.18);
+  box-shadow: 0 0 18px var(--orange-glow);
+}

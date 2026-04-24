@@ -1,67 +1,66 @@
-.game-shell{
-    display: grid;
-    grid-template-rows:
-        80px
-        1fr
-        100px;
-    grid-template-columns: 
-        minmax(180px, 220px)
-        minmax(600px, 1fr)
-        minmax(220px, 260px);
-    height: 100vh;
-    gap: 10px;
-    overflow: hidden;
+.game-shell {
+  display: grid;
+  grid-template-rows: 70px 1fr 100px;
+  grid-template-columns: minmax(180px, 210px) minmax(0, 1fr) minmax(220px, 260px);
+  height: 100vh;
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+  background: var(--bg);
 }
 
 .top-bar {
-    grid-column: 1/-1;
-    grid-row: 1;
-    padding: 10px;
-    overflow: auto;
-    border-radius: 10px;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  overflow: hidden;
 }
 
 .bottom-bar {
-    grid-column: 1/-1;
-    grid-row: 3;
-    padding: 10px;
-    overflow: auto;
-    border-radius: 10px;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
 }
 
 .left-panel {
-    grid-column: 1;
-    grid-row: 2;
-    padding: 10px;
-    overflow: auto;
-    border-radius: 10px;
+  grid-column: 1;
+  grid-row: 2;
+  overflow: hidden;
 }
 
 .right-panel {
-    grid-column: 3;
-    grid-row: 2;
-    padding: 10px;
-    overflow: auto;
-    border-radius: 10px;
+  grid-column: 3;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
 }
 
-.center-scene{
-    grid-column: 2;
-    grid-row: 2;
-    padding: 10px;
-    border-radius: 12px;
-    overflow: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(180deg, #0b1020 0%, #111827 100%);
+.center-scene {
+  grid-column: 2;
+  grid-row: 2;
+  border-radius: 12px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, #0d1a2e 0%, #060a14 100%);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
 }
 
+.scene-canvas {
+  flex: 1;
+  min-height: 0;
+}
 
-
-
-.top-bar { background: #222; }
-.left-panel { background: #333; }
-.center-scene { background: #111; }
-.right-panel { background: #333; }
-.bottom-bar { background: #222; }
+.scene-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: rgba(6, 10, 20, 0.7);
+}

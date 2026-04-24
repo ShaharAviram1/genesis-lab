@@ -1,0 +1,96 @@
+.bigbang-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.bigbang-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: 1px solid var(--orange);
+  background: rgba(255, 107, 0, 0.08);
+  color: var(--orange);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  box-shadow: 0 0 16px var(--orange-glow);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.bigbang-btn:hover:not(:disabled) {
+  background: rgba(255, 107, 0, 0.18);
+  box-shadow: 0 0 28px var(--orange-glow), 0 0 60px rgba(255, 107, 0, 0.12);
+  color: #fff;
+}
+
+.bigbang-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  animation: bigbang-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes bigbang-pulse {
+  from { box-shadow: 0 0 12px var(--orange-glow); }
+  to   { box-shadow: 0 0 32px var(--orange-glow), 0 0 60px rgba(255,107,0,0.15); }
+}
+
+.bigbang-icon {
+  font-size: 1.1rem;
+  filter: drop-shadow(0 0 6px var(--orange));
+}
+
+.bigbang-btn.confirming {
+  border-color: #ef4444;
+  color: #ef4444;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.3);
+  animation: none;
+}
+
+.bigbang-btn.confirming:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  box-shadow: 0 0 28px rgba(239, 68, 68, 0.4);
+}
+
+.bigbang-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 8px;
+}
+
+.bigbang-confirm-text {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.bigbang-cancel-btn {
+  font-size: 0.58rem;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: none;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.bigbang-cancel-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.bigbang-shards {
+  font-size: 0.62rem;
+  color: var(--violet);
+  font-family: var(--font-display);
+  margin-left: 4px;
+}

@@ -26,4 +26,9 @@ function calculateReactionCost(user, baseCost) {
     return Math.max(1, Math.ceil(rawCost));
 }
 
-module.exports = { calculateEnergyGain, calculateAtomCost, calculateReactionCost };
+function getEnergyMultiplier(user) {
+    const energyLevel = user.prestigeUpgrades.energy || 0;
+    return 1 + 0.2 * energyLevel;
+}
+
+module.exports = { calculateEnergyGain, calculateAtomCost, calculateReactionCost, getEnergyMultiplier };

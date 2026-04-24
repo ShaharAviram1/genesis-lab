@@ -1,0 +1,78 @@
+.prestige-panel {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 100%;
+}
+
+.upgrade-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  background: rgba(155, 89, 182, 0.08);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.upgrade-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.upgrade-name {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--violet);
+  white-space: nowrap;
+}
+
+.upgrade-desc {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.upgrade-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.upgrade-level {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.upgrade-btn {
+  font-size: 0.65rem;
+  padding: 6px 12px;
+  border-color: rgba(155, 89, 182, 0.4);
+  color: var(--violet);
+  white-space: nowrap;
+}
+
+.upgrade-btn:hover:not(:disabled) {
+  border-color: var(--violet);
+  box-shadow: 0 0 10px var(--violet-glow);
+  color: #d8b4fe;
+}
+
+.upgrade-btn.unaffordable {
+  opacity: 0.35;
+}

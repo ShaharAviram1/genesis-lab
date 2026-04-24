@@ -1,0 +1,71 @@
+.atom-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.atom-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.atom-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 10px;
+  min-width: 72px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  text-align: center;
+}
+
+.atom-card:hover:not(:disabled) {
+  border-color: var(--teal);
+  box-shadow: 0 0 12px var(--teal-glow);
+  background: var(--surface-hover);
+}
+
+.atom-card:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.atom-card.creating {
+  border-color: var(--orange);
+  box-shadow: 0 0 14px var(--orange-glow);
+  animation: atom-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes atom-pulse {
+  from { box-shadow: 0 0 8px var(--orange-glow); }
+  to   { box-shadow: 0 0 20px var(--orange-glow); }
+}
+
+.atom-symbol {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--teal);
+  text-shadow: 0 0 8px var(--teal-glow);
+  line-height: 1;
+}
+
+.atom-name {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.atom-cost {
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  color: var(--orange);
+  letter-spacing: 0.06em;
+}

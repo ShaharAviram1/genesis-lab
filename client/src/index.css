@@ -1,68 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&display=swap');
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Palette — mirrors the 3D scene colours */
+  --bg:            #060a14;
+  --surface:       rgba(8, 16, 34, 0.90);
+  --surface-hover: rgba(12, 24, 50, 0.95);
+  --border:        rgba(0, 212, 255, 0.18);
+  --border-bright: rgba(0, 212, 255, 0.45);
+  --teal:          #00d4ff;
+  --teal-glow:     rgba(0, 212, 255, 0.25);
+  --orange:        #ff6b00;
+  --orange-glow:   rgba(255, 107, 0, 0.28);
+  --violet:        #9b59b6;
+  --violet-glow:   rgba(155, 89, 182, 0.25);
+  --text:          #d8eef8;
+  --text-muted:    #4a6878;
+  --text-dim:      #2a3a4a;
+
+  /* Typography */
+  --font-display: 'Orbitron', sans-serif;
+  --font-body:    'Exo 2', sans-serif;
+
+  font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: var(--text);
+  background-color: var(--bg);
+  color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--bg);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  margin: 0 0 0.5em;
+  letter-spacing: 0.06em;
 }
 
+/* Global game button base */
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.5em 1em;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s;
 }
-button:hover {
-  border-color: #646cff;
+button:hover:not(:disabled) {
+  border-color: var(--teal);
+  box-shadow: 0 0 10px var(--teal-glow), inset 0 0 8px rgba(0,212,255,0.06);
+  color: var(--teal);
+  background: var(--surface-hover);
 }
-button:focus,
+button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Shared panel card */
+.panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  padding: 12px 14px;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin: 0 0 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
 }

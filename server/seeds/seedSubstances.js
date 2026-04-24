@@ -190,6 +190,8 @@ const substances = [
     color: "#4FC3F7",
     size: 1.5,
     unlockTier: 1,
+    unlocksUserTier: 2,
+    shardValue: 1,
     discoveryPrerequisites: ["H2", "O2"],
     isBaseElement: false,
     isActive: true
@@ -285,6 +287,8 @@ const substances = [
     color: "#FF7043",
     size: 1.6,
     unlockTier: 2,
+    unlocksUserTier: 3,
+    shardValue: 2,
     discoveryPrerequisites: ["CH4"],
     isBaseElement: false,
     isActive: true
@@ -313,6 +317,8 @@ const substances = [
     color: "#6D4C41",
     size: 1.6,
     unlockTier: 3,
+    unlocksUserTier: 4,
+    shardValue: 4,
     discoveryPrerequisites: ["CH4", "NH3"],
     isBaseElement: false,
     isActive: true
@@ -326,6 +332,8 @@ const substances = [
     color: "#5D4037",
     size: 1.7,
     unlockTier: 3,
+    unlocksUserTier: 5,
+    shardValue: 6,
     discoveryPrerequisites: ["CH4", "FUEL"],
     isBaseElement: false,
     isActive: true
