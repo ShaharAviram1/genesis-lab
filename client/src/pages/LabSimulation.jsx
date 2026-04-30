@@ -30,41 +30,64 @@ const LabSimulation = () => {
     const [genesisShards, setGenesisShards] = useState(0);
     const [prestigeUpgrades, setPrestigeUpgrades] = useState({ energy: 0, matter: 0, chemistry: 0 });
     const [upgrading, setUpgrading] = useState("");
-    const [bigBangInProgress, setBigBangInProgress] = useState(false);
+    const [bigBangPhase, setBigBangPhase] = useState(null); // null | 'collapse' | 'singularity' | 'flash' | 'expansion' | 'rebirth'
     const [expectedShards, setExpectedShards] = useState(0);
     const [previousUnlockTier, setPreviousUnlockTier] = useState(0);
     const [activityLevel, setActivityLevel] = useState(0);
     const [energyRate, setEnergyRate] = useState(0);
     const [creationEvent, setCreationEvent] = useState(null);
+    const [reactionEvent, setReactionEvent] = useState(null);
     const wsRef = useRef(null);
     const wsEnergyActiveRef = useRef(false);
     const showToast = useToast();
  // WS owns energy once it sends the first update
 
-    const isBusy = checking || performing || creatingAtom || upgrading || bigBangInProgress;
+    const bigBangActive = !!bigBangPhase;
+    const isBusy = checking || performing || creatingAtom || upgrading || bigBangActive;
 
-    const bigBang = async () => {
-        try {
-            setBigBangInProgress(true);
-            const res = await fetchWithTimeout(`http://localhost:3000/api/bigbang?user=${user}`, { method: "POST" });
-            const data = await res.json();
-            if (data.success) {
-                setUser(data.username);
-                setBigBangs(data.bigBangCount);
-                await fetchUserData();
-                await fetchReactions();
-                await fetchAtoms();
-                setSelectedReaction(null);
-                setResult("");
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    const runBigBangSequence = async (skipApi = false) => {
+        // Fire API immediately so it runs in parallel with the animation
+        const apiPromise = skipApi
+            ? Promise.resolve({ success: true })
+            : fetchWithTimeout(`http://localhost:3000/api/bigbang?user=${user}`, { method: "POST" })
+                .then(r => r.json())
+                .catch(err => ({ success: false, error: err }));
+
+        setBigBangPhase('collapse');
+        await delay(2000);
+
+        setBigBangPhase('singularity');
+        await delay(300);
+
+        setBigBangPhase('flash');
+        const data = await apiPromise; // guaranteed done by now
+
+        if (!skipApi) {
+            if (!data.success) {
+                showToast('error', data.error instanceof FetchTimeoutError ? 'Big Bang timed out' : 'Big Bang failed');
+                await delay(400);
+                setBigBangPhase(null);
+                return;
             }
+            setUser(data.username);
+            setBigBangs(data.bigBangCount);
+            setSelectedReaction(null);
+            setResult("");
+            await Promise.all([fetchUserData(), fetchReactions(), fetchAtoms()]);
         }
-        catch (err) {
-            showToast('error', err instanceof FetchTimeoutError ? 'Big Bang timed out' : 'Big Bang failed');
-        }
-        finally {
-            setBigBangInProgress(false);
-        }
-    }
+
+        await delay(500);
+        setBigBangPhase('expansion');
+        await delay(1000);
+        setBigBangPhase('rebirth');
+        await delay(2000);
+        setBigBangPhase(null);
+    };
+
+    const bigBang = () => runBigBangSequence(false);
+    const testBigBangAnimation = () => runBigBangSequence(true);
 
     const handleTierUnlock = (newTier) => {
         const tierMessages = {
@@ -115,7 +138,7 @@ const LabSimulation = () => {
             const data = await res.json();
             if (data.success) {
                 setInventory(data.inventory);
-                setEnergy(data.energy);
+                if (!wsEnergyActiveRef.current) setEnergy(data.energy);
                 setCreationEvent({
                     type: "atom_creation",
                     atom,
@@ -216,6 +239,10 @@ const LabSimulation = () => {
             if (data.success) {
                 await fetchUserData();
                 showToast('success', selectedReaction ? `${selectedReaction.product.substance.name} synthesized` : 'Reaction complete');
+                setReactionEvent({
+                    tier: selectedReaction?.unlockTier ?? 1,
+                    timestamp: Date.now()
+                });
             }
         }
         catch (err) {
@@ -337,46 +364,43 @@ const LabSimulation = () => {
 
     return (
         <>
-            {!bigBangInProgress && (
-                <div className="game-shell">
-                    <div className="top-bar">
-                    {/* HEADER */}
-                        <HeaderPanel unlockTier={unlockTier} bigBangs={bigBangs} genesisShards={genesisShards} getCurrentGoal={getCurrentGoal} />
-                    </div>
-
-                    <div className="bottom-bar">
-                        {/* PRESTIGE */}
-                        <PrestigePanel prestigeUpgrades={prestigeUpgrades} upgradePrestige={upgradePrestige} genesisShards={genesisShards} upgrading={upgrading} isBusy={isBusy} />
-                        {/* BIG BANG CONTROL */}
-                        <BigBangPanel bigBang={bigBang} bigBangInProgress={bigBangInProgress} expectedShards={expectedShards} />
-                    </div>
-
-                    <div className="center-scene">
-                        <div className="scene-canvas">
-                            <GenesisScene onCoreClick={handleCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} />
-                        </div>
-                        <div className="scene-controls">
-                            {/* ENERGY */}
-                            <EnergyPanel energy={energy} energyRate={energyRate} />
-                            {/* ATOMS */}
-                            <AtomPanel atoms={atoms} createAtom={createAtom} energy={energy} creatingAtom={creatingAtom} isBusy={isBusy} />
-                        </div>
-                    </div>
-
-                    <div className="left-panel"> 
-                        {/* INVENTORY */}
-                        <InventoryPanel inventory={inventory} />
-                    </div>
-
-                    <div className="right-panel">
-                        {/* REACTIONS */}
-                        <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} />
-                        {/* SELECTED REACTION */}
-                        <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} />
-                    </div>
-
+            <div className="bigbang-overlay" data-phase={bigBangPhase || ''} />
+            <button
+                className="test-bigbang-btn"
+                onClick={testBigBangAnimation}
+                disabled={bigBangActive}
+            >
+                TEST BIGBANG
+            </button>
+            <div className="game-shell" data-bigbang={bigBangPhase || undefined}>
+                <div className="top-bar">
+                    <HeaderPanel unlockTier={unlockTier} bigBangs={bigBangs} genesisShards={genesisShards} getCurrentGoal={getCurrentGoal} />
                 </div>
-            )}
+
+                <div className="bottom-bar">
+                    <PrestigePanel prestigeUpgrades={prestigeUpgrades} upgradePrestige={upgradePrestige} genesisShards={genesisShards} upgrading={upgrading} isBusy={isBusy} />
+                    <BigBangPanel bigBang={bigBang} bigBangActive={bigBangActive} expectedShards={expectedShards} />
+                </div>
+
+                <div className="center-scene">
+                    <div className="scene-canvas">
+                        <GenesisScene onCoreClick={handleCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} reactionEvent={reactionEvent} bigBangPhase={bigBangPhase} />
+                    </div>
+                    <div className="scene-controls">
+                        <EnergyPanel energy={energy} energyRate={energyRate} />
+                        <AtomPanel atoms={atoms} createAtom={createAtom} energy={energy} creatingAtom={creatingAtom} isBusy={isBusy} />
+                    </div>
+                </div>
+
+                <div className="left-panel">
+                    <InventoryPanel inventory={inventory} />
+                </div>
+
+                <div className="right-panel">
+                    <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} />
+                    <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} />
+                </div>
+            </div>
         </>
     );
 

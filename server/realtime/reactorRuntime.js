@@ -55,6 +55,7 @@ function reactorRuntime(server) {
         }
         const energyMultiplier = getEnergyMultiplier(user);
         const session = getOrCreateSession(ws.id, user.energy || 0, energyMultiplier);
+        session.ws = ws;
         sendReactorState(ws, session);
 
         ws.on('message', (message) => {
@@ -86,9 +87,10 @@ function reactorRuntime(server) {
 
         ws.on('close', async () => {
             console.log('Client disconnected');
-            await flushPendingMongoEnergyForSession(reactorSessions.get(ws.id));
+            const session = reactorSessions.get(ws.id);
+            if (session) session.ws = null;
+            await flushPendingMongoEnergyForSession(session);
             clearInterval(clientInterval);
-            // Removed clearInterval(flushInterval);
             reactorSessions.delete(ws.id);
         });
     });
@@ -106,16 +108,17 @@ function createReactorSession(userId, persistedEnergyBase, energyMultiplier) {
         lastUpdateTimestamp: Date.now(),
         energyBuffer: 0,
         pendingMongoEnergy: 0,
+        inFlightEnergy: 0,
         lastClickTime: null,
         persistedEnergyBase,
         energyMultiplier,
-        isFlushing: false,
+        activeFlushPromise: null,
     };
     return session;
 }
     
 function getSessionTotalEnergy(session){
-    return session.persistedEnergyBase + session.pendingMongoEnergy;
+    return session.persistedEnergyBase + session.pendingMongoEnergy + session.inFlightEnergy;
 }
 
 function buildReactorState(session) {
@@ -156,6 +159,10 @@ function tickSession(session, now) {
         // Here you would typically update the user's energy in the database and notify the client
     }
     session.lastUpdateTimestamp = now;
+
+    if (session.activityLevel > 0 && session.ws) {
+        sendReactorState(session.ws, session);
+    }
 }
 
 function getOrCreateSession(userId, persistedEnergyBase, energyMultiplier) {
@@ -175,34 +182,44 @@ function sendReactorState(ws, session) {
 }
 
 async function flushPendingMongoEnergyForSession(session) {
-    if (!session || session.isFlushing || session.pendingMongoEnergy <= 0) {
-        return;
+    if (!session) return;
+
+    // If a write is already in flight, await it — DB may not yet reflect the pending energy
+    if (session.activeFlushPromise) {
+        await session.activeFlushPromise;
     }
 
-    session.isFlushing = true;
-    const amountToFlush = session.pendingMongoEnergy;
-    session.pendingMongoEnergy -= amountToFlush;
+    if (session.pendingMongoEnergy <= 0) return;
 
-    try {
-        const updatedUser = await User.findOneAndUpdate(
-            { username: session.userId },
-            { $inc: { energy: amountToFlush } },
-            { new: true }
-        );
-
-        if (!updatedUser) {
+    const doFlush = async () => {
+        const amountToFlush = session.pendingMongoEnergy;
+        session.pendingMongoEnergy -= amountToFlush;
+        session.inFlightEnergy += amountToFlush;
+        try {
+            const updatedUser = await User.findOneAndUpdate(
+                { username: session.userId },
+                { $inc: { energy: amountToFlush } },
+                { new: true }
+            );
+            if (!updatedUser) {
+                session.pendingMongoEnergy += amountToFlush;
+                session.inFlightEnergy -= amountToFlush;
+                return;
+            }
+            console.log(`Flushed ${amountToFlush} energy to MongoDB for user ${session.userId}. New total: ${updatedUser.energy}`);
+            session.persistedEnergyBase = updatedUser.energy;
+            session.inFlightEnergy -= amountToFlush;
+        } catch (err) {
             session.pendingMongoEnergy += amountToFlush;
-            return;
+            session.inFlightEnergy -= amountToFlush;
+            console.error(`Failed to flush energy for user ${session.userId}:`, err);
+        } finally {
+            session.activeFlushPromise = null;
         }
+    };
 
-        console.log(`Flushed ${amountToFlush} energy to MongoDB for user ${session.userId}. New total energy: ${updatedUser.energy}`);
-        session.persistedEnergyBase = updatedUser.energy;
-    } catch (err) {
-        session.pendingMongoEnergy += amountToFlush;
-        console.error(`Failed to flush energy for user ${session.userId}:`, err);
-    } finally {
-        session.isFlushing = false;
-    }
+    session.activeFlushPromise = doFlush();
+    await session.activeFlushPromise;
 }
 
 //route-facing helpers
@@ -233,6 +250,7 @@ function zeroSessionEnergyForUser(username) {
     if (session) {
         session.persistedEnergyBase = 0;
         session.pendingMongoEnergy = 0;
+        session.inFlightEnergy = 0;
         session.energyBuffer = 0;
     }
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './BigBangPanel.css';
 
-function BigBangPanel({ bigBang, expectedShards, bigBangInProgress }) {
+function BigBangPanel({ bigBang, expectedShards, bigBangActive }) {
     const [confirming, setConfirming] = useState(false);
 
     const handleClick = () => {
@@ -20,7 +20,7 @@ function BigBangPanel({ bigBang, expectedShards, bigBangInProgress }) {
 
     return (
         <div className="bigbang-panel">
-            {confirming && !bigBangInProgress && (
+            {confirming && !bigBangActive && (
                 <div className="bigbang-confirm">
                     <span className="bigbang-confirm-text">This resets your run. Continue?</span>
                     <button className="bigbang-cancel-btn" onClick={handleCancel}>Cancel</button>
@@ -29,12 +29,12 @@ function BigBangPanel({ bigBang, expectedShards, bigBangInProgress }) {
             <button
                 className={`bigbang-btn ${confirming ? 'confirming' : ''}`}
                 onClick={handleClick}
-                disabled={bigBangInProgress}
+                disabled={bigBangActive}
                 title={`Estimated genesis shards: ${expectedShards}`}
             >
                 <span className="bigbang-icon">✦</span>
-                {bigBangInProgress ? 'Singularity Forming...' : confirming ? 'Confirm Reset' : 'Big Bang'}
-                {!bigBangInProgress && !confirming && expectedShards > 0 && (
+                {bigBangActive ? 'Singularity Forming...' : confirming ? 'Confirm Reset' : 'Big Bang'}
+                {!bigBangActive && !confirming && expectedShards > 0 && (
                     <span className="bigbang-shards">+{expectedShards} ◈</span>
                 )}
             </button>

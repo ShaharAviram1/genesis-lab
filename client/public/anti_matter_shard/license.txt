@@ -1,0 +1,11 @@
+Model Information:
+* title:	Anti Matter Shard
+* source:	https://sketchfab.com/3d-models/anti-matter-shard-1bcd4fa759ba494b932fe0ccda8acca8
+* author:	nightslashradier (https://sketchfab.com/nightslashradier)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Anti Matter Shard" (https://sketchfab.com/3d-models/anti-matter-shard-1bcd4fa759ba494b932fe0ccda8acca8) by nightslashradier (https://sketchfab.com/nightslashradier) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
