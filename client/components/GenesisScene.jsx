@@ -227,12 +227,11 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         }
         return arr;
     }));
-    const moteRotRef = useRef(MOTE_SELF_ROT.map(r => ({ ...r, rx: 0, ry: 0, rz: 0 })));
 
     // Materialization dust particles
     const particleGeoRef    = useRef();
     const particleMatRef    = useRef();
-    const particleArrayRef  = useRef(new Float32Array(PARTICLE_COUNT * 3));
+    const particleArrayRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
     const particleActiveRef = useRef(false);
     const particleDataRef   = useRef(
         Array.from({ length: PARTICLE_COUNT }, () => ({ dx: 0, dy: 0, dz: 0, currentR: 3 }))
@@ -241,7 +240,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
     // Reaction burst particles (fast sparks)
     const burstGeoRef    = useRef();
     const burstMatRef    = useRef();
-    const burstArrayRef  = useRef(new Float32Array(BURST_COUNT * 3));
+    const burstArrayRef = useRef(new Float32Array(BURST_COUNT * 3));
     const burstActiveRef = useRef(false);
     const burstDataRef   = useRef(
         Array.from({ length: BURST_COUNT }, () => ({ vx:0, vy:0, vz:0, x:0, y:0, z:0, life:0, maxLife:1 }))
@@ -250,7 +249,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
     // Reaction burst embers (slow, large glowing chunks)
     const emberGeoRef    = useRef();
     const emberMatRef    = useRef();
-    const emberArrayRef  = useRef(new Float32Array(EMBER_COUNT * 3));
+    const emberArrayRef = useRef(new Float32Array(EMBER_COUNT * 3));
     const emberDataRef   = useRef(
         Array.from({ length: EMBER_COUNT }, () => ({ vx:0, vy:0, vz:0, x:0, y:0, z:0, life:0, maxLife:1 }))
     );
@@ -328,9 +327,6 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         const basePulse = Math.sin(time * 1.8) * 0.03;
         const activityPulse = visualActivity * 0.05;
         // Ring breathing — each ring has its own slow oscillation
-        const breath1 = 1 + Math.sin(time * 0.7) * 0.018 * (0.4 + visualActivity * 0.6);
-        const breath2 = 1 + Math.sin(time * 0.5 + 1.2) * 0.022 * (0.4 + visualActivity * 0.6);
-        const breath3 = 1 + Math.sin(time * 0.9 + 2.4) * 0.016 * (0.4 + visualActivity * 0.6);
 
         // Reaction phase state machine
         const rp = reactionPhaseRef.current;
@@ -424,10 +420,6 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         if (materialRef.current) {
             materialRef.current.emissiveIntensity = 0.0 + visualActivity * 1.8 + impulse * 0.15 + creationChannel * 8.4 + creationPulse * 7.2 + glowKick * 0.1 + drawIntensity * 4.0 + reactionBurst * 14.0;
         }
-        const ringContract = drawIntensity * 0.1;
-        const ringBurst1 = breath1 - ringContract + reactionBurst * 0.55;
-        const ringBurst2 = breath2 - ringContract + reactionBurst * 0.70;
-        const ringBurst3 = breath3 - ringContract + reactionBurst * 0.85;
 
         const ringBoost = ringBoostRef.current;
         const wd = ringWobbleRef.current;
@@ -842,6 +834,17 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         if (reactionBurstVisualRef.current < 0.01) reactionBurstVisualRef.current = 0;
     });
 
+    // eslint-disable-next-line react-hooks/refs
+    const particleArray = particleArrayRef.current;
+    // eslint-disable-next-line react-hooks/refs
+    const burstArray = burstArrayRef.current;
+    // eslint-disable-next-line react-hooks/refs
+    const emberArray = emberArrayRef.current;
+    // eslint-disable-next-line react-hooks/refs
+    const warpArray = warpArrayRef.current;
+    const arcArrays = arcArraysRef.current;
+    const trailArrays = trailArraysRef.current;
+
     return (
         <>
             <Stars radius={80} depth={60} count={4000} factor={3} saturation={0.4} fade speed={0.6} />
@@ -856,12 +859,13 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             <OrbitControls enablePan={false} minDistance={3} maxDistance={10} />
             <group ref={assemblyRef}>
                 <group>
+                    {/* eslint-disable-next-line react-hooks/refs */}
                     {MOTE_CONFIGS.map((_, i) => (
                         <line key={`arc-${i}`}>
                             <bufferGeometry ref={el => { arcGeosRef.current[i] = el; }}>
                                 <bufferAttribute
                                     attach="attributes-position"
-                                    array={arcArraysRef.current[i]}
+                                    array={arcArrays[i]}
                                     count={ARC_SEGMENTS}
                                     itemSize={3}
                                 />
@@ -877,12 +881,13 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                     ))}
                 </group>
                 <group>
+                    {/* eslint-disable-next-line react-hooks/refs */}
                     {MOTE_CONFIGS.map((_, i) => (
                         <line key={`trail-${i}`}>
                             <bufferGeometry ref={el => { trailGeosRef.current[i] = el; }}>
                                 <bufferAttribute
                                     attach="attributes-position"
-                                    array={trailArraysRef.current[i]}
+                                    array={trailArrays[i]}
                                     count={TRAIL_LENGTH}
                                     itemSize={3}
                                 />
@@ -984,7 +989,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                 <bufferGeometry ref={particleGeoRef}>
                     <bufferAttribute
                         attach="attributes-position"
-                        array={particleArrayRef.current}
+                        array={particleArray}
                         count={PARTICLE_COUNT}
                         itemSize={3}
                     />
@@ -1003,7 +1008,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                 <bufferGeometry ref={burstGeoRef}>
                     <bufferAttribute
                         attach="attributes-position"
-                        array={burstArrayRef.current}
+                        array={burstArray}
                         count={BURST_COUNT}
                         itemSize={3}
                     />
@@ -1023,7 +1028,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                 <bufferGeometry ref={emberGeoRef}>
                     <bufferAttribute
                         attach="attributes-position"
-                        array={emberArrayRef.current}
+                        array={emberArray}
                         count={EMBER_COUNT}
                         itemSize={3}
                     />
@@ -1043,7 +1048,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                 <bufferGeometry ref={warpGeoRef}>
                     <bufferAttribute
                         attach="attributes-position"
-                        array={warpArrayRef.current}
+                        array={warpArray}
                         count={WARP_COUNT * 2}
                         itemSize={3}
                     />
