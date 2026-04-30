@@ -492,3 +492,80 @@ Implement WebSocket reactor system (Phase 1):
 ---
 
 END OF SNAPSHOT
+
+---
+
+# Genesis Lab — Full Phase Roadmap (as of 2026-04-30)
+
+## Phase 1 — Critical Bugs ✅ COMPLETE
+## Phase 2 — Toast / Notification System ✅ COMPLETE
+## Phase 3 — UI Polish ✅ COMPLETE
+
+---
+
+## Phase 4 — Animations ✅ COMPLETE
+
+- Reaction perform animation — draw-in phase + burst + color progression + energy arcs
+- BigBang animation sequence — collapse+warp streaks → singularity blackout → white flash → expansion shockwaves → heartbeat rebirth
+- Atom creation animation — mote submersion into core, materialization dust particles, arc lines during channel, longer pulse
+
+### Implementation notes
+
+- `EffectComposer` + `Bloom` wired up (`luminanceThreshold: 0.95`, `intensity: 0.5`)
+- Dedicated white `reactionLightRef` point light (intensity 0 at rest, spikes to 18× on burst)
+- Dedicated violet `drawLightRef` point light (ramps to ×7 during draw phase)
+- TWO-PHASE reaction animation via `reactionPhaseRef` state machine:
+  - Phase 1 "draw" (0.9s): motes converge, rings slow+contract, core shifts orange→violet, energy arcs appear
+  - Phase 2 "burst": rings spin hard, white light floods, core flashes white, motes scatter, shockwave expands
+- Energy arcs: 5 jagged lightning lines from each mote to core, random jitter per frame
+- Core color progression: orange→violet (draw) → white (burst peak) → orange (decay)
+- Shockwave ring mesh: torus expands and fades over 1.4s
+
+---
+
+## Phase 5 — Bug Fixes ✅ COMPLETE
+
+- Energy desyncs on spam clicking — fixed (10Hz tick push when active + `inFlightEnergy` tracks pending DB writes)
+
+---
+
+## Phase 5.5 — 3D Model Overhaul ✅ COMPLETE
+
+- Bloom postprocessing
+- Reactor core — Meshy GLB loaded via `useGLTF`, decimated 1.1M→42K triangles, warehouse IBL
+- Rings — 24-segment arcs per ring, dark metallic body `#111827` + colored glow trim, gyroscopic precession
+- Motes — Moonstone_02 GLB, 17MB→89KB via gltf-transform resize+webp, heading-oriented quaternion, scale 0.12
+- Reaction particle burst — 200 fast sparks white→orange + 50 slow embers orange→violet, AdditiveBlending, assembly shake
+
+---
+
+## Phase 6 — New Features ← CURRENT
+
+- [ ] Reaction discovery system (reactions hidden until unlocked via play)
+- [ ] Reaction log/history panel (last N reactions with timestamp + product)
+- [ ] Achievements / milestone system (badges for first compound, tier, big bang, etc.)
+- [ ] Multiple save slots / user profiles (currently hardcoded to "alchemist")
+- [ ] Tutorial / first-run onboarding (guided tooltip flow)
+
+---
+
+## Phase 7 — Game Economy
+
+- [ ] More substances and reactions (extend seed data beyond current 5-tier set)
+- [ ] Additional prestige upgrade paths (discovery speed, shard multiplier, etc.)
+- [ ] Balance pass (energy costs, reaction yields, shard values after playtesting)
+
+---
+
+## Phase 8 — QA & Polish
+
+- [ ] Mobile / responsive layout (grid breaks below ~900px)
+- [ ] Performance audit (rAF cleanup, WS reconnect on drop, Three.js ref leaks)
+- [ ] Top-level React error boundary (currently only Canvas is wrapped)
+
+---
+
+## Pinned issues
+
+- Bloom aura slightly too large at rest — needs threshold/intensity tuning
+- Bloom should be tight around geometry only, not spread across scene
