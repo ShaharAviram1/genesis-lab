@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router";
 import "./LabSimulation.css";
 import fetchWithTimeout, { FetchTimeoutError } from "../utils/fetchWithTimeout";
 import { useToast } from "../context/ToastContext";
@@ -10,12 +11,15 @@ import EnergyPanel from "../../components/EnergyPanel";
 import PrestigePanel from "../../components/PrestigePanel";
 import HeaderPanel from "../../components/HeaderPanel";
 import BigBangPanel from "../../components/BigBangPanel";
+
 import GenesisScene from "../../components/GenesisScene";
+import ExperimentPanel from "../../components/ExperimentPanel";
+import LabNotebookPanel from "../../components/LabNotebookPanel";
 
 
 
-const LabSimulation = () => {
-    const [user, setUser] = useState("alchemist");
+const LabSimulation = ({ username, onLogout }) => {
+    const [user, setUser] = useState(username || "");
     const [reactions, setReactions] = useState([]);
     const [selectedReaction, setSelectedReaction] = useState(null);
     const [result, setResult] = useState("");
@@ -35,12 +39,33 @@ const LabSimulation = () => {
     const [previousUnlockTier, setPreviousUnlockTier] = useState(0);
     const [activityLevel, setActivityLevel] = useState(0);
     const [energyRate, setEnergyRate] = useState(0);
+    const [reactionLog, setReactionLog] = useState([]);
+    const [notebookOpen, setNotebookOpen] = useState(false);
     const [creationEvent, setCreationEvent] = useState(null);
     const [reactionEvent, setReactionEvent] = useState(null);
     const wsRef = useRef(null);
     const wsEnergyActiveRef = useRef(false);
     const showToast = useToast();
- // WS owns energy once it sends the first update
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        onLogout();
+        navigate('/auth');
+    };
+
+    useEffect(() => {
+        if (!username || username === user) return;
+        wsEnergyActiveRef.current = false;
+        setActivityLevel(0);
+        setEnergyRate(0);
+
+        if (wsRef.current) {
+            wsRef.current.close();
+            wsRef.current = null;
+        }
+        setUser(username);
+    }, [username, user]);
+    
 
     const bigBangActive = !!bigBangPhase;
     const isBusy = checking || performing || creatingAtom || upgrading || bigBangActive;
@@ -209,6 +234,55 @@ const LabSimulation = () => {
     }
 
 
+    const experiment = async (substances) => {
+        try {
+            const response = await fetchWithTimeout(`http://localhost:3000/api/reactions/experiment?user=${user}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ substances: substances.map(s => s._id) })
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                const msg = data.hint
+                    ? `${data.error || 'Experiment failed'} — ${data.hint}`
+                    : (data.error || 'Experiment failed');
+                showToast('error', msg);
+                return;
+            }
+
+            if (data.success) {
+                const productName = data.reaction?.product?.substance?.name || "New substance";
+                const successMessage = data.discovered
+                    ? `Discovery! ${productName} created`
+                    : `Experiment successful: ${productName} created`;
+
+                showToast(data.discovered ? 'milestone' : 'success', successMessage);
+                setReactionEvent({
+                    type: data.discovered ? "discovery" : "experiment_success",
+                    reactionID: data.reactionID,
+                    tier: data.reaction?.unlockTier ?? 1,
+                    timestamp: Date.now()
+                });
+                await Promise.all([fetchUserData(), fetchReactions(), fetchAtoms()]);
+                return;
+            }
+
+            const failMsg = data.hint
+                ? `${data.message || 'No stable reaction formed'} — ${data.hint}`
+                : (data.message || 'No stable reaction formed');
+            showToast('error', failMsg);
+            setReactionEvent({
+                type: "experiment_failed",
+                timestamp: Date.now()
+            });
+            await fetchUserData();
+        }
+        catch (err) {
+            showToast('error', err instanceof FetchTimeoutError ? 'Experiment timed out' : 'Experiment failed');
+        }
+    };
+
     const checkReaction = async (reactionID) => {
         if (selectedReaction?.reactionID === reactionID) {
             setSelectedReaction(null);
@@ -278,6 +352,7 @@ const LabSimulation = () => {
             setUnlockTier(data.unlockTier);
             setGenesisShards(data.genesisShards);
             setPrestigeUpgrades(data.prestigeUpgrades);
+            setReactionLog(data.reactionLog || []);
         }
         catch (err) {
             console.error(err);
@@ -306,14 +381,18 @@ const LabSimulation = () => {
     
 
     useEffect(() => {
+        if (!user) return;
         fetchExpectedShards();
-    }, [inventory, unlockTier, bigBangs]);
+    }, [user, inventory, unlockTier, bigBangs]);
+    
 
     useEffect(() => {
+        if (!user) return;
         fetchUserData();
     }, [user]);
 
     useEffect(() => { 
+        if (!user) return;
         if(wsRef.current) return; // Prevent multiple connections
         const ws = new WebSocket('ws://localhost:3000?user=' + user);
         wsRef.current = ws;
@@ -338,10 +417,12 @@ const LabSimulation = () => {
     }, [user]);
 
     useEffect(() => {
+        if (!user) return;
         fetchReactions();
     }, [user, unlockTier]);
 
     useEffect(() => {
+        if (!user) return;
         fetchAtoms();
     }, [user]);
 
@@ -375,30 +456,52 @@ const LabSimulation = () => {
             <div className="game-shell" data-bigbang={bigBangPhase || undefined}>
                 <div className="top-bar">
                     <HeaderPanel unlockTier={unlockTier} bigBangs={bigBangs} genesisShards={genesisShards} getCurrentGoal={getCurrentGoal} />
-                </div>
-
-                <div className="bottom-bar">
-                    <PrestigePanel prestigeUpgrades={prestigeUpgrades} upgradePrestige={upgradePrestige} genesisShards={genesisShards} upgrading={upgrading} isBusy={isBusy} />
-                    <BigBangPanel bigBang={bigBang} bigBangActive={bigBangActive} expectedShards={expectedShards} />
-                </div>
-
-                <div className="center-scene">
-                    <div className="scene-canvas">
-                        <GenesisScene onCoreClick={handleCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} reactionEvent={reactionEvent} bigBangPhase={bigBangPhase} />
+                    <div className="lab-account">
+                        <span className="lab-account-user">{user}</span>
+                        <button className="lab-logout-btn" onClick={handleLogout}>Logout</button>
                     </div>
-                    <div className="scene-controls">
+                </div>
+
+                <div className="main-columns">
+                    <div className="left-panel">
+                        <div className="panel-card atom-card">
+                            <AtomPanel atoms={atoms} createAtom={createAtom} energy={energy} creatingAtom={creatingAtom} isBusy={isBusy} />
+                        </div>
+                        <div className="panel-card matter-lab-card">
+                            <InventoryPanel inventory={inventory} />
+                            <div className="matter-divider" />
+                            <ExperimentPanel inventory={inventory} experiment={experiment} />
+                        </div>
+                    </div>
+
+                    <div className="center-scene">
+                        <div className="scene-canvas">
+                            <GenesisScene onCoreClick={handleCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} reactionEvent={reactionEvent} bigBangPhase={bigBangPhase} />
+                        </div>
+                    </div>
+
+                    <div className="right-panel">
                         <EnergyPanel energy={energy} energyRate={energyRate} />
-                        <AtomPanel atoms={atoms} createAtom={createAtom} energy={energy} creatingAtom={creatingAtom} isBusy={isBusy} />
+                        <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} />
+                        <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} />
+                        <div className="panel-card prestige-card">
+                            <div className="panel-title">Upgrades</div>
+                            <PrestigePanel prestigeUpgrades={prestigeUpgrades} upgradePrestige={upgradePrestige} genesisShards={genesisShards} upgrading={upgrading} isBusy={isBusy} />
+                        </div>
+                        <div className="bigbang-zone">
+                            <BigBangPanel bigBang={bigBang} bigBangActive={bigBangActive} expectedShards={expectedShards} />
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div className="left-panel">
-                    <InventoryPanel inventory={inventory} />
-                </div>
-
-                <div className="right-panel">
-                    <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} />
-                    <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} />
+            <div className={`notebook-drawer${notebookOpen ? ' notebook-drawer--open' : ''}${bigBangPhase ? ' notebook-drawer--bigbang' : ''}`}>
+                <button className="notebook-drawer-tab" onClick={() => setNotebookOpen(o => !o)}>
+                    <span className="notebook-drawer-label">Lab Notebook</span>
+                    <span className="notebook-drawer-chevron" aria-hidden="true" />
+                </button>
+                <div className="notebook-drawer-body">
+                    <LabNotebookPanel reactionLog={reactionLog} />
                 </div>
             </div>
         </>

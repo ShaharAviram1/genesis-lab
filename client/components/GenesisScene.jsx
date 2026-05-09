@@ -6,6 +6,7 @@ import { ACESFilmicToneMapping, Color, Vector3, Quaternion, AdditiveBlending } f
 const COLOR_ORANGE = new Color('#ff5500');
 const COLOR_VIOLET = new Color('#9933ff');
 const COLOR_WHITE  = new Color('#ffffff');
+const COLOR_FAIL   = new Color('#cc2200');
 const _tmpColor    = new Color();
 const _tmpVec3     = new Vector3();
 const _tmpQuat     = new Quaternion();
@@ -206,6 +207,13 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
     const ringWobbleRef = useRef({ t1:0, r1:0, t2:0, r2:0, t3:0, r3:0 });
     const coreWobbleRef = useRef({ t: 0, r: 0 });
     const reactionPhaseRef = useRef({ phase: null, progress: 0 });
+    const failPhaseRef = useRef({ phase: null, progress: 0 });
+    const failDrawRef = useRef(0);
+    const failFizzleRef = useRef(0);
+    const failLightRef = useRef();
+    const failRejectRef = useRef(0);
+    const discoveryModeRef = useRef(false);
+    const discoveryAfterglowRef = useRef(0);
     const shockwaveRef = useRef();
     const shockwaveMaterialRef = useRef();
     const shockwaveStateRef = useRef({ active: false, progress: 0, strength: 1 });
@@ -289,11 +297,27 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
     }, [creationEvent]);
 
     useEffect(() => {
-        if (reactionEvent && (!lastReactionEventRef.current || reactionEvent.timestamp !== lastReactionEventRef.current.timestamp)) {
+        if (!reactionEvent) return;
+        if (lastReactionEventRef.current && reactionEvent.timestamp === lastReactionEventRef.current.timestamp) return;
+        lastReactionEventRef.current = reactionEvent;
+
+        if (reactionEvent.type === 'experiment_failed') {
+            failDrawRef.current = 1.0;
+            failFizzleRef.current = 0;
+            failPhaseRef.current = { phase: 'fail_draw', progress: 0 };
+            discoveryModeRef.current = false;
+            discoveryAfterglowRef.current = 0;
+        } else {
             const strength = Math.min(Math.max((reactionEvent.tier ?? 1) / 5, 0.5), 1.0);
-            reactionStrengthRef.current = strength;
-            reactionPhaseRef.current = { phase: 'draw', progress: 0 };
-            lastReactionEventRef.current = reactionEvent;
+            if (reactionEvent.type === 'discovery') {
+                reactionStrengthRef.current = Math.min(strength * 1.5, 1.5);
+                discoveryModeRef.current = true;
+                reactionPhaseRef.current = { phase: 'discovery_draw', progress: 0 };
+            } else {
+                reactionStrengthRef.current = strength;
+                discoveryModeRef.current = false;
+                reactionPhaseRef.current = { phase: 'draw', progress: 0 };
+            }
         }
     }, [reactionEvent]);
 
@@ -365,10 +389,79 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                     p.maxLife = 1.2 + Math.random() * 1.2;
                 });
             }
+        } else if (rp.phase === 'discovery_draw') {
+            rp.progress += delta / 1.1;
+            if (rp.progress >= 1) {
+                rp.phase = 'discovery_hold';
+                rp.progress = 0;
+            }
+        } else if (rp.phase === 'discovery_hold') {
+            rp.progress += delta / 0.15;
+            if (rp.progress >= 1) {
+                rp.phase = 'burst';
+                discoveryModeRef.current = false;
+                reactionBurstRef.current = 1.0;
+                ringBoostRef.current = Math.min(ringBoostRef.current + 2.5, 4.0);
+                shockwaveStateRef.current = { active: true, progress: 0, strength: 1.5 };
+                discoveryAfterglowRef.current = 1.0;
+                burstActiveRef.current = true;
+                const str = reactionStrengthRef.current;
+                burstDataRef.current.forEach(p => {
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi   = Math.acos(2 * Math.random() - 1);
+                    const nx = Math.sin(phi) * Math.cos(theta);
+                    const ny = Math.sin(phi) * Math.sin(theta);
+                    const nz = Math.cos(phi);
+                    const speed = (9 + Math.random() * 10) * str;
+                    p.vx = nx * speed; p.vy = ny * speed; p.vz = nz * speed;
+                    p.x  = nx * 1.1;  p.y  = ny * 1.1;  p.z  = nz * 1.1;
+                    p.life    = 0;
+                    p.maxLife = 1.0 + Math.random() * 1.2;
+                });
+                emberDataRef.current.forEach(p => {
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi   = Math.acos(2 * Math.random() - 1);
+                    const nx = Math.sin(phi) * Math.cos(theta);
+                    const ny = Math.sin(phi) * Math.sin(theta);
+                    const nz = Math.cos(phi);
+                    const speed = (2.5 + Math.random() * 3.0) * str;
+                    p.vx = nx * speed; p.vy = ny * speed; p.vz = nz * speed;
+                    p.x  = nx * 1.1;  p.y  = ny * 1.1;  p.z  = nz * 1.1;
+                    p.life    = 0;
+                    p.maxLife = 1.8 + Math.random() * 1.5;
+                });
+            }
         } else if (rp.phase === 'burst' && reactionBurstRef.current < 0.01) {
             rp.phase = null;
         }
-        const drawIntensity = rp.phase === 'draw' ? rp.progress : 0;
+        const drawIntensity =
+            rp.phase === 'draw'           ? rp.progress :
+            rp.phase === 'discovery_draw' ? rp.progress :
+            rp.phase === 'discovery_hold' ? 1.0 :
+            0;
+        const discoveryMode = discoveryModeRef.current;
+        const discoveryAfterglow = discoveryAfterglowRef.current;
+
+        // Failure fizzle phase state machine
+        const fp = failPhaseRef.current;
+        if (fp.phase === 'fail_draw') {
+            fp.progress += delta / 0.4;
+            if (fp.progress >= 1) {
+                fp.phase = 'fail_fizzle';
+                fp.progress = 0;
+                failFizzleRef.current = 1.0;
+                failRejectRef.current = 1.0;
+            }
+        } else if (fp.phase === 'fail_fizzle') {
+            fp.progress += delta / 0.5;
+            if (fp.progress >= 1) fp.phase = null;
+        }
+        const failDraw = failDrawRef.current;
+        const failFizzle = failFizzleRef.current;
+        const failReject = failRejectRef.current;
+        const failFlicker = failFizzle > 0.01
+            ? (Math.sin(time * 43.7) * 0.5 + Math.sin(time * 19.3 + 1.5) * 0.5) * failFizzle * 1.4
+            : 0;
 
         creationChannelVisualRef.current += (creationChannelRef.current - creationChannelVisualRef.current) * 0.10;
         creationPulseVisualRef.current += (creationPulseRef.current - creationPulseVisualRef.current) * 0.18;
@@ -381,23 +474,34 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         const pulseExpansion = creationPulse * 0.28;
         const scaleKick = impulse * 0.05;
         const reactionExpansion = reactionBurst * 0.5;
-        const drawCompress = drawIntensity * 0.12;
-        const finalScale = 1 + basePulse + activityPulse - channelCompression + pulseExpansion + scaleKick + reactionExpansion - drawCompress;
+        const drawCompress = drawIntensity * (discoveryMode ? 0.19 : 0.12);
+        const failCompression = failDraw * 0.07;
+        const failRejectKick = failReject * 0.055;
+        const finalScale = 1 + basePulse + activityPulse - channelCompression + pulseExpansion + scaleKick + reactionExpansion - drawCompress - failCompression + failRejectKick;
 
         if (pointLightRef.current) {
-            pointLightRef.current.intensity = 0.2 + visualActivity * 3.2 + creationChannel * 3.6 + impulse * 0.5 + creationPulse * 5.8 - drawIntensity * 1.2;
+            pointLightRef.current.intensity = 0.2 + visualActivity * 3.2 + creationChannel * 3.6 + impulse * 0.5 + creationPulse * 5.8 - drawIntensity * (discoveryMode ? 2.0 : 1.2) + failFlicker + discoveryAfterglow * 1.5;
+        }
+        if (failLightRef.current) {
+            failLightRef.current.intensity = failDraw * 3.5 + failFizzle * (2.0 + Math.sin(time * 37.1) * failFizzle * 1.2) + failReject * 5.0;
         }
         if (reactionLightRef.current) {
-            reactionLightRef.current.intensity = reactionBurst * 18.0;
+            reactionLightRef.current.intensity = reactionBurst * 18.0 + discoveryAfterglow * 5.0;
         }
         if (drawLightRef.current) {
-            drawLightRef.current.intensity = drawIntensity * 7.0;
+            drawLightRef.current.intensity = drawIntensity * (discoveryMode ? 10.5 : 7.0);
         }
         if (materialRef.current) {
             if (reactionBurst > 0.01) {
                 _tmpColor.copy(COLOR_VIOLET).lerp(COLOR_WHITE, Math.min(reactionBurst * 1.5, 1.0));
+            } else if (rp.phase === 'discovery_hold') {
+                _tmpColor.copy(COLOR_VIOLET).lerp(COLOR_WHITE, 0.42 + Math.sin(time * 8.5) * 0.06);
             } else if (drawIntensity > 0) {
                 _tmpColor.copy(COLOR_ORANGE).lerp(COLOR_VIOLET, drawIntensity);
+            } else if (failDraw > 0.01) {
+                _tmpColor.copy(COLOR_ORANGE).lerp(COLOR_FAIL, failDraw * 0.7);
+            } else if (failFizzle > 0.01) {
+                _tmpColor.copy(COLOR_FAIL).multiplyScalar(failFizzle * 0.35);
             } else if (visualActivity > 0.01) {
                 _tmpColor.copy(COLOR_ORANGE).multiplyScalar(visualActivity * 0.12);
             } else {
@@ -418,7 +522,9 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             coreRef.current.scale.set(finalScale, finalScale, finalScale);
         }
         if (materialRef.current) {
-            materialRef.current.emissiveIntensity = 0.0 + visualActivity * 1.8 + impulse * 0.15 + creationChannel * 8.4 + creationPulse * 7.2 + glowKick * 0.1 + drawIntensity * 4.0 + reactionBurst * 14.0;
+            const failGlow = failDraw * 2.2 + failFizzle * (1.2 + Math.sin(time * 23.1) * 0.7 * failFizzle);
+            const drawGlow = drawIntensity * (discoveryMode ? 6.5 : 4.0);
+            materialRef.current.emissiveIntensity = 0.0 + visualActivity * 1.8 + impulse * 0.15 + creationChannel * 8.4 + creationPulse * 7.2 + glowKick * 0.1 + drawGlow + reactionBurst * 14.0 + failGlow + discoveryAfterglow * 3.0;
         }
 
         const ringBoost = ringBoostRef.current;
@@ -430,7 +536,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             ringRef.current.rotateOnWorldAxis(RING_WORLD_TILT, t1 - wd.t1);
             ringRef.current.rotateOnWorldAxis(RING_WORLD_ROLL, r1 - wd.r1);
             wd.t1 = t1; wd.r1 = r1;
-            ringRef.current.rotateOnAxis(RING_ORBITAL, 0.0025 + speedActivity * 0.06 + ringBoost * 0.05);
+            ringRef.current.rotateOnAxis(RING_ORBITAL, 0.0025 + speedActivity * 0.06 + ringBoost * 0.05 + Math.sin(time * 29.3) * failFizzle * 0.005);
         }
         if (ring2Ref.current) {
             const t2 = Math.sin(time * 0.35 + Math.PI * 0.5) * 1.1;  // ~18s cycle, ±63°
@@ -438,7 +544,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             ring2Ref.current.rotateOnWorldAxis(RING_WORLD_TILT, t2 - wd.t2);
             ring2Ref.current.rotateOnWorldAxis(RING_WORLD_ROLL, r2 - wd.r2);
             wd.t2 = t2; wd.r2 = r2;
-            ring2Ref.current.rotateOnAxis(RING_ORBITAL, -(0.003 + speedActivity * 0.07 + ringBoost * 0.06));
+            ring2Ref.current.rotateOnAxis(RING_ORBITAL, -(0.003 + speedActivity * 0.07 + ringBoost * 0.06 + Math.sin(time * 37.1 + 1.2) * failFizzle * 0.005));
         }
         if (ring3Ref.current) {
             const t3 = Math.sin(time * 0.55 + Math.PI * 1.5) * 1.0;  // ~11s cycle, ±57°, opposite ring 2
@@ -446,14 +552,16 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             ring3Ref.current.rotateOnWorldAxis(RING_WORLD_TILT, t3 - wd.t3);
             ring3Ref.current.rotateOnWorldAxis(RING_WORLD_ROLL, r3 - wd.r3);
             wd.t3 = t3; wd.r3 = r3;
-            ring3Ref.current.rotateOnAxis(RING_ORBITAL, 0.0035 + speedActivity * 0.08 + ringBoost * 0.07);
+            ring3Ref.current.rotateOnAxis(RING_ORBITAL, 0.0035 + speedActivity * 0.08 + ringBoost * 0.07 + Math.sin(time * 23.7 + 2.4) * failFizzle * 0.006);
         }
         if (assemblyRef.current) {
             const rawBurst = reactionBurstRef.current * reactionStrengthRef.current;
             const drawTremor = Math.sin(time * 28) * drawIntensity * 0.04;
-            assemblyRef.current.rotation.z = kick * 0.035 + creationPulse * 0.048 + drawTremor + rawBurst * 0.18;
-            assemblyRef.current.rotation.x = kick * 0.012 + creationPulse * 0.022 - drawTremor * 0.7 + rawBurst * 0.10;
-            assemblyRef.current.position.y = kick * 0.008 - creationChannel * 0.13 + creationPulse * 0.024 - drawIntensity * 0.18 + rawBurst * 0.09;
+            const failJitterZ = Math.sin(time * 47.3) * failFizzle * 0.024 + Math.sin(time * 31.1) * failFizzle * 0.011;
+            const failJitterX = Math.sin(time * 38.9 + 2.1) * failFizzle * 0.013;
+            assemblyRef.current.rotation.z = kick * 0.035 + creationPulse * 0.048 + drawTremor + rawBurst * 0.18 + failJitterZ;
+            assemblyRef.current.rotation.x = kick * 0.012 + creationPulse * 0.022 - drawTremor * 0.7 + rawBurst * 0.10 + failJitterX;
+            assemblyRef.current.position.y = kick * 0.008 - creationChannel * 0.13 + creationPulse * 0.024 - drawIntensity * (discoveryMode ? 0.28 : 0.18) + rawBurst * 0.09 + failReject * 0.05;
         }
 
         if (motesRef.current) {
@@ -474,14 +582,18 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                     : creationPulse > 0
                         ? moteData.baseRadius + creationPulse * 1.8
                     : drawIntensity > 0
-                        ? Math.max(1.15, moteData.baseRadius - drawIntensity * moteData.baseRadius * 0.97)
+                        ? Math.max(discoveryMode ? 0.90 : 1.15, moteData.baseRadius - drawIntensity * moteData.baseRadius * 0.97)
                     : reactionBurst > 0.05
                         ? moteData.baseRadius + reactionBurst * 2.4
                     : creationChannel > 0
                         ? Math.max(0.05, moteData.baseRadius - creationChannel * 2.35)
+                    : failReject > 0.01
+                        ? moteData.baseRadius + failReject * 0.32
+                    : failDraw > 0.01
+                        ? moteData.baseRadius - failDraw * 0.22
                     : moteData.baseRadius;
 
-                const radiusLerpSpeed = bigBangPhase ? 0.12 : drawIntensity > 0 ? 0.22 : creationPulse > 0 ? 0.22 : creationChannel > 0 ? 0.14 : 0.08;
+                const radiusLerpSpeed = bigBangPhase ? 0.12 : drawIntensity > 0 ? (discoveryMode ? 0.30 : 0.22) : creationPulse > 0 ? 0.22 : creationChannel > 0 ? 0.14 : 0.08;
                 moteData.currentRadius += (orbitRadiusTarget - moteData.currentRadius) * radiusLerpSpeed;
                 const orbitSpeedMultiplier =
                     bigBangPhase === 'collapse'
@@ -495,9 +607,13 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                     : creationPulse > 0
                         ? 2.5
                     : drawIntensity > 0
-                        ? Math.max(0.02, 1 - drawIntensity * 0.85)
+                        ? Math.max(0.02, 1 - drawIntensity * (discoveryMode ? 1.1 : 0.85))
                     : creationChannel > 0
                         ? Math.max(0.02, 1 - creationChannel * 1.55)
+                    : failDraw > 0.01
+                        ? Math.max(0.55, 1 - failDraw * 0.38)
+                    : failFizzle > 0.01
+                        ? 1 + Math.sin(time * 7.3 + index * 1.7) * failFizzle * 0.10
                     : 1;
                 moteData.angle += (moteData.speed + visualActivity * 0.0015) * orbitSpeedMultiplier;
 
@@ -524,7 +640,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                 }
                 const trailMat = trailMatsRef.current[index];
                 if (trailMat) {
-                    trailMat.opacity = Math.min(0.07 + visualActivity * 0.3 + reactionBurst * 0.45 + drawIntensity * 0.22, 0.7);
+                    trailMat.opacity = Math.min(0.07 + visualActivity * 0.3 + reactionBurst * 0.45 + drawIntensity * (discoveryMode ? 0.40 : 0.22), 0.7);
                 }
 
                 // Fade + shrink as mote enters the core (surface at radius 1.0)
@@ -543,7 +659,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
 
                 if (mote.material) {
                     mote.material.opacity = moteData.opacity;
-                    mote.material.emissiveIntensity = 0.9 + visualActivity * 0.55 + creationChannel * 3.8 + creationPulse * 2.6 + drawIntensity * 3.5 + reactionBurst * 4.0;
+                    mote.material.emissiveIntensity = 0.9 + visualActivity * 0.55 + creationChannel * 3.8 + creationPulse * 2.6 + drawIntensity * (discoveryMode ? 5.0 : 3.5) + reactionBurst * 4.0 + failDraw * 1.0 + failFizzle * (0.6 + Math.sin(time * 33.1 + index) * 0.35 * failFizzle) + discoveryAfterglow * 1.5;
                 }
 
                 // Arc line: jagged lightning from mote → core
@@ -576,7 +692,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
                         : bigBangPhase === 'singularity' || bigBangPhase === 'flash' || bigBangPhase === 'rebirth'
                             ? 0
                         : drawIntensity > 0
-                            ? drawIntensity * 0.65
+                            ? drawIntensity * (discoveryMode ? 0.88 : 0.65)
                         : reactionBurst > 0.05
                             ? reactionBurst * 0.4
                         : creationChannel > 0.05
@@ -825,6 +941,10 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         creationPulseRef.current *= 0.84;
         creationChannelRef.current *= 0.972;
         reactionBurstRef.current *= 0.97;
+        failDrawRef.current *= 0.935;
+        failFizzleRef.current *= 0.976;
+        failRejectRef.current *= 0.80;
+        discoveryAfterglowRef.current *= 0.988;
 
         if (creationPulseRef.current < 0.01) creationPulseRef.current = 0;
         if (creationChannelRef.current < 0.01) creationChannelRef.current = 0;
@@ -832,6 +952,10 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         if (creationPulseVisualRef.current < 0.01) creationPulseVisualRef.current = 0;
         if (reactionBurstRef.current < 0.01) reactionBurstRef.current = 0;
         if (reactionBurstVisualRef.current < 0.01) reactionBurstVisualRef.current = 0;
+        if (failDrawRef.current < 0.005) failDrawRef.current = 0;
+        if (failFizzleRef.current < 0.005) failFizzleRef.current = 0;
+        if (failRejectRef.current < 0.005) failRejectRef.current = 0;
+        if (discoveryAfterglowRef.current < 0.005) discoveryAfterglowRef.current = 0;
     });
 
     // eslint-disable-next-line react-hooks/refs
@@ -854,9 +978,10 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             <pointLight ref={pointLightRef} position={[0, 0, 0]} color="#ff8833" />
             <pointLight ref={reactionLightRef} position={[0, 0, 0]} color="#ffffff" intensity={0} />
             <pointLight ref={drawLightRef} position={[0, 0, 0]} color="#9933ff" intensity={0} />
+            <pointLight ref={failLightRef} position={[0, 0, 0]} color="#cc2200" intensity={0} />
             <pointLight position={[6, 4, 4]}  color="#c8eeff" intensity={1.2} />
             <pointLight position={[-5, 2, -2]} color="#ffffff" intensity={0.7} />
-            <OrbitControls enablePan={false} minDistance={3} maxDistance={10} />
+            <OrbitControls enableZoom={false} enablePan={false} />
             <group ref={assemblyRef}>
                 <group>
                     {/* eslint-disable-next-line react-hooks/refs */}

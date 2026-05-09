@@ -19,7 +19,8 @@ router.get("/users/:username", async (req, res) => {
             unlockTier: user.unlockTier,
             bigBangCount: user.bigBangCount,
             genesisShards: user.genesisShards,
-            prestigeUpgrades: user.prestigeUpgrades
+            prestigeUpgrades: user.prestigeUpgrades,
+            reactionLog: user.reactionLog || []
         });
     }
     catch (err) {

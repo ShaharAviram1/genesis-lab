@@ -1,0 +1,181 @@
+/* ── Auth page shell ─────────────────────────────────── */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 40%, #0d1a2e 0%, #060a14 70%);
+  padding: 24px;
+}
+
+/* ── Card ────────────────────────────────────────────── */
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(8, 16, 34, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px 36px 36px;
+  box-shadow:
+    0 0 0 1px rgba(0, 212, 255, 0.04),
+    0 24px 60px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(0, 212, 255, 0.08);
+  backdrop-filter: blur(20px);
+}
+
+/* ── Header ──────────────────────────────────────────── */
+.auth-wordmark {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--teal);
+  text-transform: uppercase;
+  margin: 0 0 4px;
+  text-shadow: 0 0 24px rgba(0, 212, 255, 0.45);
+}
+
+.auth-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin: 0 0 28px;
+}
+
+/* ── Mode toggle ─────────────────────────────────────── */
+.auth-toggle {
+  position: relative;
+  display: flex;
+  width: 100%;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.auth-toggle-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.18);
+  border: 1px solid var(--border-bright);
+  transition: left 0.22s ease;
+  pointer-events: none;
+}
+
+.auth-toggle-indicator--login  { left: 4px; }
+.auth-toggle-indicator--register { left: calc(50%); }
+
+.auth-toggle-btn {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 8px 0;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+  box-shadow: none;
+}
+
+.auth-toggle-btn:hover:not(:disabled) {
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text);
+}
+
+.auth-toggle-btn--active {
+  color: #fff;
+}
+
+/* ── Form ────────────────────────────────────────────── */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-input {
+  width: 100%;
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-input::placeholder {
+  color: var(--text-muted);
+}
+
+.auth-input:focus {
+  border-color: var(--border-bright);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.09);
+}
+
+/* ── Helper text ─────────────────────────────────────── */
+.auth-helper {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 2px 0 4px;
+  letter-spacing: 0.02em;
+}
+
+/* ── Submit button ───────────────────────────────────── */
+.auth-submit {
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px;
+  background: rgba(0, 212, 255, 0.12);
+  border: 1px solid var(--border-bright);
+  border-radius: 8px;
+  color: var(--teal);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+}
+
+.auth-submit:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.22);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.2), inset 0 0 12px rgba(0, 212, 255, 0.08);
+  color: #fff;
+  border-color: var(--teal);
+}
+
+.auth-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ── Error ───────────────────────────────────────────── */
+.auth-error {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: #ff6b6b;
+  background: rgba(255, 60, 60, 0.08);
+  border: 1px solid rgba(255, 60, 60, 0.2);
+  border-radius: 6px;
+  padding: 9px 12px;
+  margin-top: 4px;
+}

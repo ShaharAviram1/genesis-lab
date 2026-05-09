@@ -1,4 +1,4 @@
-# Genesis Lab: Session Transcript Snapshot (Feb 5, 2026)
+## Genesis Lab: Session Transcript Snapshot (Feb 5, 2026)
 
 This is the full project transcript as of the latest canonical state. From this point forward, all references should derive from this record unless explicitly stated otherwise.
 
@@ -569,3 +569,4 @@ END OF SNAPSHOT
 
 - Bloom aura slightly too large at rest — needs threshold/intensity tuning
 - Bloom should be tight around geometry only, not spread across scene
+- Economy/progression audit needed during Phase 6.3: Water currently requires `unlockTier: 1` while new users begin at tier 0. Re-evaluate all reaction unlock tiers and `discoveredByDefault` consistency once the full economy/generator system is redesigned.

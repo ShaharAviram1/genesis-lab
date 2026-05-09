@@ -1,0 +1,124 @@
+.experiment-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.experiment-section-label {
+  font-family: var(--font-display);
+  font-size: 0.48rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Substance grid ── */
+.experiment-substance-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.experiment-substance-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(0, 212, 255, 0.03);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.15s, color 0.18s;
+}
+
+.experiment-substance-btn:hover:not(:disabled) {
+  border-color: var(--border-bright);
+  background: rgba(0, 212, 255, 0.07);
+  box-shadow: 0 0 8px var(--teal-glow);
+  color: var(--text);
+}
+
+.experiment-substance-btn.selected {
+  border-color: rgba(74, 222, 128, 0.55);
+  background: rgba(74, 222, 128, 0.10);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.18);
+  color: #4ade80;
+  transform: scale(1.03);
+}
+
+.experiment-substance-btn.selected:hover {
+  border-color: rgba(74, 222, 128, 0.75);
+  background: rgba(74, 222, 128, 0.16);
+  box-shadow: 0 0 14px rgba(74, 222, 128, 0.26);
+}
+
+.esb-name {
+  color: inherit;
+}
+
+.esb-qty {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  transition: color 0.18s;
+}
+
+.experiment-substance-btn.selected .esb-qty {
+  color: rgba(74, 222, 128, 0.6);
+}
+
+/* ── Selected pills ── */
+.experiment-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.experiment-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 20px;
+  padding: 3px 8px 3px 10px;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: #4ade80;
+}
+
+.pill-remove {
+  all: unset;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: rgba(74, 222, 128, 0.5);
+  transition: color 0.15s;
+}
+
+.pill-remove:hover {
+  color: #4ade80;
+}
+
+/* ── Run button ── */
+.experiment-run-btn {
+  margin-top: auto;
+  width: 100%;
+  padding: 0.6em 1em;
+  font-size: 0.75rem;
+}
+
+.experiment-run-btn:hover:not(:disabled) {
+  border-color: var(--orange);
+  box-shadow: 0 0 12px var(--orange-glow), inset 0 0 8px rgba(255, 107, 0, 0.06);
+  color: var(--orange);
+  background: var(--surface-hover);
+}

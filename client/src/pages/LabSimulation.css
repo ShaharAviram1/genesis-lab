@@ -1,75 +1,294 @@
+/* ── Page shell ────────────────────────────────────── */
+/*
+  Flex column. Bottom padding reserves space so the fixed
+  notebook drawer tab never overlaps the reactor area.
+*/
 .game-shell {
-  display: grid;
-  grid-template-rows: 70px 1fr 100px;
-  grid-template-columns: minmax(180px, 210px) minmax(0, 1fr) minmax(220px, 260px);
-  height: 100vh;
-  gap: 8px;
-  padding: 8px;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 50px;
   background: var(--bg);
 }
 
+/* ── Header ─────────────────────────────────────────── */
 .top-bar {
-  grid-column: 1 / -1;
-  grid-row: 1;
-  overflow: hidden;
-}
-
-.bottom-bar {
-  grid-column: 1 / -1;
-  grid-row: 3;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  overflow: hidden;
+  gap: 12px;
 }
 
+/* HeaderPanel fills all available width */
+.top-bar .header-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Account area — top-right, app-level chrome */
+.lab-account {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lab-account-user {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.lab-logout-btn {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 107, 0, 0.25);
+  background: rgba(255, 107, 0, 0.06);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.lab-logout-btn:hover:not(:disabled) {
+  border-color: rgba(255, 107, 0, 0.6);
+  background: rgba(255, 107, 0, 0.12);
+  color: var(--orange);
+  box-shadow: 0 0 8px rgba(255, 107, 0, 0.15);
+}
+
+/* ── Three-column reactor area ──────────────────────── */
+/*
+  Fixed height = viewport minus header + padding + gap + drawer tab.
+  This gives the canvas a concrete size without page scroll.
+    14 top-pad + 64 header + 14 gap + [this] + 50 bottom-pad ≈ 100vh
+*/
+.main-columns {
+  display: grid;
+  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(270px, 300px);
+  grid-template-rows: 1fr;
+  gap: 14px;
+  height: calc(100vh - 142px);
+  flex-shrink: 0;
+}
+
+/* ── Left — Matter Lab ──────────────────────────────── */
 .left-panel {
-  grid-column: 1;
-  grid-row: 2;
-  overflow: hidden;
-}
-
-.right-panel {
-  grid-column: 3;
-  grid-row: 2;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   overflow: hidden;
 }
 
+/* atom-card: compact utility at the top */
+.left-panel .atom-card {
+  height: auto;
+  flex-shrink: 0;
+}
+
+/* matter-lab-card: dominant — fills all remaining left space */
+.left-panel .matter-lab-card {
+  flex: 1;
+  min-height: 0;
+  height: auto;         /* override panel-card's height: 100% */
+  gap: 0;               /* sections are separated by .matter-divider + their own titles */
+  overflow: hidden;
+}
+
+/*
+  Strip the individual panel-card chrome from InventoryPanel and
+  ExperimentPanel so they read as sections of the unified card.
+*/
+.matter-lab-card .inventory-panel,
+.matter-lab-card .experiment-panel {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  backdrop-filter: none;
+  padding: 0;
+}
+
+/* Inventory fills available vertical space and scrolls internally */
+.matter-lab-card .inventory-panel {
+  flex: 1;
+  min-height: 80px;
+}
+
+/* Experiment is compact below the divider */
+.matter-lab-card .experiment-panel {
+  height: auto;
+  flex-shrink: 0;
+}
+
+/* Visual break between inventory and experiment sections */
+.matter-divider {
+  flex-shrink: 0;
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0 4px;
+}
+
+/* ── Center — Reactor ───────────────────────────────── */
 .center-scene {
-  grid-column: 2;
-  grid-row: 2;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   background: radial-gradient(ellipse at center, #0d1a2e 0%, #060a14 100%);
   border: 1px solid var(--border);
-  box-shadow: inset 0 0 60px rgba(0,0,0,0.6);
-  display: flex;
-  flex-direction: column;
+  box-shadow:
+    inset 0 0 80px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(0, 212, 255, 0.04);
 }
 
 .scene-canvas {
-  flex: 1;
-  min-height: 0;
+  height: 100%;
 }
 
-.scene-controls {
+/* ── Right — Reactor Systems ────────────────────────── */
+.right-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
-  background: rgba(6, 10, 20, 0.7);
+  gap: 10px;
+  overflow: hidden;
 }
 
-/* ── BigBang overlay ─────────────────────────────── */
+/* override panel-card height: 100% for flex-column context */
+.right-panel .panel-card {
+  height: auto;
+}
+
+/* Reactions fill available space */
+.right-panel .reaction-panel {
+  flex: 1;
+  min-height: 100px;
+}
+
+/* Big Bang: visually separated from progression */
+.bigbang-zone {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 107, 0, 0.16);
+  padding-top: 10px;
+  margin-top: 2px;
+}
+
+/* ── Notebook drawer (fixed bottom) ─────────────────── */
+.notebook-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(8, 16, 34, 0.96);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  transform: translateY(0);
+  transition: opacity 0.6s ease, transform 0.6s ease, visibility 0.6s;
+}
+
+.notebook-drawer--bigbang {
+  opacity: 0;
+  transform: translateY(100%);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.notebook-drawer-tab {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: background 0.15s, border-color 0.2s;
+}
+
+.notebook-drawer-tab:hover {
+  background: rgba(0, 212, 255, 0.03);
+}
+
+.notebook-drawer--open .notebook-drawer-tab {
+  border-bottom-color: var(--border);
+}
+
+.notebook-drawer-label {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+
+.notebook-drawer-chevron {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-left: 4px;
+
+  border-right: 3px solid rgba(220, 240, 255, 0.9);
+  border-bottom: 3px solid rgba(220, 240, 255, 0.9);
+
+  transform: rotate(-45deg);
+
+  transition:
+    transform 0.25s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.notebook-drawer--open .notebook-drawer-chevron {
+  transform: rotate(45deg);
+}
+
+.notebook-drawer-tab:hover .notebook-drawer-chevron {
+  border-color: var(--teal);
+  opacity: 1;
+}
+
+.notebook-drawer-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.notebook-drawer--open .notebook-drawer-body {
+  max-height: 300px;
+}
+
+/* Strip panel-card chrome inside the drawer */
+.notebook-drawer .lab-notebook-panel {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  backdrop-filter: none;
+  padding: 10px 20px 14px;
+  height: 288px; /* concrete height so notebook-list flex scrolling works */
+}
+
+.notebook-drawer-chevron::before,.notebook-drawer-chevron::after {
+
+  content: none;
+
+}
+
+
+/* ── BigBang overlay ────────────────────────────────── */
 .bigbang-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 200;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.4s ease;
@@ -91,27 +310,24 @@
   transition: opacity 1s ease;
 }
 
-/* ── Panel fade during BigBang ───────────────────── */
+/* ── Panel fade during BigBang ──────────────────────── */
+/* Target side panels individually — center-scene (reactor) must stay visible */
 .game-shell[data-bigbang] .top-bar,
-.game-shell[data-bigbang] .bottom-bar,
 .game-shell[data-bigbang] .left-panel,
-.game-shell[data-bigbang] .right-panel,
-.game-shell[data-bigbang] .scene-controls {
+.game-shell[data-bigbang] .right-panel {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.6s ease;
 }
 .game-shell[data-bigbang="rebirth"] .top-bar,
-.game-shell[data-bigbang="rebirth"] .bottom-bar,
 .game-shell[data-bigbang="rebirth"] .left-panel,
-.game-shell[data-bigbang="rebirth"] .right-panel,
-.game-shell[data-bigbang="rebirth"] .scene-controls {
+.game-shell[data-bigbang="rebirth"] .right-panel {
   opacity: 1;
   pointer-events: auto;
-  transition: opacity 1.2s ease 1s; /* delay 1s into rebirth */
+  transition: opacity 1.2s ease 1s;
 }
 
-/* ── Screen shake on expansion ───────────────────── */
+/* ── Screen shake on expansion ──────────────────────── */
 @keyframes bigbang-shake {
   0%,  100% { transform: translate(0, 0) rotate(0deg); }
   10%        { transform: translate(-6px, -3px) rotate(-0.3deg); }
@@ -125,12 +341,12 @@
   animation: bigbang-shake 0.75s ease-out;
 }
 
-/* ── Temp test button ────────────────────────────── */
+/* ── Temp test button ───────────────────────────────── */
 .test-bigbang-btn {
   position: fixed;
   bottom: 1rem;
   right: 1rem;
-  z-index: 200;
+  z-index: 300;
   background: rgba(255, 68, 0, 0.85);
   color: #fff;
   border: 1px solid rgba(255, 120, 60, 0.5);

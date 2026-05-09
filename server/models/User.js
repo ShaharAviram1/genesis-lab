@@ -6,6 +6,10 @@ const userSchema = mongoose.Schema({
         required: true,
         unique: true
     },
+    passwordHash: {
+        type: String,
+        required: true
+    },
     inventory: [{
             substance: {
                 type: mongoose.Schema.Types.ObjectId,
@@ -66,7 +70,15 @@ const userSchema = mongoose.Schema({
             default: 0,
             min: 0
         }
-    }
+    },
+    reactionLog: [{
+        type: { type: String, enum: ['experiment', 'perform'] },
+        outcome: { type: String, enum: ['success', 'discovery', 'failure'] },
+        substances: [String],
+        product: { type: String, default: null },
+        message: String,
+        createdAt: { type: Date, default: Date.now }
+    }]
 });
 const User = mongoose.model("User", userSchema);
 module.exports = User;

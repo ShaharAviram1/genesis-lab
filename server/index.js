@@ -4,6 +4,7 @@ const substanceRouter = require('./routes/substances');
 const reactionsRouter = require('./routes/reactions');
 const userRouter = require('./routes/users');
 const atomsRouter = require('./routes/atoms');
+const authRouter = require('./routes/auth');
 const { reactorRuntime } = require('./realtime/reactorRuntime');
 const cors = require('cors');
 const http = require('http');
@@ -20,6 +21,7 @@ app.use('/api', substanceRouter);
 app.use('/api', reactionsRouter);
 app.use('/api', userRouter);
 app.use('/api', atomsRouter);
+app.use('/api', authRouter);
 
 app.get('/health', (req, res) => {
   res.json('Genesis Lab backend is alive 🚀');

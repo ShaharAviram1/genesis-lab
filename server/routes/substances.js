@@ -14,6 +14,14 @@ router.get("/substances", async (req, res) => {
     }
 });
 
+router.get("/debug/substances", async (req, res) => {
+    const substances = await Substance.find();
+    res.json(substances.map(s => ({
+        name: s.name,
+        id: s._id,
+        symbol: s.symbol
+    })));
+});
 
 
 module.exports = router;
