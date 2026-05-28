@@ -18,22 +18,64 @@ function isReactionDiscovered(user, reaction) {
     });
 }
 
+function getReactionHint(reaction) {
+    const { reactants, product } = reaction;
+    const count = reactants.length;
+    const cats = reactants.map(r => r.substance.category);
+    const catSet = new Set(cats);
+    const types = reactants.map(r => r.substance.type);
+    const productCat = product.substance.category;
+
+    if (types.includes('material'))
+        return "Requires a material already produced.";
+    if (catSet.has('acid'))
+        return "A reactive chemical agent is required.";
+    if (productCat === 'alloy')
+        return "Two metals may combine into a stronger structure.";
+    if (catSet.has('alloy'))
+        return "One input is an alloy.";
+    if (catSet.has('metalloid'))
+        return "Involves a semiconductor-class substance.";
+    if (cats.filter(c => c === 'metal').length >= 2)
+        return "Multiple metals are involved.";
+    if (catSet.has('metal') && catSet.has('gas'))
+        return "A metal element reacts with a gas.";
+    if (catSet.has('metal'))
+        return "Involves a metal.";
+    if (count >= 3 && cats.every(c => c === 'mineral'))
+        return "Multiple mineral compounds fused together.";
+    if (catSet.has('mineral') && catSet.has('gas'))
+        return "A gas interacts with a mineral compound.";
+    if (catSet.has('mineral') && catSet.has('liquid'))
+        return "A mineral dissolved in a liquid medium.";
+    if (catSet.has('mineral'))
+        return "A mineral compound plays a role.";
+    if (cats.every(c => c === 'gas'))
+        return "All inputs are in gas form.";
+    if (catSet.has('gas') && catSet.has('liquid'))
+        return "Combines gaseous and liquid inputs.";
+    if (catSet.has('gas'))
+        return "Works with gas-state substances.";
+    if (catSet.has('liquid'))
+        return "Involves a liquid input.";
+    return "Direct elemental synthesis.";
+}
+
 function buildMaskedReaction(reaction) {
     return {
         _id: reaction._id,
-        reactionID: reaction.reactionID,
-        name: "???",
+        reactionKey: reaction.reactionKey,
+        name: "Unknown Synthesis",
         unknown: true,
         unlockTier: reaction.unlockTier,
+        generationTier: reaction.generationTier,
+        reactantCount: reaction.reactants.length,
+        hint: reaction.hintText || getReactionHint(reaction),
         reactants: [],
         product: {
-            substance: {
-                name: "???",
-                symbol: "?"
-            },
+            substance: { name: "???", symbol: "?" },
             quantity: "?"
         },
-        byproducts: [],
         energyCost: null
     };
 }
@@ -130,7 +172,9 @@ function performReaction(user, reaction, energyCost) {
 
 router.get("/reactions", async (req, res) => {
     try {
-        const reactions = await Reaction.find().populate('reactants.substance').populate('product.substance').populate('byproducts.substance');
+        const reactions = await Reaction.find()
+            .populate('reactants.substance')
+            .populate('product.substance');
         res.status(200).json(reactions);
     }
     catch (err) {
@@ -145,14 +189,16 @@ router.get("/reactions/available", async (req, res) => {
         if (!req.query.user) { return res.status(400).json({ error: "Missing username" }); }
         const user = await User.findOne({ username: req.query.user });
         if (!user) { return res.status(404).json({ error: "user not found" }); }
-        const reactions = await Reaction.find({ unlockTier: { $lte: user.unlockTier } }).populate('reactants.substance').populate('product.substance').populate('byproducts.substance');
+        const reactions = await Reaction.find({ unlockTier: { $lte: user.unlockTier } })
+            .populate('reactants.substance')
+            .populate('product.substance');
         const objReactions = reactions.map(reaction => {
             const discovered = isReactionDiscovered(user, reaction);
             if (!discovered) {
                 return buildMaskedReaction(reaction);
             }
             const reactionObj = reaction.toObject();
-            reactionObj.energyCost= calculateReactionCost(user, reaction.energyCost);
+            reactionObj.energyCost = calculateReactionCost(user, reaction.energyCost);
             reactionObj.unknown = false;
             return reactionObj;
         });
@@ -165,20 +211,24 @@ router.get("/reactions/available", async (req, res) => {
 });
 
 
-router.get("/reactions/:reactionID", async (req, res) => { 
+router.get("/reactions/:reactionKey", async (req, res) => {
     try {
-        const reaction = await Reaction.findOne({ reactionID: req.params.reactionID }).populate('reactants.substance').populate('product.substance').populate('byproducts.substance');
-        if (!reaction) { 
-            return res.status(404).json({ error: "Reaction not found" }); 
+        const reaction = await Reaction.findOne({ reactionKey: req.params.reactionKey })
+            .populate('reactants.substance')
+            .populate('product.substance');
+        if (!reaction) {
+            return res.status(404).json({ error: "Reaction not found" });
         }
 
-        if (!req.query.user) { 
-            return res.status(400).json({ error: "Missing username" }); 
+        if (!req.query.user) {
+            return res.status(400).json({ error: "Missing username" });
         }
         await flushPendingMongoEnergyForUser(req.query.user);
-        const user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
-        if (!user) { 
-            return res.status(404).json({ error: "User not found" }); 
+        const user = await User.findOne({ username: req.query.user })
+            .populate('inventory.substance')
+            .populate('runTotals.substance');
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
         }
         if (!isReactionDiscovered(user, reaction)) {
             return res.status(200).json({ reaction: buildMaskedReaction(reaction), canPerform: false });
@@ -194,15 +244,19 @@ router.get("/reactions/:reactionID", async (req, res) => {
     }
 });
 
-router.post("/perform/:reactionID", async (req, res) => {
+router.post("/perform/:reactionKey", async (req, res) => {
     try {
-        let reaction = await Reaction.findOne({ reactionID: req.params.reactionID }).populate('reactants.substance').populate('product.substance').populate('byproducts.substance');
+        let reaction = await Reaction.findOne({ reactionKey: req.params.reactionKey })
+            .populate('reactants.substance')
+            .populate('product.substance');
         if (!reaction) { return res.status(404).json({ error: "Reaction not found" }); }
         if (!req.query.user) {
             return res.status(400).json({ error: "missing username" });
         }
         await flushPendingMongoEnergyForUser(req.query.user);
-        const user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
+        const user = await User.findOne({ username: req.query.user })
+            .populate('inventory.substance')
+            .populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
         reaction = reaction.toObject();
         reaction.energyCost = calculateReactionCost(user, reaction.energyCost);
@@ -219,13 +273,13 @@ router.post("/perform/:reactionID", async (req, res) => {
             });
             await user.save();
             updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
-            await user.populate(['inventory.substance','runTotals.substance']);
-            return res.status(200).json({ success: true, inventory: user.inventory, reactionID: reaction.reactionID, discovered });
+            await user.populate(['inventory.substance', 'runTotals.substance']);
+            return res.status(200).json({ success: true, inventory: user.inventory, reactionKey: reaction.reactionKey, discovered });
         }
         else {
             return res.status(400).json({ error: "Requirements not met to perform reaction" });
         }
-    } 
+    }
     catch (err) {
         console.log(err);
         return res.status(500).json({ error: "Failed to perform" });
@@ -238,7 +292,9 @@ router.post("/reactions/experiment", async (req, res) => {
             return res.status(400).json({ error: "missing username" });
         }
         await flushPendingMongoEnergyForUser(req.query.user);
-        const user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
+        const user = await User.findOne({ username: req.query.user })
+            .populate('inventory.substance')
+            .populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         const { substances } = req.body;
@@ -261,13 +317,11 @@ router.post("/reactions/experiment", async (req, res) => {
 
         const reactions = await Reaction.find({ unlockTier: { $lte: user.unlockTier } })
             .populate('reactants.substance')
-            .populate('product.substance')
-            .populate('byproducts.substance');
+            .populate('product.substance');
 
-        const matchingReaction = reactions.find((reaction) => selectedSubstancesMatchReaction(selectedSubstanceIds, reaction));
+        const matchingReactions = reactions.filter(r => selectedSubstancesMatchReaction(selectedSubstanceIds, r));
 
-        if (!matchingReaction) {
-            // Hint 4: exact substance match exists in a locked tier
+        if (matchingReactions.length === 0) {
             const lockedReactions = await Reaction.find({ unlockTier: { $gt: user.unlockTier } })
                 .populate('reactants.substance');
             if (lockedReactions.find(r => selectedSubstancesMatchReaction(selectedSubstanceIds, r))) {
@@ -281,10 +335,19 @@ router.post("/reactions/experiment", async (req, res) => {
                 });
             }
 
-            // Hint 2: selected substances look name-related to a known reaction's reactants
             const selectedSubstances = await Substance.find({ _id: { $in: selectedSubstanceIds } });
             const allReactions = await Reaction.find().populate('reactants.substance');
             const similarMatch = allReactions.find(r => substancesLookRelated(selectedSubstances, r));
+
+            const undiscoveredCurrentTier = reactions.filter(r => !isReactionDiscovered(user, r));
+            const hasResonance = undiscoveredCurrentTier.some(r =>
+                r.reactants.some(reactant => selectedSubstanceIds.includes(getSubstanceId(reactant.substance)))
+            );
+            const failureHint = hasResonance
+                ? "Reactor detected resonance — composition incomplete."
+                : similarMatch
+                    ? "These substances may need to be transformed first."
+                    : undefined;
 
             user.energy -= BASE_EXPERIMENTAL_REACTION_COST;
             consumeOneOfEachSelectedSubstance(user, selectedSubstanceIds);
@@ -297,43 +360,53 @@ router.post("/reactions/experiment", async (req, res) => {
             });
             await user.save();
             updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
-            await user.populate(['inventory.substance','runTotals.substance']);
+            await user.populate(['inventory.substance', 'runTotals.substance']);
             return res.status(200).json({
                 success: false,
                 discovered: false,
                 message: "No stable reaction formed",
-                ...(similarMatch && { hint: "These substances may need to be transformed first." }),
+                ...(failureHint && { hint: failureHint }),
                 inventory: user.inventory,
                 energy: user.energy
             });
         }
 
-        if (!hasRequiredReactants(user, matchingReaction.reactants)) {
-            return res.status(400).json({
-                error: "Not enough quantity for the matched reaction",
-                hint: "The reaction pattern is promising, but you lack enough material."
+        // Undiscovered reactions take priority; within each group sort deterministically
+        const sortByPriority = (a, b) =>
+            a.unlockTier - b.unlockTier ||
+            a.energyCost - b.energyCost ||
+            a.reactionKey.localeCompare(b.reactionKey);
+
+        const undiscoveredMatches = matchingReactions.filter(r => !isReactionDiscovered(user, r)).sort(sortByPriority);
+        const discoveredMatches   = matchingReactions.filter(r =>  isReactionDiscovered(user, r)).sort(sortByPriority);
+
+        for (const candidate of [...undiscoveredMatches, ...discoveredMatches]) {
+            if (!hasRequiredReactants(user, candidate.reactants)) continue;
+            const wasDiscovered = performReaction(user, candidate, BASE_EXPERIMENTAL_REACTION_COST);
+            const expProductName = candidate.product.substance.name;
+            addReactionLogEntry(user, {
+                type: 'experiment',
+                outcome: wasDiscovered ? 'discovery' : 'success',
+                substances: candidate.reactants.map(r => r.substance.name),
+                product: expProductName,
+                message: wasDiscovered ? `Discovered ${expProductName}` : `Experiment created ${expProductName}`
+            });
+            await user.save();
+            updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
+            await user.populate(['inventory.substance', 'runTotals.substance']);
+            return res.status(200).json({
+                success: true,
+                discovered: wasDiscovered,
+                inventory: user.inventory,
+                energy: user.energy,
+                reactionKey: candidate.reactionKey,
+                reaction: candidate
             });
         }
 
-        const discovered = performReaction(user, matchingReaction, BASE_EXPERIMENTAL_REACTION_COST);
-        const expProductName = matchingReaction.product.substance.name;
-        addReactionLogEntry(user, {
-            type: 'experiment',
-            outcome: discovered ? 'discovery' : 'success',
-            substances: matchingReaction.reactants.map(r => r.substance.name),
-            product: expProductName,
-            message: discovered ? `Discovered ${expProductName}` : `Experiment created ${expProductName}`
-        });
-        await user.save();
-        updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
-        await user.populate(['inventory.substance','runTotals.substance']);
-        return res.status(200).json({
-            success: true,
-            discovered,
-            inventory: user.inventory,
-            energy: user.energy,
-            reactionID: matchingReaction.reactionID,
-            reaction: matchingReaction
+        return res.status(400).json({
+            error: "Not enough quantity for the matched reaction",
+            hint: "The reaction pattern is promising, but you lack enough material."
         });
     }
     catch (err) {

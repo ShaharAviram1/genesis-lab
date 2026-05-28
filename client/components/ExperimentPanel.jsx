@@ -27,6 +27,7 @@ function ExperimentPanel({ inventory, experiment }) {
             <h2 className="panel-title">Experiment</h2>
 
             <span className="experiment-section-label">Select Substances</span>
+            <div className="experiment-substance-scroll">
             <div className="experiment-substance-grid">
                 {inventory.map(item => {
                     const isSelected = selectedSubstances.some(sub => sub._id === item.substance._id);
@@ -41,6 +42,7 @@ function ExperimentPanel({ inventory, experiment }) {
                         </button>
                     );
                 })}
+            </div>
             </div>
 
             {selectedSubstances.length > 0 && (

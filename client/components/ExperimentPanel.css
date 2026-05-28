@@ -13,6 +13,13 @@
 }
 
 /* ── Substance grid ── */
+.experiment-substance-scroll {
+  overflow-y: auto;
+  max-height: 220px;
+  margin-right: -4px;
+  padding-right: 4px;
+}
+
 .experiment-substance-grid {
   display: flex;
   flex-wrap: wrap;

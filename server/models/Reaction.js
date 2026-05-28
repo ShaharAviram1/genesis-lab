@@ -1,7 +1,25 @@
 const mongoose = require('mongoose');
 
 const reactionSchema = mongoose.Schema({
-    //recipe input
+    // Identity
+    reactionKey: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    name: {
+        type: String,
+        required: true
+    },
+    generationTier: {
+        type: Number,
+        required: true,
+        min: 1,
+        max: 6
+    },
+
+    // Recipe
     reactants: {
         type: [{
             substance: { type: mongoose.Schema.Types.ObjectId, ref: 'Substance', required: true },
@@ -9,80 +27,52 @@ const reactionSchema = mongoose.Schema({
         }],
         required: true
     },
-
-    //Reaction output
     product: {
         substance: { type: mongoose.Schema.Types.ObjectId, ref: 'Substance', required: true },
         quantity: { type: Number, required: true, min: 1 }
     },
-    compoundType: {
-        type: String,
-        enum: ["compound", "material", "structure"]
-    },
-    byproducts: {
-        type: [{
-            substance: { type: mongoose.Schema.Types.ObjectId, ref: 'Substance', required: true },
-            quantity: { type: Number, required: true, min: 1 }
-        }],
-        default: []
-    },
 
-    //Reaction Characteristics
-    reactionType: {
-        type: String,
-        required: true,
-        enum: ["synthesis", "decomposition", "combustion", "fusion", "transmutation"]
-    },
-    isReversible: {
-        type: Boolean,
-        default: false
-    },
-    energyChange: {
-        type: Number
-    },
-    reactionTime: {
-        type: Number
-    },
-
-    //conditions
-    conditions: {
-        type: Object
-    },
-    catalyst: {
-        type: String
-    },
-    requiredUserUnlock: {
-        type: Boolean,
-        default: false
-    },
+    // Cost and time
     energyCost: {
         type: Number,
         required: true,
+        default: 0,
         min: 0
     },
+    reactionTime: {
+        type: Number,
+        default: 0     // seconds; 0 = instant synthesis
+    },
 
-    //progression
+    // Reactor requirements
+    conditions: {
+        type: [String],
+        default: []    // checked against user.reactorCapabilities at queue time
+    },
+
+    // Progression
     unlockTier: {
         type: Number,
-        required: true
-    },
-    discoveryXP: {
-        type: Number
+        required: true,
+        default: 0
     },
     discoveredByDefault: {
         type: Boolean,
         default: false
     },
 
-    //Metadata
+    // Display
+    description: {
+        type: String
+    },
+    hintText: {
+        type: String
+    },
+
+    // Control
     isActive: {
         type: Boolean,
         default: true
-    },
-    reactionID: {
-        type: Number,
-        required: true,
-        unique: true
     }
 }, { timestamps: true });
 

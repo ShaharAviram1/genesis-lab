@@ -43,12 +43,24 @@ router.post('/atoms/create', async (req, res) => {
     }
 });
 
-router.get("/atoms/:username", async (req, res) => { 
+router.get("/atoms/:username", async (req, res) => {
     try {
         if (!req.params.username) { return res.status(400).json({ error: "Missing username" }); }
         const user = await User.findOne({ username: req.params.username });
         if (!user) { return res.status(404).json({ error: "User not found" }); }
-        return res.status(200).json(Object.entries(atomCost).map(([name, energy])=>({name, energyCost: calculateAtomCost(user, energy)})));
+        const substances = await Substance.find({
+            isBaseElement: true,
+            isActive: true,
+            unlockTier: { $lte: user.unlockTier }
+        });
+        const available = substances
+            .filter(s => atomCost[s.name] !== undefined)
+            .map(s => ({
+                name:      s.name,
+                symbol:    s.symbol,
+                energyCost: calculateAtomCost(user, atomCost[s.name])
+            }));
+        return res.status(200).json(available);
     }
     catch (err) {
         console.log(err);

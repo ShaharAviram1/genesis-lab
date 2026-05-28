@@ -3,6 +3,23 @@ import './SelectedReactionPanel.css';
 function SelectedReactionPanel({ selectedReaction, inventory, performReaction, isBusy, result, onClose }) {
     if (!selectedReaction) return null;
 
+    if (selectedReaction.unknown) {
+        const inputLabel = selectedReaction.reactantCount ? `${selectedReaction.reactantCount}-input synthesis` : "Unknown input count";
+        return (
+            <div className="panel-card selected-reaction-panel">
+                <div className="panel-title selected-reaction-header">
+                    <span>Unknown Synthesis</span>
+                    <button className="close-btn" onClick={onClose} aria-label="Close">✕</button>
+                </div>
+                <div className="resonance-body">
+                    <div className="resonance-input-count">{inputLabel}</div>
+                    {selectedReaction.hint && <div className="resonance-hint">{selectedReaction.hint}</div>}
+                    <div className="resonance-cta">Combine substances in the Experiment Panel to discover this reaction.</div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="panel-card selected-reaction-panel">
             <div className="panel-title selected-reaction-header">
@@ -23,17 +40,11 @@ function SelectedReactionPanel({ selectedReaction, inventory, performReaction, i
                     );
                 })}
             </div>
-            {selectedReaction.byproducts?.length > 0 && (
-                <div className="byproducts-row">
-                    <span className="byproducts-label">Also produces:</span>
-                    <span className="byproducts-list">{selectedReaction.byproducts.map(b => `${b.quantity} ${b.substance.name}`).join(', ')}</span>
-                </div>
-            )}
             <div className={`perform-status ${result ? 'can-perform' : 'cannot-perform'}`}>
                 {result ? '✓ Ready to React' : '✗ Missing Materials'}
             </div>
             {result && (
-                <button className="perform-btn" disabled={isBusy} onClick={() => performReaction(selectedReaction.reactionID)}>
+                <button className="perform-btn" disabled={isBusy} onClick={() => performReaction(selectedReaction.reactionKey)}>
                     ⚗ Perform Reaction
                 </button>
             )}

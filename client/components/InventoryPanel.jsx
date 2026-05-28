@@ -1,8 +1,8 @@
 import './InventoryPanel.css';
 
 function InventoryPanel({ inventory }) {
-    const atoms = inventory.filter(item => item.substance.type === 'atom');
-    const compounds = inventory.filter(item => item.substance.type !== 'atom');
+    const atoms = inventory.filter(item => item.substance.type === 'element');
+    const compounds = inventory.filter(item => item.substance.type !== 'element');
 
     const renderItem = (item) => (
         <div key={item.substance._id} className={`inventory-item inventory-item--${item.substance.type}`}>

@@ -11,7 +11,7 @@ function LabNotebookPanel({ reactionLog }) {
                     {reactionLog.map((entry, i) => (
                         <div key={i} className={`notebook-entry notebook-entry--${entry.outcome}`}>
                             <div className="notebook-entry-header">
-                                <span className="notebook-outcome">{entry.outcome}</span>
+                                <span className="notebook-outcome">{entry.outcome === 'discovery' ? '✦ ' : ''}{entry.outcome}</span>
                                 <span className="notebook-time">
                                     {new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>

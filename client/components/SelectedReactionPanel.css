@@ -76,25 +76,6 @@
 .requirement-row.met .req-status   { color: #22c55e; }
 .requirement-row.unmet .req-status { color: #ef4444; }
 
-.byproducts-row {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-  padding: 3px 6px;
-  font-family: var(--font-body);
-  font-size: 0.7rem;
-}
-
-.byproducts-label {
-  color: var(--text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.byproducts-list {
-  color: var(--teal);
-}
-
 .perform-status {
   font-family: var(--font-display);
   font-size: 0.62rem;
@@ -129,4 +110,36 @@
   color: #fff;
   background: rgba(255, 107, 0, 0.18);
   box-shadow: 0 0 18px var(--orange-glow);
+}
+
+.resonance-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px;
+}
+
+.resonance-input-count {
+  font-family: var(--font-display);
+  font-size: 0.54rem;
+  letter-spacing: 0.10em;
+  color: rgba(167, 139, 250, 0.55);
+  text-transform: uppercase;
+}
+
+.resonance-hint {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: rgba(167, 139, 250, 0.85);
+  line-height: 1.55;
+  font-style: italic;
+}
+
+.resonance-cta {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  padding-top: 6px;
+  border-top: 1px solid rgba(167, 139, 250, 0.15);
 }

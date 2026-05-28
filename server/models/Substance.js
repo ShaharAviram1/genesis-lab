@@ -1,111 +1,98 @@
 const mongoose = require('mongoose');
 
 const substanceSchema = new mongoose.Schema({
-    // Core identity
+    // Identity
+    substanceKey: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
     type: {
         type: String,
         required: true,
-        enum: ["element", "compound"]
-    },
-    symbol: {
-        type: String,
-        required: true
+        enum: ["element", "compound", "material", "artifact"]
     },
     name: {
         type: String,
         required: true
     },
-
-    // Element-specific properties (conditionally required)
-    atomicNumber: {
-        type: Number,
-        required: function () {
-            return this.type === "element";
-        }
+    symbol: {
+        type: String   // short display tag, optional
+    },
+    formula: {
+        type: String   // display identity, not simulation truth
     },
     category: {
-        type: String,
-        enum: ["nonmetal", "metal", "noble_gas", "halogen", "metalloid"],
-        required: function () {
-            return this.type === "element";
-        }
+        type: String   // open string: base_matter | gas | extreme_state | advanced_material | organic | cosmic | mythic | etc.
     },
 
-    // Physical properties
-    stateAtSTP: String,
-    density: Number,
-    meltingPoint: Number,
-    boilingPoint: Number,
-
-    // Chemical behavior
-    valenceElectrons: {
-        type: Number,
-        required: function () {
-            return this.type === "element";
-        }
-    },
-    maxBonds: Number,
-    electronegativity: Number,
-    reactivity: {
-        type: Number,
-        min: 0,
-        max: 1
-    },
-
-    // Energy & stability
-    baseEnergy: Number,
-    stabilityFactor: Number,
-    radioactive: {
-        type: Boolean,
-        default: false
-    },
-
-    // Compound-specific properties
-    formula: {
-        type: String
-    },
-    composition: [
-        {
-            substance: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Substance"
-            },
-            quantity: Number
-        }
-    ],
-
-    // UI
-    color: String,
-    icon: String,
-    size: Number,
+    // Composition (conceptual, not enforced by engine)
+    composition: [{
+        substance: { type: mongoose.Schema.Types.ObjectId, ref: 'Substance' },
+        quantity: Number
+    }],
 
     // Progression
-    unlockTier: Number,
+    generationTier: {
+        type: Number,
+        required: true,
+        min: 1,
+        max: 6
+    },
+    unlockTier: {
+        type: Number,
+        default: 0
+    },
     unlocksUserTier: {
         type: Number,
-        default: 0   // 0 = does not unlock a new tier when first produced
+        default: 0
+    },
+
+    // Economy
+    baseEnergy: {
+        type: Number,
+        default: 0
     },
     shardValue: {
         type: Number,
-        default: 0   // base Genesis Shards awarded per BigBang for producing this substance
+        default: 0
     },
-    discoveryPrerequisites: {
-        type: [String],
-        default: []
+
+    // Reactor / gameplay tuning
+    stabilityFactor: {
+        type: Number,
+        default: 1
     },
+    reactivity: {
+        type: Number,
+        default: 0
+    },
+    fantasyWeight: {
+        type: Number,
+        default: 1,
+        min: 1,
+        max: 5
+    },
+
+    // Display
+    color: {
+        type: String
+    },
+    hintText: {
+        type: String
+    },
+
+    // Flags
     isBaseElement: {
         type: Boolean,
         default: false
     },
-
-    // Metadata
-    createdAt: Date,
-    updatedAt: Date,
     isActive: {
         type: Boolean,
-        default: false
+        default: true
     }
-});
+}, { timestamps: true });
 
 const Substance = mongoose.model("Substance", substanceSchema);
 module.exports = Substance;

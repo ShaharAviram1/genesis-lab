@@ -11,16 +11,16 @@ const userSchema = mongoose.Schema({
         required: true
     },
     inventory: [{
-            substance: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Substance',
-                required: true
-            },
-            quantity: {
-                type: Number,
-                required: true,
-                min: 0
-            }
+        substance: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Substance',
+            required: true
+        },
+        quantity: {
+            type: Number,
+            required: true,
+            min: 0
+        }
     }],
     energy: {
         type: Number,
@@ -78,7 +78,36 @@ const userSchema = mongoose.Schema({
         product: { type: String, default: null },
         message: String,
         createdAt: { type: Date, default: Date.now }
+    }],
+    reactorCapabilities: {
+        type: [String],
+        default: []
+    },
+    activeQueue: [{
+        reaction: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Reaction',
+            required: true
+        },
+        startTime: {
+            type: Date,
+            required: true
+        },
+        expectedCompletion: {
+            type: Date,
+            required: true
+        },
+        status: {
+            type: String,
+            enum: ['pending', 'complete', 'failed'],
+            default: 'pending'
+        },
+        reactantsConsumed: {
+            type: Boolean,
+            default: false
+        }
     }]
-});
+}, { timestamps: true });
+
 const User = mongoose.model("User", userSchema);
 module.exports = User;

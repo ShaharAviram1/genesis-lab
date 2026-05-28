@@ -41,6 +41,8 @@ const LabSimulation = ({ username, onLogout }) => {
     const [energyRate, setEnergyRate] = useState(0);
     const [reactionLog, setReactionLog] = useState([]);
     const [notebookOpen, setNotebookOpen] = useState(false);
+    const [newlyRevealedTier, setNewlyRevealedTier] = useState(null);
+    const [justDiscoveredReactionKey, setJustDiscoveredReactionKey] = useState(null);
     const [creationEvent, setCreationEvent] = useState(null);
     const [reactionEvent, setReactionEvent] = useState(null);
     const wsRef = useRef(null);
@@ -116,39 +118,35 @@ const LabSimulation = ({ username, onLogout }) => {
 
     const handleTierUnlock = (newTier) => {
         const tierMessages = {
-            1: "You’ve begun your journey",
-            2: "Basic Chemistry Expanded",
-            3: "Fuel Reactions Available",
-            4: "Organic Chemistry Unlocked",
-            5: "Complex Systems Emerging"
+            1:  "First synthesis complete",
+            2:  "Ionic chemistry unlocked",
+            3:  "The ore body opens",
+            4:  "The Foundry is running",
+            5:  "Workshop expands",
+            6:  "Chemical Works active",
+            7:  "Materials Lab opens",
+            8:  "Precision metallurgy unlocked",
+            9:  "Carbon nanoscience begins",
+            10: "Gen 1–3 complete"
         };
-        const message = tierMessages[newTier] || "New Tier Unlocked";
-        showToast("milestone", `\u2726 Tier ${newTier} Unlocked: ${message}`);
+        const message = tierMessages[newTier] || "New tier unlocked";
+        showToast("milestone", `\u2726 Tier ${newTier}: ${message}`);
     };
 
     const getCurrentGoal = () => {
-        if (inventory.length === 0) {
-            return "Create your first atom";
-        }
-
-        const hasCompound = inventory.some(item => item.substance.type === "compound");
-        if (!hasCompound) {
-            return "Try combining atoms to discover a new compound";
-        }
-
-        if (unlockTier === 1) {
-            return "Combine atoms to form simple compounds";
-        }
-
-        if (unlockTier === 2) {
-            return "Expand your inventory and unlock stronger reactions";
-        }
-
-        if (unlockTier >= 3) {
-            return "Build up resources and prepare for a Big Bang reset";
-        }
-
-        return "Explore and experiment";
+        if (unlockTier === 0) return inventory.length === 0
+            ? "Synthesize your first atoms."
+            : "Test whether simple gases can form a stable compound.";
+        if (unlockTier === 1) return "Experiment with your new atoms. Hidden compounds are nearby.";
+        if (unlockTier === 2) return "A key ore compound is within reach. It will open the path to metals.";
+        if (unlockTier === 3) return "Investigate whether ore compounds can be reduced into workable metals.";
+        if (unlockTier === 4) return "Explore whether two metals can be forged into something stronger.";
+        if (unlockTier === 5) return "Deeper Workshop materials are possible. Look for unusual extraction routes.";
+        if (unlockTier === 6) return "The first structural materials are within range. Look to what the reactor already knows.";
+        if (unlockTier === 7) return "Advanced refinement is open. Seek rare metals through complex chemical processes.";
+        if (unlockTier === 8) return "Engineered carbon structures may now be achievable.";
+        if (unlockTier === 9) return "Bring your most advanced materials together for the final synthesis.";
+        return "The reactor has synthesized everything in the known universe. The Big Bang awaits.";
     };
 
     const createAtom = async (atom) => {
@@ -258,9 +256,13 @@ const LabSimulation = ({ username, onLogout }) => {
                     : `Experiment successful: ${productName} created`;
 
                 showToast(data.discovered ? 'milestone' : 'success', successMessage);
+                if (data.discovered && data.reactionKey) {
+                    setJustDiscoveredReactionKey(data.reactionKey);
+                    setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
+                }
                 setReactionEvent({
                     type: data.discovered ? "discovery" : "experiment_success",
-                    reactionID: data.reactionID,
+                    reactionKey: data.reactionKey,
                     tier: data.reaction?.unlockTier ?? 1,
                     timestamp: Date.now()
                 });
@@ -283,8 +285,8 @@ const LabSimulation = ({ username, onLogout }) => {
         }
     };
 
-    const checkReaction = async (reactionID) => {
-        if (selectedReaction?.reactionID === reactionID) {
+    const checkReaction = async (reactionKey) => {
+        if (selectedReaction?.reactionKey === reactionKey) {
             setSelectedReaction(null);
             setResult("");
             return;
@@ -292,7 +294,7 @@ const LabSimulation = ({ username, onLogout }) => {
         try {
             setChecking(true);
             setResult("");
-            const res = await fetchWithTimeout(`http://localhost:3000/api/reactions/${reactionID}?user=${user}`);
+            const res = await fetchWithTimeout(`http://localhost:3000/api/reactions/${reactionKey}?user=${user}`);
             const data = await res.json();
             setSelectedReaction(data.reaction);
             setResult(data.canPerform);
@@ -305,15 +307,23 @@ const LabSimulation = ({ username, onLogout }) => {
         }
     };
 
-    const performReaction = async (reactionID) => {
+    const performReaction = async (reactionKey) => {
         try {
             setPerforming(true);
-            const res = await fetchWithTimeout(`http://localhost:3000/api/perform/${reactionID}?user=${user}`, { method: "POST" });
+            const res = await fetchWithTimeout(`http://localhost:3000/api/perform/${reactionKey}?user=${user}`, { method: "POST" });
             const data = await res.json();
             if (data.success) {
                 await fetchUserData();
-                showToast('success', selectedReaction ? `${selectedReaction.product.substance.name} synthesized` : 'Reaction complete');
+                if (data.discovered) {
+                    await fetchReactions();
+                    setJustDiscoveredReactionKey(data.reactionKey);
+                    setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
+                    showToast('milestone', selectedReaction ? `Discovery! ${selectedReaction.product.substance.name} synthesized` : 'Discovery!');
+                } else {
+                    showToast('success', selectedReaction ? `${selectedReaction.product.substance.name} synthesized` : 'Reaction complete');
+                }
                 setReactionEvent({
+                    type: data.discovered ? 'discovery' : 'reaction_success',
                     tier: selectedReaction?.unlockTier ?? 1,
                     timestamp: Date.now()
                 });
@@ -429,6 +439,9 @@ const LabSimulation = ({ username, onLogout }) => {
     useEffect(() => {
         if (previousUnlockTier < unlockTier && previousUnlockTier !== 0) {
             handleTierUnlock(unlockTier);
+            setNewlyRevealedTier(unlockTier);
+            const t = setTimeout(() => setNewlyRevealedTier(null), 30000);
+            return () => clearTimeout(t);
         }
         previousUnlockTier !== unlockTier && setPreviousUnlockTier(unlockTier);
     }, [unlockTier]);
@@ -436,8 +449,8 @@ const LabSimulation = ({ username, onLogout }) => {
     useEffect(() => {
         async function checkSelectedReaction() {
             if (isBusy) return;
-            if (selectedReaction?.reactionID) {
-                await checkReaction(selectedReaction.reactionID);
+            if (selectedReaction?.reactionKey) {
+                await checkReaction(selectedReaction.reactionKey);
             }
         }
         checkSelectedReaction();
@@ -482,7 +495,7 @@ const LabSimulation = ({ username, onLogout }) => {
 
                     <div className="right-panel">
                         <EnergyPanel energy={energy} energyRate={energyRate} />
-                        <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} />
+                        <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} newlyRevealedTier={newlyRevealedTier} justDiscoveredReactionKey={justDiscoveredReactionKey} />
                         <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} />
                         <div className="panel-card prestige-card">
                             <div className="panel-title">Upgrades</div>
