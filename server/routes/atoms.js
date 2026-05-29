@@ -3,16 +3,26 @@ const User = require('./../models/User');
 const Substance = require('./../models/Substance');
 const atomCost = require('./../config/atomCost');
 const { calculateAtomCost } = require('./../utils/gameEconomy');
-const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser} = require('./../realtime/reactorRuntime');
+const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser, emitQueueCompletions } = require('./../realtime/reactorRuntime');
+const { resolveAndPruneUserQueue } = require('./../utils/resolveQueue');
 
 const router = express.Router();
 
-router.post('/atoms/create', async (req, res) => { 
+router.post('/atoms/create', async (req, res) => {
     try {
         if (!req.query.user) { return res.status(400).json({ error: "Missing username" }); }
         await flushPendingMongoEnergyForUser(req.query.user);
         const user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
+
+        try {
+            const { completions, userModified } = await resolveAndPruneUserQueue(user);
+            if (userModified) await user.save();
+            if (completions.length > 0) emitQueueCompletions(user.username, completions);
+        } catch (queueErr) {
+            console.error('Queue resolution error for user', user.username, ':', queueErr);
+        }
+
         if (!req.body.atom) { return res.status(400).json({ error: "Missing atom to create" }); }
         const atom = await Substance.findOne({ name: req.body.atom });
         if (!atom) { return res.status(404).json({ error: "Atom not found" }); }
@@ -48,6 +58,15 @@ router.get("/atoms/:username", async (req, res) => {
         if (!req.params.username) { return res.status(400).json({ error: "Missing username" }); }
         const user = await User.findOne({ username: req.params.username });
         if (!user) { return res.status(404).json({ error: "User not found" }); }
+
+        try {
+            const { completions, userModified } = await resolveAndPruneUserQueue(user);
+            if (userModified) await user.save();
+            if (completions.length > 0) emitQueueCompletions(user.username, completions);
+        } catch (queueErr) {
+            console.error('Queue resolution error for user', user.username, ':', queueErr);
+        }
+
         const substances = await Substance.find({
             isBaseElement: true,
             isActive: true,

@@ -11,6 +11,7 @@ import EnergyPanel from "../../components/EnergyPanel";
 import PrestigePanel from "../../components/PrestigePanel";
 import HeaderPanel from "../../components/HeaderPanel";
 import BigBangPanel from "../../components/BigBangPanel";
+import QueuePanel from "../../components/QueuePanel";
 
 import GenesisScene from "../../components/GenesisScene";
 import ExperimentPanel from "../../components/ExperimentPanel";
@@ -45,8 +46,11 @@ const LabSimulation = ({ username, onLogout }) => {
     const [justDiscoveredReactionKey, setJustDiscoveredReactionKey] = useState(null);
     const [creationEvent, setCreationEvent] = useState(null);
     const [reactionEvent, setReactionEvent] = useState(null);
+    const [queueEvent, setQueueEvent] = useState(null);
+    const [activeQueue, setActiveQueue] = useState([]);
     const wsRef = useRef(null);
     const wsEnergyActiveRef = useRef(false);
+    const expiredPingsSentRef = useRef(new Set());
     const showToast = useToast();
     const navigate = useNavigate();
 
@@ -60,6 +64,7 @@ const LabSimulation = ({ username, onLogout }) => {
         wsEnergyActiveRef.current = false;
         setActivityLevel(0);
         setEnergyRate(0);
+        setActiveQueue([]);
 
         if (wsRef.current) {
             wsRef.current.close();
@@ -67,10 +72,11 @@ const LabSimulation = ({ username, onLogout }) => {
         }
         setUser(username);
     }, [username, user]);
-    
+
 
     const bigBangActive = !!bigBangPhase;
     const isBusy = checking || performing || creatingAtom || upgrading || bigBangActive;
+    const reactorOccupied = activeQueue.some(e => e.status === 'processing');
 
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -102,6 +108,7 @@ const LabSimulation = ({ username, onLogout }) => {
             setBigBangs(data.bigBangCount);
             setSelectedReaction(null);
             setResult("");
+            setActiveQueue([]);
             await Promise.all([fetchUserData(), fetchReactions(), fetchAtoms()]);
         }
 
@@ -130,7 +137,7 @@ const LabSimulation = ({ username, onLogout }) => {
             10: "Gen 1–3 complete"
         };
         const message = tierMessages[newTier] || "New tier unlocked";
-        showToast("milestone", `\u2726 Tier ${newTier}: ${message}`);
+        showToast("milestone", `✦ Tier ${newTier}: ${message}`);
     };
 
     const getCurrentGoal = () => {
@@ -179,20 +186,7 @@ const LabSimulation = ({ username, onLogout }) => {
         }
     }
 
- /*    const generateEnergy = async () => {
-        try {
-            const res = await fetch(`http://localhost:3000/api/generate-energy?user=${user}`, { method: "POST" });
-            const data = await res.json();
-            if (data.success) {
-                setEnergy(data.energy);
-            }
-        }
-        catch (err) {
-            console.log(err);
-        }
-    }
- */
-    const handleCoreClick = async () => { 
+    const handleCoreClick = async () => {
         try {
             if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify({ type: 'core_click' }));
@@ -203,7 +197,7 @@ const LabSimulation = ({ username, onLogout }) => {
         }
     }
 
-    const upgradePrestige = async (type) => { 
+    const upgradePrestige = async (type) => {
         try {
             if (type === "energy") {
                 setUpgrading("energy");
@@ -250,22 +244,30 @@ const LabSimulation = ({ username, onLogout }) => {
             }
 
             if (data.success) {
-                const productName = data.reaction?.product?.substance?.name || "New substance";
-                const successMessage = data.discovered
-                    ? `Discovery! ${productName} created`
-                    : `Experiment successful: ${productName} created`;
+                if (data.energy !== undefined && !wsEnergyActiveRef.current) setEnergy(data.energy);
+                if (data.inventory) setInventory(data.inventory);
 
-                showToast(data.discovered ? 'milestone' : 'success', successMessage);
-                if (data.discovered && data.reactionKey) {
-                    setJustDiscoveredReactionKey(data.reactionKey);
-                    setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
+                if (data.queued) {
+                    // Timed synthesis — WS synthesis_queued event will update activeQueue
+                    const label = data.revealOnCompletion ? 'Unknown synthesis' : 'Experiment';
+                    showToast('success', `${label} queued`);
+                    return;
                 }
-                setReactionEvent({
-                    type: data.discovered ? "discovery" : "experiment_success",
-                    reactionKey: data.reactionKey,
-                    tier: data.reaction?.unlockTier ?? 1,
-                    timestamp: Date.now()
-                });
+
+                // Instant completion — WS synthesis_completed/discovered already fired if WS is connected
+                if (!wsEnergyActiveRef.current) {
+                    const successMessage = data.discovered ? 'Discovery!' : 'Experiment successful';
+                    showToast(data.discovered ? 'milestone' : 'success', successMessage);
+                    if (data.discovered && data.reactionKey) {
+                        setJustDiscoveredReactionKey(data.reactionKey);
+                        setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
+                    }
+                    setReactionEvent({
+                        type: data.discovered ? "discovery" : "experiment_success",
+                        reactionKey: data.reactionKey,
+                        timestamp: Date.now()
+                    });
+                }
                 await Promise.all([fetchUserData(), fetchReactions(), fetchAtoms()]);
                 return;
             }
@@ -310,23 +312,46 @@ const LabSimulation = ({ username, onLogout }) => {
     const performReaction = async (reactionKey) => {
         try {
             setPerforming(true);
-            const res = await fetchWithTimeout(`http://localhost:3000/api/perform/${reactionKey}?user=${user}`, { method: "POST" });
+            const res = await fetchWithTimeout(
+                `http://localhost:3000/api/reactions/queue/${reactionKey}?user=${user}`,
+                { method: "POST" }
+            );
             const data = await res.json();
-            if (data.success) {
-                await fetchUserData();
-                if (data.discovered) {
-                    await fetchReactions();
-                    setJustDiscoveredReactionKey(data.reactionKey);
-                    setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
-                    showToast('milestone', selectedReaction ? `Discovery! ${selectedReaction.product.substance.name} synthesized` : 'Discovery!');
-                } else {
-                    showToast('success', selectedReaction ? `${selectedReaction.product.substance.name} synthesized` : 'Reaction complete');
+
+            if (!res.ok) {
+                showToast('error', data.error || 'Reaction failed');
+                return;
+            }
+
+            if (data.energy !== undefined && !wsEnergyActiveRef.current) setEnergy(data.energy);
+            if (data.inventory) setInventory(data.inventory);
+
+            if (data.completed) {
+                // Zero-duration synthesis: WS synthesis_completed/discovered already fired.
+                // Only show fallback toast + trigger scene event if WS is not connected.
+                if (!wsEnergyActiveRef.current) {
+                    if (data.wasDiscovery) {
+                        await fetchReactions();
+                        setJustDiscoveredReactionKey(data.reactionKey);
+                        setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
+                        showToast('milestone', 'Discovery! Synthesis complete');
+                    } else {
+                        showToast('success', selectedReaction ? `${selectedReaction.product.substance.name} synthesized` : 'Synthesis complete');
+                    }
+                    setReactionEvent({
+                        type: data.wasDiscovery ? 'discovery' : 'reaction_success',
+                        tier: selectedReaction?.unlockTier ?? 1,
+                        timestamp: Date.now()
+                    });
                 }
-                setReactionEvent({
-                    type: data.discovered ? 'discovery' : 'reaction_success',
-                    tier: selectedReaction?.unlockTier ?? 1,
-                    timestamp: Date.now()
-                });
+                await fetchUserData();
+            } else {
+                // Timed synthesis — WS synthesis_queued event handles activeQueue update
+                const label = data.revealOnCompletion
+                    ? 'Unknown synthesis'
+                    : (selectedReaction?.name || 'Synthesis');
+                showToast('success', `${label} queued`);
+                await fetchUserData();
             }
         }
         catch (err) {
@@ -335,7 +360,7 @@ const LabSimulation = ({ username, onLogout }) => {
         finally {
             setPerforming(false);
         }
-        
+
     };
 
     const fetchExpectedShards = async () => {
@@ -388,20 +413,20 @@ const LabSimulation = ({ username, onLogout }) => {
             console.error(err);
         }
     };
-    
+
 
     useEffect(() => {
         if (!user) return;
         fetchExpectedShards();
     }, [user, inventory, unlockTier, bigBangs]);
-    
+
 
     useEffect(() => {
         if (!user) return;
         fetchUserData();
     }, [user]);
 
-    useEffect(() => { 
+    useEffect(() => {
         if (!user) return;
         if(wsRef.current) return; // Prevent multiple connections
         const ws = new WebSocket('ws://localhost:3000?user=' + user);
@@ -416,6 +441,53 @@ const LabSimulation = ({ username, onLogout }) => {
                 setActivityLevel(data.activityLevel);
                 setEnergy(data.energy);
                 setEnergyRate(data.energyPerSecond ?? 0);
+            } else if (data.type === 'queue_state') {
+                setActiveQueue(data.queue || []);
+            } else if (data.type === 'synthesis_queued') {
+                setQueueEvent({ type: 'synthesis_queued', timestamp: Date.now() });
+                setActiveQueue(prev => {
+                    if (prev.some(e => e.reactionKey === data.reactionKey && e.status === 'processing')) return prev;
+                    return [...prev, {
+                        reactionKey:        data.reactionKey,
+                        slot:               data.slot,
+                        status:             'processing',
+                        startTime:          data.startTime || new Date().toISOString(),
+                        expectedCompletion: data.expectedCompletion,
+                        revealOnCompletion: data.revealOnCompletion,
+                        reactionName:       data.reactionName || (data.revealOnCompletion ? 'Unknown Synthesis' : null)
+                    }];
+                });
+            } else if (data.type === 'synthesis_completed' || data.type === 'synthesis_discovered') {
+                const wasDiscovery = data.type === 'synthesis_discovered';
+                const completedKey = data.reactionKey;
+                setActiveQueue(prev => prev.map(e =>
+                    e.reactionKey === completedKey ? { ...e, status: 'completed' } : e
+                ));
+                setTimeout(() => {
+                    setActiveQueue(prev => prev.filter(e => !(e.reactionKey === completedKey && e.status === 'completed')));
+                }, 2500);
+                showToast(wasDiscovery ? 'milestone' : 'success', `${data.productName} synthesized`);
+                if (wasDiscovery) {
+                    setJustDiscoveredReactionKey(completedKey);
+                    setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
+                    fetchReactions();
+                }
+                setReactionEvent({
+                    type: wasDiscovery ? 'discovery' : 'reaction_success',
+                    reactionKey: completedKey,
+                    timestamp: Date.now()
+                });
+                fetchUserData();
+            } else if (data.type === 'synthesis_failed') {
+                const failedKey = data.reactionKey;
+                setActiveQueue(prev => prev.map(e =>
+                    e.reactionKey === failedKey ? { ...e, status: 'failed' } : e
+                ));
+                setTimeout(() => {
+                    setActiveQueue(prev => prev.filter(e => !(e.reactionKey === failedKey && e.status === 'failed')));
+                }, 2500);
+                setReactionEvent({ type: 'experiment_failed', timestamp: Date.now() });
+                showToast('error', 'Synthesis failed');
             }
         };
         return () => {
@@ -456,6 +528,34 @@ const LabSimulation = ({ username, onLogout }) => {
         checkSelectedReaction();
     }, [inventory, unlockTier, prestigeUpgrades]);
 
+    // Auto-resolve: when a processing entry's deadline passes, ping the server once so
+    // resolveAndPruneUserQueue runs and emits the WS completion event. Product delivery
+    // comes exclusively from the WS synthesis_completed/synthesis_discovered handler.
+    useEffect(() => {
+        if (!user) return;
+        const processingEntries = activeQueue.filter(e => e.status === 'processing');
+        if (processingEntries.length === 0) {
+            expiredPingsSentRef.current.clear();
+            return;
+        }
+        const id = setInterval(async () => {
+            const now = Date.now();
+            for (const entry of processingEntries) {
+                if (expiredPingsSentRef.current.has(entry.reactionKey)) continue;
+                if (new Date(entry.expectedCompletion).getTime() <= now) {
+                    expiredPingsSentRef.current.add(entry.reactionKey);
+                    try {
+                        await fetchUserData();
+                    } catch {
+                        // Allow retry on next tick
+                        expiredPingsSentRef.current.delete(entry.reactionKey);
+                    }
+                }
+            }
+        }, 500);
+        return () => clearInterval(id);
+    }, [user, activeQueue]);
+
     return (
         <>
             <div className="bigbang-overlay" data-phase={bigBangPhase || ''} />
@@ -483,20 +583,21 @@ const LabSimulation = ({ username, onLogout }) => {
                         <div className="panel-card matter-lab-card">
                             <InventoryPanel inventory={inventory} />
                             <div className="matter-divider" />
-                            <ExperimentPanel inventory={inventory} experiment={experiment} />
+                            <ExperimentPanel inventory={inventory} experiment={experiment} reactorOccupied={reactorOccupied} />
                         </div>
                     </div>
 
                     <div className="center-scene">
                         <div className="scene-canvas">
-                            <GenesisScene onCoreClick={handleCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} reactionEvent={reactionEvent} bigBangPhase={bigBangPhase} />
+                            <GenesisScene onCoreClick={handleCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} reactionEvent={reactionEvent} bigBangPhase={bigBangPhase} queueEvent={queueEvent} isProcessing={reactorOccupied} />
                         </div>
                     </div>
 
                     <div className="right-panel">
                         <EnergyPanel energy={energy} energyRate={energyRate} />
+                        <QueuePanel activeQueue={activeQueue} />
                         <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} newlyRevealedTier={newlyRevealedTier} justDiscoveredReactionKey={justDiscoveredReactionKey} />
-                        <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} />
+                        <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} reactorOccupied={reactorOccupied} />
                         <div className="panel-card prestige-card">
                             <div className="panel-title">Upgrades</div>
                             <PrestigePanel prestigeUpgrades={prestigeUpgrades} upgradePrestige={upgradePrestige} genesisShards={genesisShards} upgrading={upgrading} isBusy={isBusy} />

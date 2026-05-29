@@ -84,11 +84,23 @@ const userSchema = mongoose.Schema({
         default: []
     },
     activeQueue: [{
+        // Live reference — used for resolution; not required because it may go stale
         reaction: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Reaction',
+            ref: 'Reaction'
+        },
+        // Snapshot identity — authoritative stable key
+        reactionKey: {
+            type: String,
             required: true
         },
+        // 0-indexed slot; reserved for future multi-slot architecture
+        slot: {
+            type: Number,
+            default: 0
+        },
+
+        // Timing
         startTime: {
             type: Date,
             required: true
@@ -97,15 +109,68 @@ const userSchema = mongoose.Schema({
             type: Date,
             required: true
         },
+        completedAt: {
+            type: Date,
+            default: null
+        },
+        // completedAt + 24h; entries with status !== 'processing' are pruned when this passes
+        pruneAfter: {
+            type: Date,
+            default: null
+        },
+
+        // Status
         status: {
             type: String,
-            enum: ['pending', 'complete', 'failed'],
-            default: 'pending'
+            enum: ['processing', 'completed', 'failed'],
+            default: 'processing'
         },
+        // True immediately after deduction commits; guards against double-deduct on retry/recovery
         reactantsConsumed: {
             type: Boolean,
             default: false
+        },
+
+        // Discovery
+        // True if product was undiscovered at queue start; strips product from client payload until completion
+        revealOnCompletion: {
+            type: Boolean,
+            default: false
+        },
+        // False until completeReaction runs; set to wasDiscovery result at completion
+        wasDiscovery: {
+            type: Boolean,
+            default: false
+        },
+
+        // Resilience snapshot — written at queue start, never mutated
+        // Authoritative source for reward delivery; immune to content edits during long syntheses
+        snapshot: {
+            reactionName:           { type: String },
+            energyCost:             { type: Number },
+            productKey:             { type: String },
+            productName:            { type: String },
+            productQuantity:        { type: Number },
+            productUnlocksUserTier: { type: Number, default: null },
+            reactants: [{
+                substanceKey: { type: String },
+                name:         { type: String },
+                quantity:     { type: Number }
+            }]
         }
+    }],
+
+    // Stores completion events for users who were offline at resolution time.
+    // Drained and emitted exactly once on next WebSocket connect.
+    // deliveredAt is set to the delivery timestamp; null means undelivered.
+    //
+    // TODO: future cleanup — prune entries where deliveredAt is set and older than 48h.
+    // TODO: future cleanup — sweep undelivered entries older than 48h (permanent delivery failure guard).
+    pendingNotifications: [{
+        type:        { type: String, required: true, enum: ['synthesis_completed', 'synthesis_discovered', 'synthesis_failed', 'unlock_tier'] },
+        payload:     { type: mongoose.Schema.Types.Mixed, required: true },
+        createdAt:   { type: Date, default: Date.now },
+        deliveredAt: { type: Date, default: null }
     }]
 }, { timestamps: true });
 

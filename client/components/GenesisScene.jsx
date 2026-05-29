@@ -133,7 +133,7 @@ const MOTE_CONFIGS = [
     },
 ];
 
-function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent, bigBangPhase }) {
+function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent, bigBangPhase, queueEvent, isProcessing }) {
     const { scene: coreScene }      = useGLTF('/reactor-core.glb');
     const { scene: moonstoneScene } = useGLTF('/moonstone_opt.glb');
 
@@ -212,6 +212,9 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
     const failFizzleRef = useRef(0);
     const failLightRef = useRef();
     const failRejectRef = useRef(0);
+    const suppressChannelPulseRef = useRef(false);
+    const processingGlowRef = useRef(0);
+    const lastQueueEventRef = useRef(null);
     const discoveryModeRef = useRef(false);
     const discoveryAfterglowRef = useRef(0);
     const shockwaveRef = useRef();
@@ -297,6 +300,26 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
     }, [creationEvent]);
 
     useEffect(() => {
+        if (!queueEvent) return;
+        if (lastQueueEventRef.current?.timestamp === queueEvent.timestamp) return;
+        lastQueueEventRef.current = queueEvent;
+        // Intake-only channeling: motes spiral in, dust particles converge — no completion pulse
+        suppressChannelPulseRef.current = true;
+        creationChannelRef.current = 2.0;
+        creationPulseRef.current = 0;
+        creationPulseFiredRef.current = false;
+        particleActiveRef.current = true;
+        particleDataRef.current.forEach(p => {
+            const theta = Math.random() * Math.PI * 2;
+            const phi   = Math.acos(2 * Math.random() - 1);
+            p.dx = Math.sin(phi) * Math.cos(theta);
+            p.dy = Math.sin(phi) * Math.sin(theta);
+            p.dz = Math.cos(phi);
+            p.currentR = 2.2 + Math.random() * 1.8;
+        });
+    }, [queueEvent]);
+
+    useEffect(() => {
         if (!reactionEvent) return;
         if (lastReactionEventRef.current && reactionEvent.timestamp === lastReactionEventRef.current.timestamp) return;
         lastReactionEventRef.current = reactionEvent;
@@ -350,6 +373,11 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         const time = state.clock.elapsedTime;
         const basePulse = Math.sin(time * 1.8) * 0.03;
         const activityPulse = visualActivity * 0.05;
+        // Processing glow: sustained visual occupancy signal while a synthesis is in progress
+        processingGlowRef.current += ((isProcessing ? 1 : 0) - processingGlowRef.current) * Math.min(delta * 2.0, 1);
+        if (processingGlowRef.current < 0.005) processingGlowRef.current = 0;
+        const processingGlow = processingGlowRef.current;
+        const processingBreath = processingGlow > 0 ? (Math.sin(time * 1.4) * 0.5 + 0.5) * processingGlow : 0;
         // Ring breathing — each ring has its own slow oscillation
 
         // Reaction phase state machine
@@ -480,7 +508,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         const finalScale = 1 + basePulse + activityPulse - channelCompression + pulseExpansion + scaleKick + reactionExpansion - drawCompress - failCompression + failRejectKick;
 
         if (pointLightRef.current) {
-            pointLightRef.current.intensity = 0.2 + visualActivity * 3.2 + creationChannel * 3.6 + impulse * 0.5 + creationPulse * 5.8 - drawIntensity * (discoveryMode ? 2.0 : 1.2) + failFlicker + discoveryAfterglow * 1.5;
+            pointLightRef.current.intensity = 0.2 + visualActivity * 3.2 + creationChannel * 3.6 + impulse * 0.5 + creationPulse * 5.8 - drawIntensity * (discoveryMode ? 2.0 : 1.2) + failFlicker + discoveryAfterglow * 1.5 + processingBreath * 0.8;
         }
         if (failLightRef.current) {
             failLightRef.current.intensity = failDraw * 3.5 + failFizzle * (2.0 + Math.sin(time * 37.1) * failFizzle * 1.2) + failReject * 5.0;
@@ -524,7 +552,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         if (materialRef.current) {
             const failGlow = failDraw * 2.2 + failFizzle * (1.2 + Math.sin(time * 23.1) * 0.7 * failFizzle);
             const drawGlow = drawIntensity * (discoveryMode ? 6.5 : 4.0);
-            materialRef.current.emissiveIntensity = 0.0 + visualActivity * 1.8 + impulse * 0.15 + creationChannel * 8.4 + creationPulse * 7.2 + glowKick * 0.1 + drawGlow + reactionBurst * 14.0 + failGlow + discoveryAfterglow * 3.0;
+            materialRef.current.emissiveIntensity = 0.0 + visualActivity * 1.8 + impulse * 0.15 + creationChannel * 8.4 + creationPulse * 7.2 + glowKick * 0.1 + drawGlow + reactionBurst * 14.0 + failGlow + discoveryAfterglow * 3.0 + processingBreath * 0.5;
         }
 
         const ringBoost = ringBoostRef.current;
@@ -536,7 +564,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             ringRef.current.rotateOnWorldAxis(RING_WORLD_TILT, t1 - wd.t1);
             ringRef.current.rotateOnWorldAxis(RING_WORLD_ROLL, r1 - wd.r1);
             wd.t1 = t1; wd.r1 = r1;
-            ringRef.current.rotateOnAxis(RING_ORBITAL, 0.0025 + speedActivity * 0.06 + ringBoost * 0.05 + Math.sin(time * 29.3) * failFizzle * 0.005);
+            ringRef.current.rotateOnAxis(RING_ORBITAL, 0.0025 + speedActivity * 0.06 + ringBoost * 0.05 + processingGlow * 0.006 + Math.sin(time * 29.3) * failFizzle * 0.005);
         }
         if (ring2Ref.current) {
             const t2 = Math.sin(time * 0.35 + Math.PI * 0.5) * 1.1;  // ~18s cycle, ±63°
@@ -544,7 +572,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             ring2Ref.current.rotateOnWorldAxis(RING_WORLD_TILT, t2 - wd.t2);
             ring2Ref.current.rotateOnWorldAxis(RING_WORLD_ROLL, r2 - wd.r2);
             wd.t2 = t2; wd.r2 = r2;
-            ring2Ref.current.rotateOnAxis(RING_ORBITAL, -(0.003 + speedActivity * 0.07 + ringBoost * 0.06 + Math.sin(time * 37.1 + 1.2) * failFizzle * 0.005));
+            ring2Ref.current.rotateOnAxis(RING_ORBITAL, -(0.003 + speedActivity * 0.07 + ringBoost * 0.06 + processingGlow * 0.007 + Math.sin(time * 37.1 + 1.2) * failFizzle * 0.005));
         }
         if (ring3Ref.current) {
             const t3 = Math.sin(time * 0.55 + Math.PI * 1.5) * 1.0;  // ~11s cycle, ±57°, opposite ring 2
@@ -552,7 +580,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             ring3Ref.current.rotateOnWorldAxis(RING_WORLD_TILT, t3 - wd.t3);
             ring3Ref.current.rotateOnWorldAxis(RING_WORLD_ROLL, r3 - wd.r3);
             wd.t3 = t3; wd.r3 = r3;
-            ring3Ref.current.rotateOnAxis(RING_ORBITAL, 0.0035 + speedActivity * 0.08 + ringBoost * 0.07 + Math.sin(time * 23.7 + 2.4) * failFizzle * 0.006);
+            ring3Ref.current.rotateOnAxis(RING_ORBITAL, 0.0035 + speedActivity * 0.08 + ringBoost * 0.07 + processingGlow * 0.008 + Math.sin(time * 23.7 + 2.4) * failFizzle * 0.006);
         }
         if (assemblyRef.current) {
             const rawBurst = reactionBurstRef.current * reactionStrengthRef.current;
@@ -781,7 +809,8 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
             if (!anyAlive) emberMatRef.current.opacity = 0;
         }
 
-        if (!creationPulseFiredRef.current && creationChannelRef.current > 0 && creationChannelRef.current < 0.26) {
+        if (!creationPulseFiredRef.current && !suppressChannelPulseRef.current &&
+                creationChannelRef.current > 0 && creationChannelRef.current < 0.26) {
             creationPulseRef.current = 1;
             creationPulseFiredRef.current = true;
         }
@@ -947,7 +976,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
         discoveryAfterglowRef.current *= 0.988;
 
         if (creationPulseRef.current < 0.01) creationPulseRef.current = 0;
-        if (creationChannelRef.current < 0.01) creationChannelRef.current = 0;
+        if (creationChannelRef.current < 0.01) { creationChannelRef.current = 0; suppressChannelPulseRef.current = false; }
         if (creationChannelVisualRef.current < 0.01) creationChannelVisualRef.current = 0;
         if (creationPulseVisualRef.current < 0.01) creationPulseVisualRef.current = 0;
         if (reactionBurstRef.current < 0.01) reactionBurstRef.current = 0;
@@ -1200,7 +1229,7 @@ function SceneContent({ onCoreClick, activityLevel, creationEvent, reactionEvent
     );
 }
 
-function GenesisScene({ onCoreClick, activityLevel, creationEvent, reactionEvent, bigBangPhase }) {
+function GenesisScene({ onCoreClick, activityLevel, creationEvent, reactionEvent, bigBangPhase, queueEvent, isProcessing }) {
     return (
         <CanvasErrorBoundary>
             <Canvas
@@ -1211,7 +1240,7 @@ function GenesisScene({ onCoreClick, activityLevel, creationEvent, reactionEvent
                 }}
             >
                 <Suspense fallback={null}>
-                    <SceneContent onCoreClick={onCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} reactionEvent={reactionEvent} bigBangPhase={bigBangPhase} />
+                    <SceneContent onCoreClick={onCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} reactionEvent={reactionEvent} bigBangPhase={bigBangPhase} queueEvent={queueEvent} isProcessing={isProcessing} />
                 </Suspense>
                 <EffectComposer>
                     <Bloom

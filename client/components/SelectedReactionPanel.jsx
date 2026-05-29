@@ -1,6 +1,6 @@
 import './SelectedReactionPanel.css';
 
-function SelectedReactionPanel({ selectedReaction, inventory, performReaction, isBusy, result, onClose }) {
+function SelectedReactionPanel({ selectedReaction, inventory, performReaction, isBusy, result, onClose, reactorOccupied }) {
     if (!selectedReaction) return null;
 
     if (selectedReaction.unknown) {
@@ -19,6 +19,14 @@ function SelectedReactionPanel({ selectedReaction, inventory, performReaction, i
             </div>
         );
     }
+
+    const isTimed = selectedReaction.reactionTime > 0;
+    const statusText = reactorOccupied
+        ? '⚙ Reactor Occupied'
+        : result ? '✓ Ready to React' : '✗ Missing Materials';
+    const statusClass = reactorOccupied
+        ? 'reactor-busy'
+        : result ? 'can-perform' : 'cannot-perform';
 
     return (
         <div className="panel-card selected-reaction-panel">
@@ -40,12 +48,16 @@ function SelectedReactionPanel({ selectedReaction, inventory, performReaction, i
                     );
                 })}
             </div>
-            <div className={`perform-status ${result ? 'can-perform' : 'cannot-perform'}`}>
-                {result ? '✓ Ready to React' : '✗ Missing Materials'}
+            <div className={`perform-status ${statusClass}`}>
+                {statusText}
             </div>
             {result && (
-                <button className="perform-btn" disabled={isBusy} onClick={() => performReaction(selectedReaction.reactionKey)}>
-                    ⚗ Perform Reaction
+                <button
+                    className="perform-btn"
+                    disabled={isBusy || reactorOccupied}
+                    onClick={() => performReaction(selectedReaction.reactionKey)}
+                >
+                    {isTimed ? '⏱ Queue Synthesis' : '⚗ Perform Reaction'}
                 </button>
             )}
         </div>

@@ -4,7 +4,9 @@ const User = require('../models/User');
 const checkReactionEligibility = require('../utils/checkReactionEligibility');
 const Substance = require('../models/Substance');
 const { calculateReactionCost } = require('./../utils/gameEconomy');
-const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser } = require('./../realtime/reactorRuntime');
+const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser, emitToUser, emitQueueCompletions, isUserConnected } = require('./../realtime/reactorRuntime');
+const completeReaction = require('../utils/completeReaction');
+const { resolveQueue, resolveAndPruneUserQueue, addPendingNotifications } = require('../utils/resolveQueue');
 
 const router = express.Router();
 
@@ -138,35 +140,169 @@ function addReactionLogEntry(user, entry) {
     if (user.reactionLog.length > 20) user.reactionLog.length = 20;
 }
 
-function performReaction(user, reaction, energyCost) {
-    reaction.reactants.forEach(({substance, quantity}) => {
-        const inventoryItem = user.inventory.find((inv) => getSubstanceId(inv.substance) === getSubstanceId(substance));
-        if (inventoryItem) {
-            inventoryItem.quantity -= quantity;
+// Builds a thin adapter entry from a populated live reaction object so that the
+// current perform/experiment routes can call completeReaction without a real queue entry.
+// _substance is provided directly to avoid a redundant Substance DB lookup.
+function buildAdapterEntry(reaction, source) {
+    const product = reaction.product.substance;
+    return {
+        source,
+        _substance: product,
+        snapshot: {
+            reactionName:           reaction.name,
+            energyCost:             reaction.energyCost,
+            productKey:             product.substanceKey,
+            productName:            product.name,
+            productQuantity:        reaction.product.quantity,
+            productUnlocksUserTier: product.unlocksUserTier || null,
+            reactants: reaction.reactants.map(r => ({
+                substanceKey: r.substance.substanceKey,
+                name:         r.substance.name,
+                quantity:     r.quantity
+            }))
         }
+    };
+}
+
+// Deducts reactants and energy, then delegates completion to the shared helper.
+// Returns { wasDiscovery, prevUnlockTier, newUnlockTier }.
+// Legacy path — still used by POST /perform/:reactionKey until that route is migrated.
+async function performReaction(user, reaction, energyCost, source = 'perform') {
+    reaction.reactants.forEach(({ substance, quantity }) => {
+        const inventoryItem = user.inventory.find(inv => getSubstanceId(inv.substance) === getSubstanceId(substance));
+        if (inventoryItem) inventoryItem.quantity -= quantity;
     });
     user.energy -= energyCost;
-    const { substance, quantity } = reaction.product;
-    const existing = user.inventory.find((inv) => getSubstanceId(inv.substance) === getSubstanceId(substance));
-    if (existing) {
-        existing.quantity += quantity;
-    } else {
-        user.inventory.push({ substance: substance._id, quantity });
-    }
-
-    const hasExisted = user.runTotals.find((inv) => getSubstanceId(inv.substance) === getSubstanceId(substance));
-    const discovered = !hasExisted;
-
-    if (hasExisted) {
-        hasExisted.produced += quantity;
-    } else {
-        user.runTotals.push({ substance: substance._id, produced: quantity });
-        if (substance.unlocksUserTier && substance.unlocksUserTier > user.unlockTier) {
-            user.unlockTier = substance.unlocksUserTier;
-        }
-    }
     user.inventory = user.inventory.filter(item => item.quantity > 0);
-    return discovered;
+
+    return completeReaction(user, buildAdapterEntry(reaction, source));
+}
+
+// Strips product identity fields from a queue entry when the synthesis is undiscovered,
+// so the client never receives the product name/key before the reveal moment.
+function sanitizeQueueEntry(entry) {
+    if (!entry.revealOnCompletion) return entry;
+    const safe = { ...entry };
+    if (safe.snapshot) {
+        const { productKey, productName, productQuantity, productUnlocksUserTier, ...safeSnapshot } = safe.snapshot;
+        safe.snapshot = safeSnapshot;
+    }
+    return safe;
+}
+
+// ── Shared queue-start core ───────────────────────────────────────────────────
+// Called by both POST /reactions/queue/:reactionKey and POST /reactions/experiment.
+// Assumes: user is populated, resolveAndPruneUserQueue has already run on user,
+//          reaction is a populated Mongoose document.
+//
+// options.energyCost — caller-computed; perform path uses calculateReactionCost,
+//                      experiment path uses BASE_EXPERIMENTAL_REACTION_COST.
+// options.source     — 'perform' | 'experiment' (for snapshot/log labelling).
+//
+// Returns on error:  { ok: false, status, error }
+// Returns on queued: { ok: true, queued: true, completed: false, reactionKey,
+//                      expectedCompletion, revealOnCompletion, entry }
+// Returns on instant:{ ok: true, queued: false, completed: true, reactionKey,
+//                      wasDiscovery, prevUnlockTier, newUnlockTier }
+//
+// Callers are responsible for populating user.inventory after calling this if
+// they need serializable inventory data in the HTTP response.
+async function startQueueSynthesis(user, reaction, { energyCost, source }) {
+    const MAX_SLOTS = 1;
+    const processingCount = user.activeQueue.filter(e => e.status === 'processing').length;
+    if (processingCount >= MAX_SLOTS) {
+        return { ok: false, status: 400, error: 'Reactor is occupied' };
+    }
+
+    // Discovery state must be read from the populated mongoose doc before toObject()
+    const revealOnCompletion = !isReactionDiscovered(user, reaction);
+    const reactionObj = reaction.toObject ? reaction.toObject() : reaction;
+
+    if (user.energy < energyCost) {
+        return { ok: false, status: 400, error: 'Not enough energy' };
+    }
+    if (!hasRequiredReactants(user, reactionObj.reactants)) {
+        return { ok: false, status: 400, error: 'Missing required reactants' };
+    }
+
+    // Deduct in memory — committed atomically in user.save() below
+    user.energy -= energyCost;
+    reactionObj.reactants.forEach(({ substance, quantity }) => {
+        const inv = user.inventory.find(i => getSubstanceId(i.substance) === getSubstanceId(substance));
+        if (inv) inv.quantity -= quantity;
+    });
+    user.inventory = user.inventory.filter(item => item.quantity > 0);
+
+    // Build queue entry — snapshot is the authoritative source for reward delivery
+    const now = new Date();
+    const product = reactionObj.product.substance;
+    const queueEntry = {
+        reactionKey:        reactionObj.reactionKey,
+        slot:               0,
+        startTime:          now,
+        expectedCompletion: new Date(now.getTime() + reactionObj.reactionTime * 1000),
+        status:             'processing',
+        reactantsConsumed:  true,
+        revealOnCompletion,
+        wasDiscovery:       false,
+        snapshot: {
+            reactionName:           reactionObj.name,
+            energyCost,
+            productKey:             product.substanceKey,
+            productName:            product.name,
+            productQuantity:        reactionObj.product.quantity,
+            productUnlocksUserTier: product.unlocksUserTier || null,
+            reactants: reactionObj.reactants.map(r => ({
+                substanceKey: r.substance.substanceKey,
+                name:         r.substance.name,
+                quantity:     r.quantity
+            }))
+        }
+    };
+
+    user.activeQueue.push(queueEntry);
+    await user.save();
+    updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
+
+    emitToUser(user.username, 'synthesis_queued', {
+        reactionKey:        reactionObj.reactionKey,
+        slot:               0,
+        startTime:          queueEntry.startTime,
+        expectedCompletion: queueEntry.expectedCompletion,
+        revealOnCompletion,
+        ...(revealOnCompletion ? {} : { reactionName: reactionObj.name })
+    });
+
+    // Zero-duration synthesis: complete within the same request via the full queue lifecycle
+    if (reactionObj.reactionTime === 0) {
+        const completions = await resolveQueue(user);
+        const connected = isUserConnected(user.username);
+        if (completions.length > 0 && !connected) addPendingNotifications(user, completions);
+        await user.save();
+        updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
+        if (completions.length > 0 && connected) emitQueueCompletions(user.username, completions);
+        const completion = completions[0] || {};
+        return {
+            ok:             true,
+            queued:         false,
+            completed:      true,
+            reactionKey:    reactionObj.reactionKey,
+            wasDiscovery:   completion.wasDiscovery   || false,
+            prevUnlockTier: completion.prevUnlockTier,
+            newUnlockTier:  completion.newUnlockTier
+        };
+    }
+
+    // Timed synthesis: entry persists; client shows countdown
+    return {
+        ok:                 true,
+        queued:             true,
+        completed:          false,
+        reactionKey:        reactionObj.reactionKey,
+        expectedCompletion: queueEntry.expectedCompletion,
+        revealOnCompletion,
+        entry:              sanitizeQueueEntry({ ...queueEntry })
+    };
 }
 
 
@@ -189,6 +325,16 @@ router.get("/reactions/available", async (req, res) => {
         if (!req.query.user) { return res.status(400).json({ error: "Missing username" }); }
         const user = await User.findOne({ username: req.query.user });
         if (!user) { return res.status(404).json({ error: "user not found" }); }
+
+        try {
+            const { completions, userModified } = await resolveAndPruneUserQueue(user);
+            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
+            if (userModified) await user.save();
+            if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+        } catch (queueErr) {
+            console.error('Queue resolution error for user', user.username, ':', queueErr);
+        }
+
         const reactions = await Reaction.find({ unlockTier: { $lte: user.unlockTier } })
             .populate('reactants.substance')
             .populate('product.substance');
@@ -230,6 +376,16 @@ router.get("/reactions/:reactionKey", async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
+
+        try {
+            const { completions, userModified } = await resolveAndPruneUserQueue(user);
+            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
+            if (userModified) await user.save();
+            if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+        } catch (queueErr) {
+            console.error('Queue resolution error for user', user.username, ':', queueErr);
+        }
+
         if (!isReactionDiscovered(user, reaction)) {
             return res.status(200).json({ reaction: buildMaskedReaction(reaction), canPerform: false });
         }
@@ -244,6 +400,7 @@ router.get("/reactions/:reactionKey", async (req, res) => {
     }
 });
 
+// Legacy direct-perform route — still active until frontend migrates to queue route.
 router.post("/perform/:reactionKey", async (req, res) => {
     try {
         let reaction = await Reaction.findOne({ reactionKey: req.params.reactionKey })
@@ -258,19 +415,21 @@ router.post("/perform/:reactionKey", async (req, res) => {
             .populate('inventory.substance')
             .populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
+
+        try {
+            const { completions, userModified } = await resolveAndPruneUserQueue(user);
+            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
+            if (userModified) await user.save();
+            if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+        } catch (queueErr) {
+            console.error('Queue resolution error for user', user.username, ':', queueErr);
+        }
+
         reaction = reaction.toObject();
         reaction.energyCost = calculateReactionCost(user, reaction.energyCost);
         const canPerform = checkReactionEligibility(user, reaction);
         if (canPerform) {
-            const discovered = performReaction(user, reaction, reaction.energyCost);
-            const productName = reaction.product.substance.name;
-            addReactionLogEntry(user, {
-                type: 'perform',
-                outcome: discovered ? 'discovery' : 'success',
-                substances: reaction.reactants.map(r => r.substance.name),
-                product: productName,
-                message: discovered ? `Discovered ${productName}` : `Created ${productName}`
-            });
+            const { wasDiscovery: discovered } = await performReaction(user, reaction, reaction.energyCost, 'perform');
             await user.save();
             updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
             await user.populate(['inventory.substance', 'runTotals.substance']);
@@ -296,6 +455,15 @@ router.post("/reactions/experiment", async (req, res) => {
             .populate('inventory.substance')
             .populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
+
+        try {
+            const { completions, userModified } = await resolveAndPruneUserQueue(user);
+            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
+            if (userModified) await user.save();
+            if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+        } catch (queueErr) {
+            console.error('Queue resolution error for user', user.username, ':', queueErr);
+        }
 
         const { substances } = req.body;
         if (!substances || !Array.isArray(substances) || substances.length < 1) {
@@ -381,26 +549,46 @@ router.post("/reactions/experiment", async (req, res) => {
         const discoveredMatches   = matchingReactions.filter(r =>  isReactionDiscovered(user, r)).sort(sortByPriority);
 
         for (const candidate of [...undiscoveredMatches, ...discoveredMatches]) {
-            if (!hasRequiredReactants(user, candidate.reactants)) continue;
-            const wasDiscovered = performReaction(user, candidate, BASE_EXPERIMENTAL_REACTION_COST);
-            const expProductName = candidate.product.substance.name;
-            addReactionLogEntry(user, {
-                type: 'experiment',
-                outcome: wasDiscovered ? 'discovery' : 'success',
-                substances: candidate.reactants.map(r => r.substance.name),
-                product: expProductName,
-                message: wasDiscovered ? `Discovered ${expProductName}` : `Experiment created ${expProductName}`
+            const result = await startQueueSynthesis(user, candidate, {
+                energyCost: BASE_EXPERIMENTAL_REACTION_COST,
+                source: 'experiment'
             });
-            await user.save();
-            updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
+
+            if (!result.ok) {
+                // Insufficient quantity for this candidate — try the next one
+                if (result.error === 'Missing required reactants') continue;
+                // Any other error (reactor occupied, energy) is a hard stop
+                return res.status(result.status).json({ error: result.error });
+            }
+
             await user.populate(['inventory.substance', 'runTotals.substance']);
+
+            if (result.completed) {
+                return res.status(200).json({
+                    success:        true,
+                    queued:         false,
+                    completed:      true,
+                    discovered:     result.wasDiscovery,
+                    reactionKey:    result.reactionKey,
+                    prevUnlockTier: result.prevUnlockTier,
+                    newUnlockTier:  result.newUnlockTier,
+                    inventory:      user.inventory,
+                    energy:         user.energy
+                });
+            }
+
+            // Timed synthesis queued — product identity stripped if undiscovered
             return res.status(200).json({
-                success: true,
-                discovered: wasDiscovered,
-                inventory: user.inventory,
-                energy: user.energy,
-                reactionKey: candidate.reactionKey,
-                reaction: candidate
+                success:            true,
+                queued:             true,
+                completed:          false,
+                discovered:         false,
+                reactionKey:        result.reactionKey,
+                expectedCompletion: result.expectedCompletion,
+                revealOnCompletion: result.revealOnCompletion,
+                entry:              result.entry,
+                inventory:          user.inventory,
+                energy:             user.energy
             });
         }
 
@@ -412,6 +600,85 @@ router.post("/reactions/experiment", async (req, res) => {
     catch (err) {
         console.log(err);
         return res.status(500).json({ error: "Failed to experiment" });
+    }
+});
+
+
+// ── Canonical queue start route ───────────────────────────────────────────────
+// Single entry point for direct (known) reaction synthesis.
+// Experiment route calls startQueueSynthesis directly after matching.
+router.post("/reactions/queue/:reactionKey", async (req, res) => {
+    try {
+        if (!req.query.user) {
+            return res.status(400).json({ error: "Missing username" });
+        }
+
+        await flushPendingMongoEnergyForUser(req.query.user);
+
+        const user = await User.findOne({ username: req.query.user })
+            .populate('inventory.substance')
+            .populate('runTotals.substance');
+        if (!user) { return res.status(404).json({ error: "User not found" }); }
+
+        // Resolve due entries before slot check — a just-finished reaction frees the slot
+        try {
+            const { completions, userModified } = await resolveAndPruneUserQueue(user);
+            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
+            if (userModified) await user.save();
+            if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+        } catch (queueErr) {
+            console.error('Queue resolution error for user', user.username, ':', queueErr);
+        }
+
+        const reaction = await Reaction.findOne({ reactionKey: req.params.reactionKey })
+            .populate('reactants.substance')
+            .populate('product.substance');
+        if (!reaction) { return res.status(404).json({ error: "Reaction not found" }); }
+
+        if (reaction.unlockTier > user.unlockTier) {
+            return res.status(403).json({ error: "Reaction not yet unlocked" });
+        }
+        if (!reaction.isActive) {
+            return res.status(400).json({ error: "Reaction is not active" });
+        }
+
+        const energyCost = calculateReactionCost(user, reaction.energyCost);
+        const result = await startQueueSynthesis(user, reaction, { energyCost, source: 'perform' });
+
+        if (!result.ok) {
+            return res.status(result.status).json({ error: result.error });
+        }
+
+        await user.populate(['inventory.substance', 'runTotals.substance']);
+
+        if (result.completed) {
+            return res.status(200).json({
+                success:        true,
+                queued:         false,
+                completed:      true,
+                reactionKey:    result.reactionKey,
+                wasDiscovery:   result.wasDiscovery,
+                prevUnlockTier: result.prevUnlockTier,
+                newUnlockTier:  result.newUnlockTier,
+                inventory:      user.inventory,
+                energy:         user.energy
+            });
+        }
+
+        return res.status(200).json({
+            success:            true,
+            queued:             true,
+            completed:          false,
+            reactionKey:        result.reactionKey,
+            expectedCompletion: result.expectedCompletion,
+            revealOnCompletion: result.revealOnCompletion,
+            entry:              result.entry,
+            energy:             user.energy
+        });
+    }
+    catch (err) {
+        console.log(err);
+        return res.status(500).json({ error: "Failed to queue reaction" });
     }
 });
 

@@ -1,0 +1,52 @@
+.queue-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-idle {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 6px 0;
+}
+
+.queue-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.queue-entry-name {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-progress-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.queue-progress-fill {
+  height: 100%;
+  background: var(--orange);
+  border-radius: 2px;
+  transition: width 0.5s linear;
+  box-shadow: 0 0 6px var(--orange-glow);
+}
+
+.queue-entry-countdown {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--orange);
+  text-align: right;
+}

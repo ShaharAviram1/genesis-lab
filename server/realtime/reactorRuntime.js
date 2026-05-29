@@ -1,6 +1,7 @@
 const { WebSocketServer, WebSocket } = require('ws');
 const User = require('./../models/User');
 const { getEnergyMultiplier } = require('./../utils/gameEconomy');
+const { resolveAndPruneUserQueue } = require('./../utils/resolveQueue');
 
 const reactorSessions = new Map(); // Map of userId to live reactor session state
 
@@ -14,6 +15,75 @@ const ACTIVITY_EPSILON = 0.01; // Minimum activity level to consider as active
 const ENERGY_MULTIPLIER = 0.1; // Multiplier to convert activity level to energy gain
 const CLICK_ACTIVITY_GAIN = 5; // Activity gain per core click
 const MAX_ACTIVITY_LEVEL = 100; // Maximum cap for activity level
+
+
+// ── Queue event helpers ───────────────────────────────────────────────────────
+
+// Sanitizes a single queue entry for WS transmission — strips product identity if undiscovered.
+function sanitizeQueueEntryForWS(entry) {
+    const out = {
+        reactionKey:        entry.reactionKey,
+        slot:               entry.slot,
+        status:             entry.status,
+        startTime:          entry.startTime,
+        expectedCompletion: entry.expectedCompletion,
+        completedAt:        entry.completedAt,
+        revealOnCompletion: entry.revealOnCompletion,
+        reactionName: entry.revealOnCompletion ? 'Unknown Synthesis' : entry.snapshot?.reactionName
+    };
+    if (entry.snapshot) {
+        out.snapshot = entry.revealOnCompletion
+            ? { energyCost: entry.snapshot.energyCost, reactants: entry.snapshot.reactants }
+            : { ...entry.snapshot };
+    }
+    return out;
+}
+
+// Builds the sanitized queue array for queue_state emission.
+function buildQueueState(user) {
+    return (user.activeQueue || []).map(entry =>
+        sanitizeQueueEntryForWS(entry.toObject ? entry.toObject() : entry)
+    );
+}
+
+// Sends a single WebSocket event to a user's live session.
+// Best-effort: silently returns false if disconnected or send fails.
+// HTTP request correctness is never conditional on this succeeding.
+function emitToUser(username, eventType, payload) {
+    const session = reactorSessions.get(username);
+    if (!session || !session.ws || session.ws.readyState !== WebSocket.OPEN) return false;
+    try {
+        session.ws.send(JSON.stringify({ type: eventType, ...payload }));
+        return true;
+    } catch (err) {
+        console.error(`emitToUser: failed to send '${eventType}' to '${username}':`, err);
+        return false;
+    }
+}
+
+// Emits synthesis_completed, synthesis_discovered, or synthesis_failed for each
+// entry in the completions array returned by resolveQueue / resolveAndPruneUserQueue.
+function emitQueueCompletions(username, completions) {
+    for (const { entry, wasDiscovery, prevUnlockTier, newUnlockTier } of completions) {
+        if (entry.status === 'failed') {
+            emitToUser(username, 'synthesis_failed', {
+                reactionKey: entry.reactionKey,
+                reason:      'Synthesis failed'
+            });
+        } else {
+            emitToUser(username, wasDiscovery ? 'synthesis_discovered' : 'synthesis_completed', {
+                reactionKey:    entry.reactionKey,
+                productName:    entry.snapshot.productName,
+                productKey:     entry.snapshot.productKey,
+                quantity:       entry.snapshot.productQuantity,
+                wasDiscovery,
+                prevUnlockTier,
+                newUnlockTier
+            });
+        }
+    }
+}
+
 
 function reactorRuntime(server) {
     const wss = new WebSocketServer({ server });
@@ -29,8 +99,8 @@ function reactorRuntime(server) {
                  await flushPendingMongoEnergyForSession(session);
             });
     }, 1500); // Flush pending energy to MongoDB every 1.5 seconds
-    
-    
+
+
     wss.on('connection', async (ws, req) => {
         ws.id = req.url.split('?user=')[1]; // Assuming the client connects with ws://server?user=username
         if (!ws.id) {
@@ -53,10 +123,42 @@ function reactorRuntime(server) {
             ws.close();
             return;
         }
+
         const energyMultiplier = getEnergyMultiplier(user);
         const session = getOrCreateSession(ws.id, user.energy || 0, energyMultiplier);
         session.ws = ws;
         sendReactorState(ws, session);
+
+        // Step 1: Resolve any queue entries that completed while the user was offline.
+        // session.ws is set above, so the user is now connected — emit fresh completions
+        // live and do NOT create pending notifications for them (anti-duplication rule).
+        try {
+            const { completions, userModified } = await resolveAndPruneUserQueue(user);
+            if (userModified) await user.save();
+            if (completions.length > 0) emitQueueCompletions(ws.id, completions);
+        } catch (queueErr) {
+            console.error('Queue resolution error on WS connect for user', ws.id, ':', queueErr);
+        }
+
+        // Step 2: Drain stored pending notifications created by HTTP routes that resolved
+        // the queue while the user had no WS session. Each is delivered exactly once:
+        // deliveredAt is set and persisted before moving on.
+        try {
+            const pendingToDeliver = user.pendingNotifications.filter(n => !n.deliveredAt);
+            if (pendingToDeliver.length > 0) {
+                const now = new Date();
+                for (const notification of pendingToDeliver) {
+                    emitToUser(ws.id, notification.type, notification.payload);
+                    notification.deliveredAt = now;
+                }
+                await user.save();
+                console.log(`Delivered ${pendingToDeliver.length} pending notification(s) to user '${ws.id}'`);
+            }
+        } catch (drainErr) {
+            console.error('Pending notification drain error for user', ws.id, ':', drainErr);
+        }
+
+        emitToUser(ws.id, 'queue_state', { queue: buildQueueState(user) });
 
         ws.on('message', (message) => {
             try {
@@ -116,7 +218,7 @@ function createReactorSession(userId, persistedEnergyBase, energyMultiplier) {
     };
     return session;
 }
-    
+
 function getSessionTotalEnergy(session){
     return session.persistedEnergyBase + session.pendingMongoEnergy + session.inFlightEnergy;
 }
@@ -222,6 +324,14 @@ async function flushPendingMongoEnergyForSession(session) {
     await session.activeFlushPromise;
 }
 
+// Returns true if the given user currently has an open WS connection.
+// Used by HTTP routes to decide between live emit and pending notification creation.
+function isUserConnected(username) {
+    const session = reactorSessions.get(username);
+    return !!(session && session.ws && session.ws.readyState === WebSocket.OPEN);
+}
+
+
 //route-facing helpers
 
 async function flushPendingMongoEnergyForUser(username) {
@@ -255,4 +365,13 @@ function zeroSessionEnergyForUser(username) {
     }
 }
 
-module.exports = { flushPendingMongoEnergyForUser, reactorRuntime, updateSessionEnergyMultiplierForUser, updateSessionPersistedEnergyBaseForUser, zeroSessionEnergyForUser };
+module.exports = {
+    reactorRuntime,
+    flushPendingMongoEnergyForUser,
+    updateSessionEnergyMultiplierForUser,
+    updateSessionPersistedEnergyBaseForUser,
+    zeroSessionEnergyForUser,
+    emitToUser,
+    emitQueueCompletions,
+    isUserConnected
+};

@@ -3,7 +3,8 @@ const User = require('./../models/User');
 const Substance = require('./../models/Substance');
 const calculateGenesisShards = require('./../utils/calculateGenesisShards');
 const { calculateEnergyGain, getEnergyMultiplier} = require('./../utils/gameEconomy');
-const { updateSessionEnergyMultiplierForUser, flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser, zeroSessionEnergyForUser } = require('./../realtime/reactorRuntime');
+const { updateSessionEnergyMultiplierForUser, flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser, zeroSessionEnergyForUser, emitQueueCompletions, isUserConnected } = require('./../realtime/reactorRuntime');
+const { resolveAndPruneUserQueue, addPendingNotifications } = require('./../utils/resolveQueue');
 
 const router = express.Router();
 
@@ -12,6 +13,20 @@ router.get("/users/:username", async (req, res) => {
         await flushPendingMongoEnergyForUser(req.params.username);
         const user = await User.findOne({ username: req.params.username }).populate('inventory.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
+
+        try {
+            const { completions, userModified } = await resolveAndPruneUserQueue(user);
+            const connected = isUserConnected(user.username);
+            if (completions.length > 0 && !connected) addPendingNotifications(user, completions);
+            if (userModified) {
+                await user.save();
+                if (completions.length > 0) await user.populate('inventory.substance');
+            }
+            if (completions.length > 0 && connected) emitQueueCompletions(user.username, completions);
+        } catch (queueErr) {
+            console.error('Queue resolution error for user', user.username, ':', queueErr);
+        }
+
         return res.status(200).json({
             username: user.username,
             inventory: user.inventory,

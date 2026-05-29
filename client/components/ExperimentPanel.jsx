@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './ExperimentPanel.css';
 
-function ExperimentPanel({ inventory, experiment }) {
+function ExperimentPanel({ inventory, experiment, reactorOccupied }) {
     const [selectedSubstances, setSelectedSubstances] = useState([]);
 
     const toggleSubstance = (substance) => {
@@ -58,10 +58,10 @@ function ExperimentPanel({ inventory, experiment }) {
 
             <button
                 className="experiment-run-btn"
-                disabled={selectedSubstances.length < 1}
+                disabled={selectedSubstances.length < 1 || reactorOccupied}
                 onClick={handleExperiment}
             >
-                Attempt Experiment
+                {reactorOccupied ? 'Reactor Occupied' : 'Attempt Experiment'}
             </button>
         </div>
     );
