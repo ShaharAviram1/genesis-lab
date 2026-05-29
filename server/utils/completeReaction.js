@@ -1,4 +1,5 @@
 const Substance = require('../models/Substance');
+const evaluateCapabilityUnlocks = require('./evaluateCapabilityUnlocks');
 
 function addReactionLogEntry(user, entry) {
     user.reactionLog.unshift(entry);
@@ -40,7 +41,7 @@ async function completeReaction(user, entry) {
             entry.pruneAfter = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         }
         console.error(`completeReaction: substance not found for key '${snapshot.productKey}'`);
-        return { wasDiscovery: false, prevUnlockTier: user.unlockTier, newUnlockTier: user.unlockTier };
+        return { wasDiscovery: false, prevUnlockTier: user.unlockTier, newUnlockTier: user.unlockTier, newCapabilities: [] };
     }
 
     const substanceId = substance._id.toString();
@@ -74,6 +75,10 @@ async function completeReaction(user, entry) {
         user.unlockTier = snapshot.productUnlocksUserTier;
     }
 
+    // Evaluate capability unlocks after unlockTier is updated — order matters.
+    // Pass both tier values so tier-based unlocks fire only on the crossing, not on every completion.
+    const newCapabilities = evaluateCapabilityUnlocks(user, snapshot.productKey, prevUnlockTier, user.unlockTier);
+
     // Write reactionLog entry
     const successMessage = entry.source === 'experiment'
         ? `Experiment created ${snapshot.productName}`
@@ -95,7 +100,7 @@ async function completeReaction(user, entry) {
         entry.pruneAfter = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     }
 
-    return { wasDiscovery, prevUnlockTier, newUnlockTier: user.unlockTier };
+    return { wasDiscovery, prevUnlockTier, newUnlockTier: user.unlockTier, newCapabilities };
 }
 
 module.exports = completeReaction;

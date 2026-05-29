@@ -69,7 +69,7 @@ function emitToUser(username, eventType, payload) {
 // Emits synthesis_completed, synthesis_discovered, or synthesis_failed for each
 // entry in the completions array returned by resolveQueue / resolveAndPruneUserQueue.
 function emitQueueCompletions(username, completions) {
-    for (const { entry, wasDiscovery, prevUnlockTier, newUnlockTier } of completions) {
+    for (const { entry, wasDiscovery, prevUnlockTier, newUnlockTier, newCapabilities } of completions) {
         if (entry.status === 'failed') {
             emitToUser(username, 'synthesis_failed', {
                 reactionKey: entry.reactionKey,
@@ -77,13 +77,14 @@ function emitQueueCompletions(username, completions) {
             });
         } else {
             emitToUser(username, wasDiscovery ? 'synthesis_discovered' : 'synthesis_completed', {
-                reactionKey:    entry.reactionKey,
-                productName:    entry.snapshot.productName,
-                productKey:     entry.snapshot.productKey,
-                quantity:       entry.snapshot.productQuantity,
+                reactionKey:     entry.reactionKey,
+                productName:     entry.snapshot.productName,
+                productKey:      entry.snapshot.productKey,
+                quantity:        entry.snapshot.productQuantity,
                 wasDiscovery,
                 prevUnlockTier,
-                newUnlockTier
+                newUnlockTier,
+                newCapabilities: newCapabilities || []
             });
         }
     }

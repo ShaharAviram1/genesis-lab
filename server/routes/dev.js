@@ -91,6 +91,31 @@ router.post('/users/:username/queue/:queueEntryId/fast-forward', async (req, res
     }
 });
 
+// POST /api/dev/users/:username/capabilities
+// Body: { add: [...keys], remove: [...keys] } — either field may be omitted or empty.
+// Grants and/or revokes reactor capabilities without touching the DB manually.
+router.post('/users/:username/capabilities', async (req, res) => {
+    try {
+        const user = await User.findOne({ username: req.params.username });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const { add = [], remove = [] } = req.body;
+
+        for (const key of add) {
+            if (!user.reactorCapabilities.includes(key)) {
+                user.reactorCapabilities.push(key);
+            }
+        }
+        user.reactorCapabilities = user.reactorCapabilities.filter(k => !remove.includes(k));
+
+        await user.save();
+        res.json({ reactorCapabilities: user.reactorCapabilities });
+    } catch (err) {
+        console.error('dev/capabilities error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // DELETE /api/dev/users/:username/pending-notifications/delivered
 // Removes only notifications where deliveredAt is set. Never touches undelivered notifications.
 router.delete('/users/:username/pending-notifications/delivered', async (req, res) => {

@@ -95,7 +95,8 @@ async function resolveQueue(user) {
                 entry,
                 wasDiscovery: false,
                 prevUnlockTier: user.unlockTier,
-                newUnlockTier: user.unlockTier
+                newUnlockTier: user.unlockTier,
+                newCapabilities: []
             });
         }
     }
@@ -143,7 +144,7 @@ async function resolveAndPruneUserQueue(user) {
 // TODO: future cleanup — sweep undelivered notifications older than 48h (permanent delivery failure guard).
 function addPendingNotifications(user, completions) {
     const now = new Date();
-    for (const { entry, wasDiscovery, prevUnlockTier, newUnlockTier } of completions) {
+    for (const { entry, wasDiscovery, prevUnlockTier, newUnlockTier, newCapabilities } of completions) {
         if (entry.status === 'failed') {
             user.pendingNotifications.push({
                 type:      'synthesis_failed',
@@ -154,13 +155,14 @@ function addPendingNotifications(user, completions) {
             user.pendingNotifications.push({
                 type: wasDiscovery ? 'synthesis_discovered' : 'synthesis_completed',
                 payload: {
-                    reactionKey:    entry.reactionKey,
-                    productName:    entry.snapshot.productName,
-                    productKey:     entry.snapshot.productKey,
-                    quantity:       entry.snapshot.productQuantity,
+                    reactionKey:      entry.reactionKey,
+                    productName:      entry.snapshot.productName,
+                    productKey:       entry.snapshot.productKey,
+                    quantity:         entry.snapshot.productQuantity,
                     wasDiscovery,
                     prevUnlockTier,
-                    newUnlockTier
+                    newUnlockTier,
+                    newCapabilities:  newCapabilities || []
                 },
                 createdAt: now
             });

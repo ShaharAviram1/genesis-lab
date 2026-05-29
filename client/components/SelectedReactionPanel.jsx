@@ -1,6 +1,10 @@
 import './SelectedReactionPanel.css';
 
-function SelectedReactionPanel({ selectedReaction, inventory, performReaction, isBusy, result, onClose, reactorOccupied }) {
+function prettifyKey(key) {
+    return key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function SelectedReactionPanel({ selectedReaction, inventory, performReaction, isBusy, result, onClose, reactorOccupied, reactorCapabilities = [] }) {
     if (!selectedReaction) return null;
 
     if (selectedReaction.unknown) {
@@ -20,12 +24,20 @@ function SelectedReactionPanel({ selectedReaction, inventory, performReaction, i
         );
     }
 
+    const conditions = selectedReaction.conditions || [];
+    const missingCapabilities = conditions.filter(key => !reactorCapabilities.includes(key));
+    const lacksCapabilities = missingCapabilities.length > 0;
+
     const isTimed = selectedReaction.reactionTime > 0;
     const statusText = reactorOccupied
         ? '⚙ Reactor Occupied'
+        : lacksCapabilities
+        ? '⚠ Reactor Lacks Capability'
         : result ? '✓ Ready to React' : '✗ Missing Materials';
     const statusClass = reactorOccupied
         ? 'reactor-busy'
+        : lacksCapabilities
+        ? 'lacks-capability'
         : result ? 'can-perform' : 'cannot-perform';
 
     return (
@@ -48,10 +60,28 @@ function SelectedReactionPanel({ selectedReaction, inventory, performReaction, i
                     );
                 })}
             </div>
+            {conditions.length > 0 && (
+                <div className="reactor-requirements">
+                    <div className="reactor-req-label">Reactor Requirements</div>
+                    {conditions.map(key => {
+                        const met = reactorCapabilities.includes(key);
+                        return (
+                            <div key={key} className={`requirement-row ${met ? 'met' : 'unmet'}`}>
+                                <span className="req-name">{prettifyKey(key)}</span>
+                                <span className="req-status">{met ? '✓' : '✗'}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
             <div className={`perform-status ${statusClass}`}>
                 {statusText}
             </div>
-            {result && (
+            {lacksCapabilities ? (
+                <button className="perform-btn lacks-cap-btn" disabled>
+                    Reactor lacks: {missingCapabilities.map(prettifyKey).join(', ')}
+                </button>
+            ) : result && (
                 <button
                     className="perform-btn"
                     disabled={isBusy || reactorOccupied}

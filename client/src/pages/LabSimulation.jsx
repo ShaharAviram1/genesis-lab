@@ -41,6 +41,7 @@ const LabSimulation = ({ username, onLogout }) => {
     const [activityLevel, setActivityLevel] = useState(0);
     const [energyRate, setEnergyRate] = useState(0);
     const [reactionLog, setReactionLog] = useState([]);
+    const [reactorCapabilities, setReactorCapabilities] = useState([]);
     const [notebookOpen, setNotebookOpen] = useState(false);
     const [newlyRevealedTier, setNewlyRevealedTier] = useState(null);
     const [justDiscoveredReactionKey, setJustDiscoveredReactionKey] = useState(null);
@@ -388,6 +389,7 @@ const LabSimulation = ({ username, onLogout }) => {
             setGenesisShards(data.genesisShards);
             setPrestigeUpgrades(data.prestigeUpgrades);
             setReactionLog(data.reactionLog || []);
+            setReactorCapabilities(data.reactorCapabilities || []);
         }
         catch (err) {
             console.error(err);
@@ -467,6 +469,12 @@ const LabSimulation = ({ username, onLogout }) => {
                     setActiveQueue(prev => prev.filter(e => !(e.reactionKey === completedKey && e.status === 'completed')));
                 }, 2500);
                 showToast(wasDiscovery ? 'milestone' : 'success', `${data.productName} synthesized`);
+                if (data.newCapabilities && data.newCapabilities.length > 0) {
+                    data.newCapabilities.forEach(key => {
+                        const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        showToast('milestone', `Reactor capability unlocked: ${label}`);
+                    });
+                }
                 if (wasDiscovery) {
                     setJustDiscoveredReactionKey(completedKey);
                     setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
@@ -596,8 +604,20 @@ const LabSimulation = ({ username, onLogout }) => {
                     <div className="right-panel">
                         <EnergyPanel energy={energy} energyRate={energyRate} />
                         <QueuePanel activeQueue={activeQueue} />
+                        {reactorCapabilities.length > 0 && (
+                            <div className="panel-card reactor-caps-panel">
+                                <div className="panel-title">Reactor Capabilities</div>
+                                <div className="reactor-caps-list">
+                                    {reactorCapabilities.map(key => (
+                                        <span key={key} className="reactor-cap-chip">
+                                            {key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} newlyRevealedTier={newlyRevealedTier} justDiscoveredReactionKey={justDiscoveredReactionKey} />
-                        <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} reactorOccupied={reactorOccupied} />
+                        <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} reactorOccupied={reactorOccupied} reactorCapabilities={reactorCapabilities} />
                         <div className="panel-card prestige-card">
                             <div className="panel-title">Upgrades</div>
                             <PrestigePanel prestigeUpgrades={prestigeUpgrades} upgradePrestige={upgradePrestige} genesisShards={genesisShards} upgrading={upgrading} isBusy={isBusy} />

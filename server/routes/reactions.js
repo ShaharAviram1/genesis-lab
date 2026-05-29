@@ -7,6 +7,7 @@ const { calculateReactionCost } = require('./../utils/gameEconomy');
 const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser, emitToUser, emitQueueCompletions, isUserConnected } = require('./../realtime/reactorRuntime');
 const completeReaction = require('../utils/completeReaction');
 const { resolveQueue, resolveAndPruneUserQueue, addPendingNotifications } = require('../utils/resolveQueue');
+const validateConditions = require('../utils/validateConditions');
 
 const router = express.Router();
 
@@ -208,6 +209,12 @@ function sanitizeQueueEntry(entry) {
 // Callers are responsible for populating user.inventory after calling this if
 // they need serializable inventory data in the HTTP response.
 async function startQueueSynthesis(user, reaction, { energyCost, source }) {
+    // Conditions are the hardest gate — check first before any deduction or slot validation.
+    const { passed, missing } = validateConditions(reaction, user);
+    if (!passed) {
+        return { ok: false, status: 400, error: 'Reactor lacks required capabilities', missingConditions: missing };
+    }
+
     const MAX_SLOTS = 1;
     const processingCount = user.activeQueue.filter(e => e.status === 'processing').length;
     if (processingCount >= MAX_SLOTS) {
@@ -557,8 +564,10 @@ router.post("/reactions/experiment", async (req, res) => {
             if (!result.ok) {
                 // Insufficient quantity for this candidate — try the next one
                 if (result.error === 'Missing required reactants') continue;
-                // Any other error (reactor occupied, energy) is a hard stop
-                return res.status(result.status).json({ error: result.error });
+                // Any other error (reactor occupied, energy, missing capabilities) is a hard stop
+                const errBody = { error: result.error };
+                if (result.missingConditions) errBody.missingConditions = result.missingConditions;
+                return res.status(result.status).json(errBody);
             }
 
             await user.populate(['inventory.substance', 'runTotals.substance']);
@@ -646,7 +655,9 @@ router.post("/reactions/queue/:reactionKey", async (req, res) => {
         const result = await startQueueSynthesis(user, reaction, { energyCost, source: 'perform' });
 
         if (!result.ok) {
-            return res.status(result.status).json({ error: result.error });
+            const errBody = { error: result.error };
+            if (result.missingConditions) errBody.missingConditions = result.missingConditions;
+            return res.status(result.status).json(errBody);
         }
 
         await user.populate(['inventory.substance', 'runTotals.substance']);

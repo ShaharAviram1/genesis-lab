@@ -35,7 +35,8 @@ router.get("/users/:username", async (req, res) => {
             bigBangCount: user.bigBangCount,
             genesisShards: user.genesisShards,
             prestigeUpgrades: user.prestigeUpgrades,
-            reactionLog: user.reactionLog || []
+            reactionLog: user.reactionLog || [],
+            reactorCapabilities: user.reactorCapabilities || []
         });
     }
     catch (err) {
@@ -55,6 +56,7 @@ router.post("/bigbang", async (req, res) => {
         user.unlockTier = 1;
         user.bigBangCount += 1;
         user.runTotals = [];
+        user.reactorCapabilities = [];
         await user.save();
         updateSessionEnergyMultiplierForUser(user.username, getEnergyMultiplier(user));
         zeroSessionEnergyForUser(user.username);
