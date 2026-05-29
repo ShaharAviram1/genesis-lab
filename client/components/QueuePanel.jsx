@@ -21,7 +21,7 @@ function formatCountdown(expectedCompletion, now) {
 
 function QueuePanel({ activeQueue }) {
     const [now, setNow] = useState(Date.now());
-    const processingEntry = activeQueue.find(e => e.status === 'processing');
+    const processingEntry = activeQueue.find(e => e.status === 'processing' || e.status === 'resolving');
 
     useEffect(() => {
         if (!processingEntry) return;

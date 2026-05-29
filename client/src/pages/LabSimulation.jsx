@@ -76,7 +76,7 @@ const LabSimulation = ({ username, onLogout }) => {
 
     const bigBangActive = !!bigBangPhase;
     const isBusy = checking || performing || creatingAtom || upgrading || bigBangActive;
-    const reactorOccupied = activeQueue.some(e => e.status === 'processing');
+    const reactorOccupied = activeQueue.some(e => e.status === 'processing' || e.status === 'resolving');
 
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 

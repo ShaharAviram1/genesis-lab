@@ -120,10 +120,20 @@ const userSchema = mongoose.Schema({
         },
 
         // Status
+        // 'resolving' is a transient claim state written atomically before side effects run.
+        // It prevents concurrent requests from double-completing the same entry.
+        // Entries stuck in 'resolving' beyond CLAIM_TIMEOUT_MS are recovered to 'processing'
+        // on the next resolveQueue call (safe: completeReaction only adds, never deducts).
         status: {
             type: String,
-            enum: ['processing', 'completed', 'failed'],
+            enum: ['processing', 'resolving', 'completed', 'failed'],
             default: 'processing'
+        },
+        // Set when status transitions to 'resolving'. Used to detect stale claims after
+        // a server crash or save failure. Cleared when recovered back to 'processing'.
+        claimedAt: {
+            type: Date,
+            default: null
         },
         // True immediately after deduction commits; guards against double-deduct on retry/recovery
         reactantsConsumed: {

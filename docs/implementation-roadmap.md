@@ -1,9 +1,9 @@
 # Genesis Lab — Implementation Roadmap
 
-**Version:** 1.1  
-**Status:** Post-Design Phase — Implementation Planning  
-**Date:** 2026-05-11  
-**Inputs:** reaction-graph-design.md, generation-philosophy-v2.md, substance-importance-audit.md, substance-universe.md  
+**Version:** 1.2  
+**Status:** Active Implementation — Synthesis Engine Hardening Phase  
+**Date:** 2026-05-29  
+**Inputs:** reaction-graph-design.md, generation-philosophy-v2.md, substance-importance-audit.md, substance-universe.md, queue-system-plan.md  
 **Scope:** Full implementation sequencing from design lock to game-complete state
 
 ---
@@ -21,23 +21,27 @@ Genesis Lab has a working technical foundation:
 - Notebook/history (reaction log)
 - Progression skeleton (unlockTier, discoveredByDefault fields)
 - MongoDB models (Substance, Reaction, User)
-- Seed files (placeholder Gen 1 content, ~20 substances, ~18 reactions)
+- Gen 1–3 content (31 reactions, full substance graph, seeded and playtested)
 - Runtime isolation per user (WebSocket sessions)
 - Polished reactor identity (animations, effects, UI)
+- **Persistent synthesis queue** — `activeQueue` schema with full snapshot, `resolveQueue`, `completeReaction`, `pruneCompletedEntries`; all routes centralized
+- **Reaction timing enforcement** — Gen 1–3 `reactionTime` values applied; server enforces timing via `expectedCompletion`; zero-duration path completes in-process
+- **Queue WebSocket events** — `synthesis_queued`, `synthesis_completed`, `synthesis_discovered`, `synthesis_failed`, `queue_state`
+- **QueuePanel** — countdown display, reactor occupied state, unknown synthesis label
+- **Unlock orchestration (Gen 1–3)** — `unlockTier` advances at completion via `snapshot.productUnlocksUserTier`; tier gating enforced across all routes
+- **Offline completion delivery** — `pendingNotifications` with `deliveredAt`; HTTP routes create pending notifications when user is offline; WS connect drains and marks delivered exactly once
 
 **Not yet built (full scope):**
-- Finalized content (Gen 1–6 complete reaction graph, all 50+ substances)
-- Conditions system (conditions as gameplay-blocking requirements)
-- Full unlock orchestration (tier gating, milestone detection, cross-gen progression)
-- Long-duration synthesis (synthesis times from 24 seconds to 72 hours)
-- Automation framework (passive element generators)
-- Real-time progression queue with persistence
-- User substance inventory (what a player currently holds)
-- Economy balancing (BEU costs calibrated, playtested)
-- Reactor evolution (visual/audio/language changes per generation)
-- Gen 4–6 gameplay implementation
-- Save/persistence hardening (offline progress, server restart recovery)
+- Conditions system (conditions as gameplay-blocking requirements) — Phase F; blocked on Stage 12 completion
+- Gen 4–6 content seeding — blocked on conditions system (Phase F) and debug tooling (Phase G / Stage 13)
+- Long-duration synthesis validation (synthesis times 4–72 hours, multi-hour persistence testing) — Phase I
+- Automation framework (passive element generators) — Phase H
+- Economy balancing (BEU costs calibrated, playtested) — Phase J
+- Reactor evolution (visual/audio/language changes per generation) — Phase K
+- Save/persistence hardening (migration versioning, corruption guards for 72h syntheses) — Phase L
 - Onboarding and tutorial
+- **Stage 12** — Atomic MongoDB double-completion guard (required before Gen 4+ timings)
+- **Stage 13 / Phase G** — Debug/admin tooling (force-complete, inventory grant, tier set, time acceleration; required before Gen 4+ testing)
 
 The transition from this state to the designed game requires disciplined sequencing. Every major system depends on prior systems. Build out of order and you will re-build.
 
@@ -248,7 +252,7 @@ The following is a specific, week-by-week recommended order of implementation wo
 
 ---
 
-### Phase A — Schema Alignment (Week 1)
+### Phase A — Schema Alignment ✅ COMPLETE
 **What:** Audit and update Reaction, Substance, and User models. No new UI. No new features.
 
 Deliverables:
@@ -265,7 +269,7 @@ Deliverables:
 
 ---
 
-### Phase B1 — Gen 1–3 Content Seeding (Weeks 2–4)
+### Phase B1 — Gen 1–3 Content Seeding ✅ COMPLETE
 **What:** Replace placeholder seeds with Gen 1–3 substance and reaction data from the reaction graph design. Gen 4–6 content is not seeded here — see Phase B2 and Phase B3.
 
 Deliverables:
@@ -279,7 +283,7 @@ Deliverables:
 
 ---
 
-### Phase C — User Inventory and Queue Model (Weeks 3–5, overlapping with B1)
+### Phase C — User Inventory and Queue Model ✅ COMPLETE (Stages 1–11)
 **What:** Add user-level inventory tracking and synthesis queue persistence to the backend.
 
 Deliverables:
@@ -293,8 +297,10 @@ Deliverables:
 
 ---
 
-### Phase D — Unlock Orchestration (Weeks 5–7)
+### Phase D — Unlock Orchestration ✅ COMPLETE for Gen 1–3 (via queue completion)
 **What:** Implement milestone-based tier gating. Synthesis of a gate substance unlocks the next tier. Players cannot access higher-tier reactions until they have synthesized the required predecessors.
+
+**Status note:** Tier gating is fully functional for Gen 1–3 via the queue system. `completeReaction` advances `user.unlockTier` using `snapshot.productUnlocksUserTier` on first production of a gate substance. Routes enforce `unlockTier` gating. WS completion events carry `prevUnlockTier`/`newUnlockTier`. No separate orchestration layer is needed for Gen 1–3. Gen 4+ gate transitions will be validated as part of Phase B2/F work.
 
 Deliverables:
 - Gate substance definitions (per tier transition): stored in a config or DB, not hardcoded in logic
@@ -313,7 +319,9 @@ Gate definitions from the design:
 
 ---
 
-### Phase E — Reaction Time Enforcement (Weeks 7–9)
+### Phase E — Reaction Time Enforcement ✅ COMPLETE for Gen 1–3 (Stages 1–11)
+**Remaining:** Stage 12 (atomic MongoDB double-completion guard) and Stage 13 (debug tooling) must be completed before Gen 4+ timings are introduced. These are the final queue-system tasks before Phase F (conditions) begins.
+
 **What:** Enforce `reactionTime` from the seed data. Gen 1 reactions complete in 5–90 seconds. Gen 2 in 1–10 minutes. Gen 3 in 5–45 minutes. Reactions no longer resolve instantly.
 
 Deliverables:
@@ -325,6 +333,14 @@ Deliverables:
 Note: Gen 4–6 reaction times (30 min – 72 hours) do not need to be tested here — Gen 4 content is not yet seeded with unlock gating. But the queue system must be architected to support arbitrary duration from the start.
 
 **Test:** Queue a Gen 2 reaction (e.g., Sulfuric Acid at 8 minutes). Countdown displays correctly. After 8 minutes, synthesis completes, inventory updates, notification appears.
+
+---
+
+### Stage 12 — Atomic Double-Completion Hardening ⬅ NEXT (queue system)
+Replace the in-process status guard in `resolveQueue` with a MongoDB atomic subdocument update (`findOneAndUpdate` with `{ 'activeQueue.$.status': 'processing' }` filter). This closes the race window where two concurrent requests loading separate DB snapshots could double-complete the same entry. Required before Gen 4+ reaction times (30 min – 4 hours) are introduced — at those durations, the concurrent-request window is wide enough to be a real correctness risk.
+
+### Stage 13 — Debug/Admin Tooling ⬅ NEXT (= Phase G prerequisite)
+Force-complete active queue entries, inventory grant, tier set, time acceleration multiplier. Must exist before Gen 4+ content is seeded — 30-minute to 4-hour reactions cannot be practically tested without time compression. This is the same work as Phase G below; see that phase for the full scope.
 
 ---
 

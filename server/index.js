@@ -23,6 +23,15 @@ app.use('/api', userRouter);
 app.use('/api', atomsRouter);
 app.use('/api', authRouter);
 
+// Dev admin routes — mounted only when BOTH guards pass.
+// NODE_ENV !== 'production' prevents accidental exposure in production builds.
+// DEV_ADMIN_ENABLED=true requires explicit opt-in even in development.
+if (process.env.NODE_ENV !== 'production' && process.env.DEV_ADMIN_ENABLED === 'true') {
+    const devRouter = require('./routes/dev');
+    app.use('/api/dev', devRouter);
+    console.log('Dev admin routes enabled at /api/dev (NODE_ENV=%s)', process.env.NODE_ENV);
+}
+
 app.get('/health', (req, res) => {
   res.json('Genesis Lab backend is alive 🚀');
 });

@@ -722,3 +722,92 @@ The plan should cover:
 - Edge cases and corruption prevention
 
 Do not write code until asked.
+
+---
+
+# Genesis Lab — Checkpoint: Persistent Synthesis Queue — Stages 1–11 Complete (2026-05-29)
+
+This checkpoint marks completion of the persistent synthesis queue architecture through Stage 11. The system is operational for Gen 1–3 synthesis timing, offline completion delivery, and reconnect replay prevention. The full technical plan is in `docs/queue-system-plan.md`.
+
+---
+
+## What Was Completed
+
+### Stage 1 — Schema Extension
+- `activeQueue` entry shape expanded: `reactionKey`, `slot`, `revealOnCompletion`, `wasDiscovery`, `completedAt`, `pruneAfter`, `snapshot` (authoritative reward record). Status enum changed to `['processing', 'completed', 'failed']`.
+- `pendingNotifications` array added to User schema.
+
+### Stage 2 — completeReaction Helper
+- `server/utils/completeReaction.js` extracted. Reads exclusively from the entry snapshot — immune to content edits during active syntheses. Thin adapter allows the legacy `/perform` route to use the same helper without a real queue entry.
+
+### Stage 3 — resolveQueue and pruneCompletedEntries
+- `server/utils/resolveQueue.js` implements `resolveQueue`, `pruneCompletedEntries`, and `resolveAndPruneUserQueue`. Pure function — mutates user in memory only. Caller saves and emits.
+
+### Stage 4 — Centralized resolveQueue Calls
+- All backend routes that load user state now call `resolveAndPruneUserQueue` before acting: `GET /users/:username`, `GET /reactions/available`, `GET /reactions/:reactionKey`, `POST /reactions/queue/:reactionKey`, `POST /reactions/experiment`.
+
+### Stage 5 — Gen 1–3 Reaction Timing
+- `reactionTime` values applied to all Gen 1–3 seeds: 0–3s (Gen 1), 5–30s (Gen 2), 30–180s (Gen 3). All reactions route through the queue lifecycle; `reactionTime === 0` completes in-process within the same request.
+
+### Stage 6 — Queue Start Route
+- `POST /api/reactions/queue/:reactionKey` implemented. Validates, deducts, writes queue entry with full snapshot. Zero-duration path calls `resolveQueue` immediately. `revealOnCompletion` strips product identity from response for undiscovered reactions.
+
+### Stage 7 — Experiment Route into Queue Lifecycle
+- `POST /api/reactions/experiment` routes through `startQueueSynthesis` after matching a reaction. Failure path (no match) unchanged.
+
+### Stage 8 — WebSocket Queue Events
+- `synthesis_queued`, `synthesis_completed`, `synthesis_discovered`, `synthesis_failed`, `queue_state` added to `reactorRuntime.js`. `queue_state` emitted on WS connect. Completion events emitted from `emitQueueCompletions` after each resolve.
+
+### Stage 9 — Frontend QueuePanel
+- `QueuePanel` component added. Countdown timers from `expectedCompletion`. Unknown syntheses display "Unknown Synthesis" with no product name. Reactor occupied → synthesis buttons disabled.
+
+### Stage 10 — Animations
+- `synthesis_queued` → intake animation. `synthesis_completed`/`synthesis_discovered` → burst/discovery animation. Processing visual state while queue is non-empty. Auto-finalization bug fixed: client pings `fetchUserData()` when countdown reaches zero, triggering server-side resolution and WS completion event.
+
+### Stage 11 — Offline Completion Delivery
+- `pendingNotifications` schema updated: `deliveredAt` (null = undelivered), type enum restricted to `['synthesis_completed', 'synthesis_discovered', 'synthesis_failed', 'unlock_tier']`. `pruneAfter` removed from notifications (pruning is future work; TODOs in place).
+- `addPendingNotifications(user, completions)` helper added to `resolveQueue.js`.
+- HTTP routes: check `isUserConnected()` after each `resolveQueue`; if connected → emit live; if not → call `addPendingNotifications`. Never both for the same completion.
+- WS connect handler: after emitting fresh completions live, drains stored pending notifications (filter `!deliveredAt`), emits each, sets `deliveredAt = now`, saves — before emitting `queue_state`.
+- `isUserConnected(username)` exported from `reactorRuntime.js`.
+- Frontend: no changes needed — same WS event handlers serve both live and pending delivery paths.
+- Tested: offline completion delivered exactly once on reconnect; `deliveredAt` populated; no replay on subsequent reconnect.
+
+---
+
+## Important Architectural Decisions (Locked)
+
+- All syntheses use the queue lifecycle, including `reactionTime === 0`.
+- Reactants and energy are consumed at queue start, never at completion.
+- Products, `runTotals`, `unlockTier`, and notebook entries happen only at completion.
+- Discovery reveal happens only at completion. Unknown syntheses remain fully hidden until then.
+- WS is live feedback only; server state is authoritative.
+- `pendingNotifications` is for offline completion delivery only — not a generic notification system, not achievements, not chat.
+- Delivered notifications are retained with `deliveredAt` set. Pruning is future work (TODO comments in place).
+- Cancellation is intentionally out of scope. Reactor commits are final.
+- One synthesis slot for MVP.
+- Completed queue entries are retained for 24h via `pruneAfter`, removed by `pruneCompletedEntries` on each request.
+
+---
+
+## Known Remaining Concerns
+
+- **Stage 12** (atomic MongoDB guard) is required before Gen 4+ long timings. The MVP race-condition window is narrow for Gen 1–3 but not hardened against concurrent snapshots.
+- **Stage 13** (debug/admin tooling) is required before Gen 4+ reactions can be practically tested.
+- Multi-tab race: concurrent requests from the same user can cause double-completion. Stage 12 addresses this.
+- Server restart during active queue: entry remains `processing` in DB and resolves correctly on next load — needs explicit regression test.
+- Reseed-while-queued: snapshot is authoritative and immune to content edits, but this path has not been explicitly stress-tested.
+- Delivered pending notifications are retained; a cleanup/pruning pass is future work.
+- QueuePanel is MVP and single-slot oriented. Multi-slot UI is deferred.
+- Hints are not final.
+
+---
+
+## What Is Actually Next
+
+1. **Stage 12** — Atomic double-completion hardening: replace in-process status guard with a MongoDB atomic subdocument update (`findOneAndUpdate` with status filter). Required before Gen 4+ reaction times.
+2. **Stage 13** — Debug/admin tooling: force-complete queue, inventory grant, tier set, time acceleration. Required before Gen 4+ reactions can be practically tested.
+3. **Conditions System v1** — Only after Stage 12 is complete.
+4. **Gen 4 content seeding** — Only after conditions system exists and debug tooling is operational.
+
+Do not begin conditions work or Gen 4 seeding until Stage 12 is done.

@@ -46,19 +46,24 @@ function buildQueueState(user) {
     );
 }
 
-// Sends a single WebSocket event to a user's live session.
-// Best-effort: silently returns false if disconnected or send fails.
+// Sends a single WebSocket event to all live sockets for a user.
+// Best-effort: skips closed sockets, returns true if at least one send succeeded.
 // HTTP request correctness is never conditional on this succeeding.
 function emitToUser(username, eventType, payload) {
     const session = reactorSessions.get(username);
-    if (!session || !session.ws || session.ws.readyState !== WebSocket.OPEN) return false;
-    try {
-        session.ws.send(JSON.stringify({ type: eventType, ...payload }));
-        return true;
-    } catch (err) {
-        console.error(`emitToUser: failed to send '${eventType}' to '${username}':`, err);
-        return false;
+    if (!session || session.sockets.size === 0) return false;
+    const message = JSON.stringify({ type: eventType, ...payload });
+    let sent = false;
+    for (const sock of session.sockets) {
+        if (sock.readyState !== WebSocket.OPEN) continue;
+        try {
+            sock.send(message);
+            sent = true;
+        } catch (err) {
+            console.error(`emitToUser: failed to send '${eventType}' to '${username}':`, err);
+        }
     }
+    return sent;
 }
 
 // Emits synthesis_completed, synthesis_discovered, or synthesis_failed for each
@@ -126,7 +131,7 @@ function reactorRuntime(server) {
 
         const energyMultiplier = getEnergyMultiplier(user);
         const session = getOrCreateSession(ws.id, user.energy || 0, energyMultiplier);
-        session.ws = ws;
+        session.sockets.add(ws);
         sendReactorState(ws, session);
 
         // Step 1: Resolve any queue entries that completed while the user was offline.
@@ -189,11 +194,15 @@ function reactorRuntime(server) {
 
         ws.on('close', async () => {
             console.log('Client disconnected');
-            const session = reactorSessions.get(ws.id);
-            if (session) session.ws = null;
-            await flushPendingMongoEnergyForSession(session);
             clearInterval(clientInterval);
-            reactorSessions.delete(ws.id);
+            const session = reactorSessions.get(ws.id);
+            if (session) {
+                session.sockets.delete(ws);
+                if (session.sockets.size === 0) {
+                    await flushPendingMongoEnergyForSession(session);
+                    reactorSessions.delete(ws.id);
+                }
+            }
         });
     });
 }
@@ -206,6 +215,7 @@ function reactorRuntime(server) {
 function createReactorSession(userId, persistedEnergyBase, energyMultiplier) {
     const session = {
         userId,
+        sockets: new Set(),
         activityLevel: 0,
         lastUpdateTimestamp: Date.now(),
         energyBuffer: 0,
@@ -262,8 +272,10 @@ function tickSession(session, now) {
     }
     session.lastUpdateTimestamp = now;
 
-    if (session.activityLevel > 0 && session.ws) {
-        sendReactorState(session.ws, session);
+    if (session.activityLevel > 0 && session.sockets.size > 0) {
+        for (const sock of session.sockets) {
+            if (sock.readyState === WebSocket.OPEN) sendReactorState(sock, session);
+        }
     }
 }
 
@@ -324,11 +336,15 @@ async function flushPendingMongoEnergyForSession(session) {
     await session.activeFlushPromise;
 }
 
-// Returns true if the given user currently has an open WS connection.
+// Returns true if the given user has at least one open WS connection (any tab).
 // Used by HTTP routes to decide between live emit and pending notification creation.
 function isUserConnected(username) {
     const session = reactorSessions.get(username);
-    return !!(session && session.ws && session.ws.readyState === WebSocket.OPEN);
+    if (!session) return false;
+    for (const sock of session.sockets) {
+        if (sock.readyState === WebSocket.OPEN) return true;
+    }
+    return false;
 }
 
 

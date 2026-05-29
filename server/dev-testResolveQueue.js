@@ -56,7 +56,10 @@ async function main() {
     console.log('queue entries :', user.activeQueue.length);
     console.log('runTotal for test substance:', runTotalBefore?.produced ?? 'none');
 
-    // Inject a fake processing entry with expectedCompletion in the past
+    // Inject a fake processing entry with expectedCompletion in the past.
+    // Stage 12 note: the entry must be persisted to the DB before resolveQueue is called,
+    // because the atomic claim uses findOneAndUpdate which reads from the DB, not from
+    // the in-memory user object. Save first, then resolve.
     const now = new Date();
     user.activeQueue.push({
         reactionKey:        `dev_test_${TEST_PRODUCT_KEY}`,
@@ -77,24 +80,31 @@ async function main() {
             reactants:              []   // no reactants — consumed at queue start
         }
     });
+    await user.save(); // persist the entry so the atomic claim can find it in the DB
+
+    // Re-load the user so the in-memory object matches the DB state.
+    // This is also what production routes do — they always load fresh before resolving.
+    const freshUser = await User.findOne({ username: TEST_USERNAME })
+        .populate('inventory.substance')
+        .populate('runTotals.substance');
 
     // Run resolution
-    const results = await resolveQueue(user);
-    pruneCompletedEntries(user);  // entry should survive (pruneAfter is 24h from now)
+    const results = await resolveQueue(freshUser);
+    pruneCompletedEntries(freshUser);  // entry should survive (pruneAfter is 24h from now)
 
     // Print results
-    const inventoryAfter = user.inventory.map(i => {
+    const inventoryAfter = freshUser.inventory.map(i => {
         const name = i.substance?.name ?? i.substance;
         return `${name}×${i.quantity}`;
     });
-    const runTotalAfter = user.runTotals.find(rt =>
+    const runTotalAfter = freshUser.runTotals.find(rt =>
         (rt.substance?._id ?? rt.substance).toString() === substance._id.toString()
     );
 
     console.log('\n=== AFTER ===');
     console.log('inventory     :', inventoryAfter.join(', ') || '(empty)');
-    console.log('unlockTier    :', user.unlockTier);
-    console.log('queue entries :', user.activeQueue.length, `(${user.activeQueue.filter(e => e.status === 'processing').length} processing, ${user.activeQueue.filter(e => e.status === 'completed').length} completed)`);
+    console.log('unlockTier    :', freshUser.unlockTier);
+    console.log('queue entries :', freshUser.activeQueue.length, `(${freshUser.activeQueue.filter(e => e.status === 'processing').length} processing, ${freshUser.activeQueue.filter(e => e.status === 'completed').length} completed)`);
     console.log('runTotal for test substance:', runTotalAfter?.produced ?? 'none');
 
     console.log('\n=== RESOLVE RESULTS ===');
@@ -114,7 +124,7 @@ async function main() {
         console.log('(no entries resolved — check that expectedCompletion was set in the past)');
     }
 
-    await user.save();
+    await freshUser.save();
     console.log('\nUser saved.');
 
     await mongoose.disconnect();
