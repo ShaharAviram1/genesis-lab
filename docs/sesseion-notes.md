@@ -811,3 +811,109 @@ This checkpoint marks completion of the persistent synthesis queue architecture 
 4. **Gen 4 content seeding** — Only after conditions system exists and debug tooling is operational.
 
 Do not begin conditions work or Gen 4 seeding until Stage 12 is done.
+
+---
+
+# Genesis Lab — Checkpoint: Persistent Synthesis Queue — Stages 12–13 + Multi-Tab Sync Fix (2026-05-29)
+
+This checkpoint marks the completion of the full persistent synthesis queue system through Stage 13. All stages (1–13) are implemented and tested at the current project scale. The queue system is production-ready for Gen 1–3. Stage 12 closes the double-completion race. Stage 13 provides the debug tooling needed before Gen 4+ testing begins.
+
+---
+
+## What Was Completed
+
+### Stage 12 — Atomic Double-Completion Hardening
+
+- `activeQueue[].status` enum extended to `['processing', 'resolving', 'completed', 'failed']`.
+- `claimedAt: { type: Date, default: null }` field added to queue entries.
+- `resolveQueue` now performs a MongoDB atomic claim per due entry: `findOneAndUpdate` with `$elemMatch` transitions status `processing → resolving` before any side effects run. Only the request that wins the claim runs `completeReaction`.
+- Stale resolving recovery: entries stuck in `resolving` for more than 30 seconds (server crash, save failure) are atomically reset to `processing` on the next `resolveQueue` call. Safe because `completeReaction` only adds to inventory and runTotals — it never deducts.
+- `pruneCompletedEntries` updated to preserve `resolving` entries (never prune mid-claim).
+- Dev test script (`dev-testResolveQueue.js`) updated: fake entry must be persisted to the DB before calling `resolveQueue`, because the atomic claim reads from the DB, not from the in-memory user object. Script now saves the user after injection and re-loads a fresh user document before resolving.
+
+### Multi-Tab WebSocket Sync Bug Fix
+
+**Root cause:** `reactorSessions` mapped `username → session` with a single `session.ws` socket. When Tab B connected, `session.ws = ws` overwrote Tab A's reference. All subsequent emissions reached only Tab B. Tab B's close handler deleted the session entirely, leaving Tab A orphaned — no session, no events, reactor UI stuck in "Finalizing…" / occupied state indefinitely.
+
+**Fix in `reactorRuntime.js`:**
+- `session.sockets` is now a `Set<WebSocket>` (initialized in `createReactorSession`).
+- Connection handler: `session.sockets.add(ws)` — Tab B no longer evicts Tab A.
+- `emitToUser`: serializes the message once, iterates all sockets in the set, sends to each open one. One bad socket cannot break delivery to others.
+- `isUserConnected`: returns true if any socket in the set is `OPEN`.
+- `tickSession`: broadcasts reactor state to all open sockets when activity is non-zero.
+- Close handler: removes the closing socket from the set. Energy flush and session deletion happen only when the last socket closes (set size reaches 0).
+
+**Frontend fixes:**
+- `reactorOccupied` (`LabSimulation.jsx`) now includes `|| e.status === 'resolving'` — reactor stays blocked during the brief atomic claim window.
+- `processingEntry` (`QueuePanel.jsx`) also includes `|| e.status === 'resolving'` — countdown and progress bar display correctly during claim.
+
+### Stage 13 — Dev/Admin Debug Tooling
+
+**New file:** `server/routes/dev.js` — 3 endpoints.
+
+**Gating:** Mounted in `server/index.js` behind a double guard: `NODE_ENV !== 'production'` AND `DEV_ADMIN_ENABLED=true`. If either condition fails, the router is never `require()`d and the routes do not exist at all. To enable: add `DEV_ADMIN_ENABLED=true` to `.env`.
+
+**Endpoints:**
+
+`GET /api/dev/users/:username/queue`
+- Returns full `activeQueue` with: status, reactionKey, slot, startTime, expectedCompletion, completedAt, pruneAfter, revealOnCompletion, wasDiscovery, claimedAt, and a sanitized snapshot summary.
+- Entries with `revealOnCompletion: true` suppress productKey/productName/productQuantity/productUnlocksUserTier and label reactionName as `"Unknown Synthesis"` — same rule as the WS sanitizer.
+
+`POST /api/dev/users/:username/queue/:queueEntryId/fast-forward`
+- Accepts MongoDB `_id` or `reactionKey` string as the entry identifier.
+- Sets `expectedCompletion = now - 1s` and saves. Does NOT call `completeReaction` or touch inventory directly.
+- Resolution happens on the next `GET /api/users/:username` (or any route calling `resolveAndPruneUserQueue`) — the real lifecycle handles completion, inventory, runTotals, unlockTier, reactionLog, and WS events.
+- Rejects with 400 if entry status is `completed` or `failed`.
+
+`DELETE /api/dev/users/:username/pending-notifications/delivered`
+- Removes only notifications where `deliveredAt` is set. Never touches undelivered notifications.
+- Returns `{ removed, remaining }`. No-ops (no save) if nothing was removed.
+
+**curl examples:**
+```bash
+# Inspect queue
+curl http://localhost:3000/api/dev/users/alchemist/queue | jq
+
+# Fast-forward by reactionKey
+curl -X POST http://localhost:3000/api/dev/users/alchemist/queue/gen3_steel/fast-forward | jq
+
+# Fetch user to trigger resolution
+curl http://localhost:3000/api/users/alchemist | jq '.activeQueue[] | {reactionKey, status, completedAt}'
+
+# Clear delivered pending notifications
+curl -X DELETE http://localhost:3000/api/dev/users/alchemist/pending-notifications/delivered | jq
+```
+
+---
+
+## Verified Behavior (Full Queue System — Stages 1–13)
+
+- **Queue creation:** `POST /api/reactions/queue/:reactionKey` validates, deducts, writes entry with full snapshot, emits `synthesis_queued`.
+- **Queue occupancy:** Slot check blocks new syntheses when any `processing` or `resolving` entry exists.
+- **Auto-finalization:** Client pings `fetchUserData()` when countdown reaches zero; server calls `resolveAndPruneUserQueue`, emits `synthesis_completed` or `synthesis_discovered`.
+- **Offline completion:** Completion occurs on next HTTP fetch; `pendingNotifications` created if no WS session active at resolution time.
+- **Reconnect delivery:** WS connect drains undelivered pending notifications, emits each via `emitToUser`, sets `deliveredAt = now`, saves. No replay on subsequent reconnects.
+- **pendingNotifications deliveredAt:** Delivered notifications are retained with `deliveredAt` set. Cleanup via dev tooling (`DELETE /api/dev/.../pending-notifications/delivered`). Automated pruning is future work (TODO comments in place).
+- **Multi-tab sync:** All open tabs receive queue lifecycle events. Closing one tab does not evict other tabs. Session is deleted only when the last socket closes.
+- **Atomic double-completion:** Concurrent requests cannot double-complete the same entry. The MongoDB `findOneAndUpdate` claim is exclusive per entry; only the claimer runs `completeReaction`.
+- **Debug tooling:** Queue inspect, fast-forward, notification cleanup operational when both gating env vars are set.
+
+---
+
+## Architectural Decisions (Added This Checkpoint)
+
+- `resolving` is a transient claim status only. It is never shown to players or described in gameplay language.
+- The 30-second stale-resolving timeout is intentionally generous to cover any save latency. It is not a player-visible timer.
+- Dev tooling fast-forward never calls `completeReaction` directly. This is a hard rule — it ensures all completion logic (inventory, runTotals, unlockTier, reactionLog, WS events, pendingNotifications) runs through the real lifecycle.
+- Energy flush and session deletion happen only on last-tab close. Energy accumulates in the shared session while any tab remains open.
+- `deliveredAt` is the delivery audit trail. `pendingNotifications` entries are never deleted at delivery time — they are marked and retained.
+
+---
+
+## What Is Actually Next
+
+1. **Conditions System v1 (Phase F)** — The queue system is stable. Implement `reaction.conditions` validation against `user.reactorCapabilities` at queue start time. Gen 1–3 conditions first (`high_temperature`, `catalyst`, `high_pressure`).
+2. **Gen 4 content seeding (Phase B2)** — Blocked until conditions system is operational.
+3. **Automated pruning of delivered pendingNotifications** — Low priority. TODOs are in place in the code.
+4. **Multi-slot queue UI** — Deferred. Architecture supports multiple slots; UI is single-slot.
+5. **Long-duration Gen 5/6 stress testing (Phase I)** — Not relevant until conditions and Gen 4 are in place.

@@ -3,7 +3,22 @@
 
 ---
 
-## Revision Notes
+## Current Implementation Status — Revision 3 (2026-05-29)
+
+**All Stages 1–13 are complete.** The persistent synthesis queue is operational for Gen 1–3.
+
+- Stages 1–11: queue lifecycle, snapshot-based completion, WS events, QueuePanel, Gen 1–3 timing, offline delivery.
+- Stage 12: atomic double-completion hardening implemented (see updated Section 10).
+- Stage 13: dev-only debug/admin tooling implemented (see updated Section 15).
+- Multi-tab sync bug fixed: `reactorSessions` now tracks a `Set` of sockets per username; all open tabs receive queue lifecycle events.
+
+The "MVP accepts race condition" language in earlier revisions is superseded. The atomic hardening is live and required no schema change beyond adding `resolving` to the status enum and `claimedAt` to queue entries.
+
+**Next major phase:** Conditions System v1 (Phase F). Gen 4 seeding follows after conditions are enforced.
+
+---
+
+## Revision Notes (Revision 2)
 
 This document supersedes Revision 1. Changes made on approved architectural review:
 
@@ -359,35 +374,35 @@ These are the canonical resolution trigger points. Centralize the call pattern h
 
 This is the most critical correctness concern. The same queue entry must never complete twice.
 
-### Primary guard: status check before completion
+### Implemented: atomic MongoDB claim (Stage 12)
 
-`resolveQueue` filters on `status === 'processing'`. `completeReaction` immediately sets `entry.status = 'completed'` as its first write (before adding inventory or updating runTotals). The save is atomic across all in-memory mutations on the user document. A second concurrent call to `resolveQueue` on the same user object will find no `processing` entries and return nothing.
+`resolveQueue` uses a three-status lifecycle for each due entry: `processing → resolving → completed/failed`.
 
-### Secondary guard: Mongoose save sequencing
-
-HTTP requests that load the user via `findOne` get a snapshot of the document at read time. If two requests race to resolve the same entry:
-- Request A reads user, resolves entry, sets status = 'completed', saves.
-- Request B reads user (before A's save completes), resolves the same entry, sets status = 'completed', saves — overwriting A's save.
-- Result: double completion.
-
-**Mitigation (MVP):** For Gen 1–3 with short reaction times, the window for this race is narrow (only two concurrent requests hitting the same user within milliseconds of the same `expectedCompletion` timestamp). Acceptable for MVP.
-
-**Mitigation (hardened):** Use a MongoDB `findOneAndUpdate` with an atomic filter on the queue entry status:
-```
-db.users.findOneAndUpdate(
-  { _id: userId, 'activeQueue._id': entryId, 'activeQueue.$.status': 'processing' },
-  { $set: { 'activeQueue.$.status': 'completed', ... } }
+Before running any side effects, each due entry is claimed via:
+```js
+User.findOneAndUpdate(
+  { _id: user._id, activeQueue: { $elemMatch: { _id: entry._id, status: 'processing' } } },
+  { $set: { 'activeQueue.$.status': 'resolving', 'activeQueue.$.claimedAt': new Date() } }
 )
 ```
-This is the correct approach for high-concurrency or long-duration synthesis correctness. Should be implemented before Gen 4+ timings are introduced.
+
+This update is atomic at the MongoDB level. Only one concurrent request can transition a given entry from `processing` to `resolving`. The request that receives a non-null result exclusively owns that entry and runs `completeReaction`. Any concurrent request receives null and skips the entry. `$elemMatch` is required (not just `'activeQueue.$.status': 'processing'`) to ensure both conditions target the same subdocument.
+
+### Stale resolving recovery
+
+If the server crashes or the save fails after the claim but before the full `user.save()`, the entry remains `resolving` in the DB indefinitely. On the next `resolveQueue` call, entries in `resolving` status older than 30 seconds are atomically reset to `processing` and re-queued for completion in the same pass. This is safe: `completeReaction` only adds to inventory and runTotals — it never deducts — so re-running it on a recovered entry is correct.
+
+### Multi-tab WebSocket broadcast
+
+The original single-socket `session.ws` design caused Tab B to evict Tab A's socket reference on connect. The session now tracks `session.sockets: Set<WebSocket>`. `emitToUser` serializes the event message once and sends it to all open sockets in the set. One closed or failed socket cannot break delivery to others. `isUserConnected` returns true if any socket is `OPEN`. Session deletion occurs only when the last socket closes.
 
 ### WebSocket event deduplication
 
-WS events are emitted only after the save confirms. If the save fails, no event is emitted. If two resolvers race and both save, both may emit — but the client should be idempotent on receiving the same `reactionKey` completion twice (mark as complete if already marked, ignore duplicate inventory update if quantity already reflects it). The client guards this with a simple "already seen this reactionKey as completed" check on the incoming event.
+WS events are emitted only after the save confirms. The atomic claim ensures only one request per entry reaches the emit call.
 
 ### Server restart during completion
 
-If the server restarts during the `completeReaction` call after deduction but before save: the entry remains `status: 'processing'`, no product was added, no runTotals updated. On next load, `resolveQueue` sees it as still due and completes it. This is safe because `reactantsConsumed: true` prevents re-deduction — `completeReaction` does not deduct anything, it only adds. Re-running it is safe.
+If the server restarts during the `completeReaction` call after the claim but before save: the entry remains `resolving` in the DB. On next `resolveQueue` call, the stale-resolving recovery pass resets it to `processing` after 30 seconds. `completeReaction` runs again — safe because it only adds, never deducts. `reactantsConsumed: true` independently prevents re-deduction if that path were ever reached.
 
 ---
 
@@ -449,9 +464,11 @@ If `expectedCompletion` passes while the user is offline:
 
 Without this, a discovery that occurs during offline resolution will credit the product but the discovery animation never plays on reconnect.
 
-Add `pendingNotifications: [{ type, payload, createdAt }]` to User schema. On `resolveQueue` when no live WS session exists for the user, push completion event payloads to `pendingNotifications`. On WS connect (in `reactorRuntime`), after running `resolveQueue`, drain `pendingNotifications`, emit each as its event type, clear the array, save. This guarantees the discovery animation plays even if the user reconnects hours after completion.
+`pendingNotifications: [{ type, payload, createdAt, deliveredAt }]` is added to the User schema. On `resolveQueue` completion, if no live WS session exists for the user (`isUserConnected()` returns false), completion event payloads are pushed to `pendingNotifications`. If a WS session is active at resolution time, events are emitted live and no pending notification is created — never both for the same completion (anti-duplication rule).
 
-`pendingNotifications` entries expire after 48h — add a `pruneAfter` field and clean up in the same pass as queue entry pruning.
+On WS connect (in `reactorRuntime`), after resolving fresh queue completions, the handler drains stored pending notifications: filters for `!deliveredAt`, emits each via `emitToUser`, sets `deliveredAt = now`, and saves. This guarantees the discovery animation plays even if the user reconnects hours after completion.
+
+**Delivered notifications are retained, not deleted.** The `deliveredAt` field is the delivery audit trail. Entries with `deliveredAt` set are never re-emitted on subsequent reconnects — the filter `!deliveredAt` ensures this. Cleanup of delivered notifications is currently manual via dev tooling (`DELETE /api/dev/users/:username/pending-notifications/delivered`). Automated pruning of delivered notifications (e.g., entries older than 48h where `deliveredAt` is set) is deferred; TODO comments are in place in the code.
 
 ### Tier unlock while offline
 
@@ -508,62 +525,71 @@ Strict: `synthesis_queued` → intake only. `synthesis_completed` / `synthesis_d
 
 Stages are ordered to minimize risk and build on each other. Each stage is independently testable.
 
-### Stage 1 — Schema extension
-Update `activeQueue` entry in User schema with all new fields: `reactionKey`, `slot`, `revealOnCompletion`, `wasDiscovery`, `completedAt`, `pruneAfter`, `snapshot`. Change `status` enum from `['pending', 'complete', 'failed']` to `['processing', 'completed', 'failed']`. Add `pendingNotifications` array to User schema.
+### Stage 1 — Schema extension ✅ COMPLETE
+Updated `activeQueue` entry in User schema: `reactionKey`, `slot`, `revealOnCompletion`, `wasDiscovery`, `completedAt`, `pruneAfter`, `snapshot`. Status enum changed to `['processing', 'completed', 'failed']`. `pendingNotifications` array added.
 
-### Stage 2 — Extract `completeReaction` helper
-Extract from current `performReaction` in `reactions.js` into `server/utils/completeReaction.js`. Signature: `completeReaction(user, entry)`. It reads from the snapshot, not the live reaction. Wire the existing `/perform` route to call it via a thin adapter (creates a minimal queue entry in memory, passes to `completeReaction`). Behavior unchanged — this stage is pure refactor.
+### Stage 2 — Extract `completeReaction` helper ✅ COMPLETE
+`server/utils/completeReaction.js` extracted. Reads exclusively from the entry snapshot. Thin adapter wires the legacy `/perform` route through the same helper.
 
-### Stage 3 — Implement `resolveQueue` and `pruneCompletedEntries`
-`server/utils/resolveQueue.js`. Test by manually inserting a queue entry with a past `expectedCompletion` into the DB and verifying it resolves on the next user fetch.
+### Stage 3 — Implement `resolveQueue` and `pruneCompletedEntries` ✅ COMPLETE
+`server/utils/resolveQueue.js` implements `resolveQueue`, `pruneCompletedEntries`, and `resolveAndPruneUserQueue`. Pure function — mutates user in memory, caller saves.
 
-### Stage 4 — Centralize `resolveQueue` calls on all relevant routes
-Wire `resolveQueue` + `pruneCompletedEntries` into the routes listed in Section 9. No queue start yet — this stage ensures the resolver is in place everywhere before queue entries start being written.
+### Stage 4 — Centralize `resolveQueue` calls on all relevant routes ✅ COMPLETE
+`resolveAndPruneUserQueue` wired into all routes listed in Section 9.
 
-### Stage 5 — Update Gen 1–3 reaction seeds with timing values
-Apply timing values from Section 7 to `seedReactions.js`. Run seed. Required before Stage 6 is testable with real timings.
+### Stage 5 — Update Gen 1–3 reaction seeds with timing values ✅ COMPLETE
+Gen 1–3 `reactionTime` values applied per Section 7.
 
-### Stage 6 — Implement queue start route
-`POST /api/reactions/queue/:reactionKey`. Validate, deduct, write entry, save. Handle `reactionTime === 0` by immediately calling `resolveQueue` in-process. Handle `revealOnCompletion` sanitization. Emit `synthesis_queued` (stub emission for now — WS not yet wired).
+### Stage 6 — Implement queue start route ✅ COMPLETE
+`POST /api/reactions/queue/:reactionKey`. Validates, deducts, writes entry, handles zero-duration in-process, emits `synthesis_queued`.
 
-### Stage 7 — Wire experiment route into queue start
-Update `POST /api/reactions/experiment` to route through queue start after matching a reaction, instead of calling `performReaction` directly. Experiment failure path (no match) remains unchanged.
+### Stage 7 — Wire experiment route into queue start ✅ COMPLETE
+`POST /api/reactions/experiment` routes through `startQueueSynthesis` after matching a reaction.
 
-### Stage 8 — Wire WebSocket queue events
-Add `synthesis_queued`, `synthesis_completed`, `synthesis_discovered`, `synthesis_failed`, `queue_state` to `reactorRuntime.js`. Emit `queue_state` on WS connect. Emit completion events from `resolveQueue` when session is live.
+### Stage 8 — Wire WebSocket queue events ✅ COMPLETE
+`synthesis_queued`, `synthesis_completed`, `synthesis_discovered`, `synthesis_failed`, `queue_state` wired in `reactorRuntime.js`. `queue_state` emitted on WS connect.
 
-### Stage 9 — Frontend queue display
-`QueuePanel` component reads `activeQueue` from LabSimulation state. Countdown timers from `expectedCompletion`. Processing-state display for unknown syntheses (no product name). Known reactions show product name. Queue full → buttons disabled.
+### Stage 9 — Frontend queue display ✅ COMPLETE
+`QueuePanel` component with countdown timers, unknown synthesis label, reactor occupied state.
 
-### Stage 10 — Wire intake and completion animations
-`synthesis_queued` → intake animation in GenesisScene. `synthesis_completed` / `synthesis_discovered` → existing burst/discovery animation. Processing visual state on core/rings while queue non-empty.
+### Stage 10 — Wire intake and completion animations ✅ COMPLETE
+`synthesis_queued` → intake animation. `synthesis_completed` / `synthesis_discovered` → burst/discovery animation. Processing visual state while queue non-empty. Auto-finalization via client-side ping when countdown reaches zero.
 
-### Stage 11 — Offline reconnect / pendingNotifications
-On `resolveQueue` with no live WS session, push to `pendingNotifications`. On WS connect, drain and emit. Test: complete a synthesis while WS is disconnected, reconnect, verify discovery animation plays.
+### Stage 11 — Offline reconnect / pendingNotifications ✅ COMPLETE
+HTTP routes create `pendingNotifications` when user has no live WS session at resolution time. WS connect drains undelivered notifications, emits each, sets `deliveredAt`, saves. Exact-once delivery; no replay.
 
-### Stage 12 — Atomic double-completion hardening
-Replace in-memory status guard with MongoDB atomic subdocument update pattern. Required before Gen 4+ reaction times are introduced.
+### Stage 12 — Atomic double-completion hardening ✅ COMPLETE
+`resolveQueue` uses MongoDB `findOneAndUpdate` + `$elemMatch` to claim each due entry atomically (`processing → resolving`). Only the claimer runs `completeReaction`. Stale resolving recovery (30s timeout) re-queues entries after crashes. Status enum extended to `['processing', 'resolving', 'completed', 'failed']`; `claimedAt` field added. Multi-tab WS sync bug fixed: `reactorSessions` now uses `Set<WebSocket>` per username; all open tabs receive events.
 
-### Stage 13 — Debug tooling
-Admin route to inspect active queue and manually advance `expectedCompletion` for testing. Useful for validating 72-hour syntheses without waiting.
+### Stage 13 — Debug tooling ✅ COMPLETE
+`server/routes/dev.js` with three endpoints: queue inspect, `expectedCompletion` fast-forward, delivered notification cleanup. Mounted only when `NODE_ENV !== 'production'` AND `DEV_ADMIN_ENABLED=true`. Fast-forward sets `expectedCompletion = now - 1s` and lets the real lifecycle handle completion — does not call `completeReaction` directly.
 
 ---
 
-## 16. Open Questions (Resolved from Revision 1)
+## 16. Open Questions (All Resolved — Stages 1–13 Complete)
 
-All questions from Revision 1 have been resolved:
+All questions from Revisions 1 and 2 have been resolved:
 
 1. ~~Instant reactions through queue or separate path?~~ **Resolved: all reactions through queue. Zero-duration completes immediately within the same request.**
 2. ~~Experiment flow respect timing?~~ **Resolved: yes, fully. Experiment routes into the queue start path after matching.**
 3. ~~Max slots for MVP?~~ **Resolved: 1 slot.**
 4. ~~Completed entries removed immediately?~~ **Resolved: retained 24 hours, pruned via `pruneAfter` field.**
-5. ~~Periodic server sweep in scope?~~ **Resolved: deferred to post-MVP (Stage 13+). HTTP/WS resolution is sufficient for Gen 1–3.**
+5. ~~Periodic server sweep in scope?~~ **Resolved: deferred. HTTP/WS resolution is sufficient for Gen 1–3.**
 6. ~~Actual `reactionTime` values?~~ **Resolved: see Section 7 timing philosophy and proposed values.**
-7. ~~Queue button location?~~ **Resolved: same button in SelectedReactionPanel, label changes based on `reactionTime`. "Perform Reaction" for instant; "Queue Synthesis" for timed. To be confirmed when UI stage begins.**
+7. ~~Queue button location?~~ **Resolved: same button in SelectedReactionPanel, label changes based on `reactionTime`.**
 8. ~~Unknown queued card show countdown?~~ **Resolved: yes — "Unknown Synthesis — completing in 2:34", no product name.**
-9. ~~`pendingNotifications` in scope?~~ **Resolved: yes, in Stage 11. Required for correct discovery animation replay on reconnect.**
+9. ~~`pendingNotifications` in scope?~~ **Resolved: yes, Stage 11. Exact-once delivery, `deliveredAt` audit trail.**
 10. ~~Energy cost unified or split?~~ **Resolved: `energyCost` is the queue submission cost. No separate field.**
+11. ~~Timing values confirmation?~~ **Resolved: Gen 1–3 timing values from Section 7 are applied and seeded.**
+12. ~~MVP race condition accepted?~~ **Resolved: no. Atomic hardening is implemented (Stage 12). See Section 10.**
 
-## Remaining open question before Stage 5
+## Remaining Work
 
-**Timing values confirmation**: The timing proposals in Section 7 are recommendations. Confirm or adjust before the seed update in Stage 5. This is the only blocking decision before implementation begins.
+All Stages 1–13 are complete. Open items are deferred or future scope:
+
+- **Conditions System v1 (Phase F)** — next major implementation phase. `reaction.conditions` validated against `user.reactorCapabilities` at queue start.
+- **Gen 4 content seeding (Phase B2)** — blocked on Phase F conditions enforcement.
+- **Automated pruning of delivered `pendingNotifications`** — deferred. TODO comments are in place. Dev tooling (`DELETE /api/dev/.../pending-notifications/delivered`) handles manual cleanup in the interim.
+- **Multi-slot queue UI** — architecture supports multiple slots; single-slot UI is MVP. Deferred.
+- **Long-duration Gen 5/6 stress testing (Phase I)** — deferred until conditions and Gen 4 are in place.
+- **Conditions-aware debug tooling** — Phase G has broader scope than Stage 13 (inventory grant, tier set, reactor capability grant/revoke, offline simulation). Stage 13 covers the subset needed for Gen 1–3 queue testing. Remaining Phase G tooling is deferred until Phase F conditions work begins.

@@ -29,19 +29,19 @@ Genesis Lab has a working technical foundation:
 - **Queue WebSocket events** — `synthesis_queued`, `synthesis_completed`, `synthesis_discovered`, `synthesis_failed`, `queue_state`
 - **QueuePanel** — countdown display, reactor occupied state, unknown synthesis label
 - **Unlock orchestration (Gen 1–3)** — `unlockTier` advances at completion via `snapshot.productUnlocksUserTier`; tier gating enforced across all routes
-- **Offline completion delivery** — `pendingNotifications` with `deliveredAt`; HTTP routes create pending notifications when user is offline; WS connect drains and marks delivered exactly once
+- **Offline completion delivery** — `pendingNotifications` with `deliveredAt`; HTTP routes create pending notifications when user is offline; WS connect drains and marks delivered exactly once; no replay
+- **Atomic double-completion hardening** — Stage 12; `processing → resolving → completed/failed` atomic claim via `findOneAndUpdate` + `$elemMatch`; stale resolving recovery after 30s; multi-tab WS sync fixed (all sockets per username share one session `Set`)
+- **Dev/admin debug tooling** — Stage 13; queue inspect, fast-forward `expectedCompletion`, delivered notification cleanup; double-gated (`NODE_ENV !== production` AND `DEV_ADMIN_ENABLED=true`)
 
 **Not yet built (full scope):**
-- Conditions system (conditions as gameplay-blocking requirements) — Phase F; blocked on Stage 12 completion
-- Gen 4–6 content seeding — blocked on conditions system (Phase F) and debug tooling (Phase G / Stage 13)
+- **Conditions system (Phase F)** — conditions as gameplay-blocking requirements; **next major implementation phase**
+- Gen 4–6 content seeding — blocked on conditions system (Phase F)
 - Long-duration synthesis validation (synthesis times 4–72 hours, multi-hour persistence testing) — Phase I
 - Automation framework (passive element generators) — Phase H
 - Economy balancing (BEU costs calibrated, playtested) — Phase J
 - Reactor evolution (visual/audio/language changes per generation) — Phase K
 - Save/persistence hardening (migration versioning, corruption guards for 72h syntheses) — Phase L
 - Onboarding and tutorial
-- **Stage 12** — Atomic MongoDB double-completion guard (required before Gen 4+ timings)
-- **Stage 13 / Phase G** — Debug/admin tooling (force-complete, inventory grant, tier set, time acceleration; required before Gen 4+ testing)
 
 The transition from this state to the designed game requires disciplined sequencing. Every major system depends on prior systems. Build out of order and you will re-build.
 
@@ -283,7 +283,7 @@ Deliverables:
 
 ---
 
-### Phase C — User Inventory and Queue Model ✅ COMPLETE (Stages 1–11)
+### Phase C — User Inventory and Queue Model ✅ COMPLETE (Stages 1–13)
 **What:** Add user-level inventory tracking and synthesis queue persistence to the backend.
 
 Deliverables:
@@ -319,8 +319,8 @@ Gate definitions from the design:
 
 ---
 
-### Phase E — Reaction Time Enforcement ✅ COMPLETE for Gen 1–3 (Stages 1–11)
-**Remaining:** Stage 12 (atomic MongoDB double-completion guard) and Stage 13 (debug tooling) must be completed before Gen 4+ timings are introduced. These are the final queue-system tasks before Phase F (conditions) begins.
+### Phase E — Reaction Time Enforcement ✅ COMPLETE for Gen 1–3 (Stages 1–13)
+**Status:** Stage 12 (atomic double-completion hardening) and Stage 13 (debug tooling) are now complete. The synthesis queue is production-ready for Gen 1–3. Phase F (conditions) is the next major implementation phase.
 
 **What:** Enforce `reactionTime` from the seed data. Gen 1 reactions complete in 5–90 seconds. Gen 2 in 1–10 minutes. Gen 3 in 5–45 minutes. Reactions no longer resolve instantly.
 
@@ -336,11 +336,11 @@ Note: Gen 4–6 reaction times (30 min – 72 hours) do not need to be tested he
 
 ---
 
-### Stage 12 — Atomic Double-Completion Hardening ⬅ NEXT (queue system)
-Replace the in-process status guard in `resolveQueue` with a MongoDB atomic subdocument update (`findOneAndUpdate` with `{ 'activeQueue.$.status': 'processing' }` filter). This closes the race window where two concurrent requests loading separate DB snapshots could double-complete the same entry. Required before Gen 4+ reaction times (30 min – 4 hours) are introduced — at those durations, the concurrent-request window is wide enough to be a real correctness risk.
+### Stage 12 — Atomic Double-Completion Hardening ✅ COMPLETE
+`resolveQueue` now uses a MongoDB atomic `findOneAndUpdate` claim with `$elemMatch` to transition each due entry from `processing → resolving` before running side effects. Only the request that wins the claim runs `completeReaction`. Stale `resolving` entries (>30s, indicating a server crash or save failure) are automatically recovered to `processing` on the next `resolveQueue` call — safe because `completeReaction` only adds, never deducts. Multi-tab WebSocket sync bug fixed in the same pass: `reactorSessions` now tracks a `Set` of sockets per username so all open tabs receive events.
 
-### Stage 13 — Debug/Admin Tooling ⬅ NEXT (= Phase G prerequisite)
-Force-complete active queue entries, inventory grant, tier set, time acceleration multiplier. Must exist before Gen 4+ content is seeded — 30-minute to 4-hour reactions cannot be practically tested without time compression. This is the same work as Phase G below; see that phase for the full scope.
+### Stage 13 — Debug/Admin Tooling ✅ COMPLETE
+`server/routes/dev.js` implements three dev-only endpoints: queue inspect (`GET /api/dev/users/:username/queue`), fast-forward (`POST /api/dev/users/:username/queue/:queueEntryId/fast-forward`), and delivered notification cleanup (`DELETE /api/dev/users/:username/pending-notifications/delivered`). Mounted behind a double gate: `NODE_ENV !== 'production'` AND `DEV_ADMIN_ENABLED=true`. Fast-forward sets `expectedCompletion` to `now - 1s` and lets the real lifecycle handle completion on the next user fetch — it does not call `completeReaction` directly.
 
 ---
 
