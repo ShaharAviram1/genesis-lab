@@ -154,7 +154,7 @@ const reactions = [
         generationTier: 2,
         unlockTier: 3,
         reactants: [
-            { key: 'iron_oxide', quantity: 1 },
+            { key: 'iron_oxide', quantity: 2 },
             { key: 'sulfur', quantity: 1 }
         ],
         product: { key: 'copper', quantity: 1 },
@@ -171,7 +171,7 @@ const reactions = [
         generationTier: 2,
         unlockTier: 3,
         reactants: [
-            { key: 'iron_oxide', quantity: 1 },
+            { key: 'iron_oxide', quantity: 2 },
             { key: 'carbon', quantity: 1 }
         ],
         product: { key: 'tin', quantity: 1 },
@@ -189,7 +189,7 @@ const reactions = [
         unlockTier: 5,
         reactants: [
             { key: 'iron_oxide', quantity: 1 },
-            { key: 'ammonia', quantity: 1 }
+            { key: 'ammonia', quantity: 2 }
         ],
         product: { key: 'nickel', quantity: 1 },
         energyCost: 16,
@@ -206,7 +206,7 @@ const reactions = [
         unlockTier: 6,
         reactants: [
             { key: 'iron', quantity: 1 },
-            { key: 'water', quantity: 1 }
+            { key: 'water', quantity: 2 }
         ],
         product: { key: 'gold', quantity: 1 },
         energyCost: 22,
@@ -363,7 +363,7 @@ const reactions = [
         generationTier: 2,
         unlockTier: 7,
         reactants: [
-            { key: 'salt', quantity: 1 },
+            { key: 'salt', quantity: 2 },
             { key: 'hydrogen_gas', quantity: 1 }
         ],
         product: { key: 'lithium', quantity: 1 },
@@ -435,7 +435,7 @@ const reactions = [
         unlockTier: 8,
         reactants: [
             { key: 'steel', quantity: 2 },
-            { key: 'chrome', quantity: 1 },
+            { key: 'chrome', quantity: 2 },
             { key: 'nickel', quantity: 1 }
         ],
         product: { key: 'stainless_steel', quantity: 1 },
@@ -453,7 +453,7 @@ const reactions = [
         unlockTier: 8,
         reactants: [
             { key: 'carbon', quantity: 3 },
-            { key: 'methane', quantity: 1 }
+            { key: 'methane', quantity: 2 }
         ],
         product: { key: 'graphene', quantity: 1 },
         energyCost: 50,
@@ -469,7 +469,7 @@ const reactions = [
         generationTier: 3,
         unlockTier: 9,
         reactants: [
-            { key: 'graphene', quantity: 2 },
+            { key: 'graphene', quantity: 3 },
             { key: 'carbon', quantity: 1 }
         ],
         product: { key: 'carbon_nanotube', quantity: 1 },
@@ -505,7 +505,7 @@ const reactions = [
         unlockTier: 9,
         reactants: [
             { key: 'silicon', quantity: 2 },
-            { key: 'gold', quantity: 1 }
+            { key: 'gold', quantity: 2 }
         ],
         product: { key: 'doped_silicon', quantity: 1 },
         energyCost: 42,
@@ -522,7 +522,7 @@ const reactions = [
         unlockTier: 9,
         reactants: [
             { key: 'lithium', quantity: 2 },
-            { key: 'graphene', quantity: 1 },
+            { key: 'graphene', quantity: 2 },
             { key: 'doped_silicon', quantity: 1 }
         ],
         product: { key: 'lithium_ion_cell', quantity: 1 },
@@ -559,7 +559,7 @@ const reactions = [
         unlockTier: 9,
         reactants: [
             { key: 'aramid_fiber', quantity: 1 },
-            { key: 'carbon_nanotube', quantity: 1 }
+            { key: 'carbon_nanotube', quantity: 2 }
         ],
         product: { key: 'ballistic_composite', quantity: 1 },
         energyCost: 120,
@@ -579,7 +579,7 @@ const reactions = [
         unlockTier: 10,
         reactants: [
             { key: 'glass', quantity: 1 },
-            { key: 'doped_silicon', quantity: 1 }
+            { key: 'doped_silicon', quantity: 2 }
         ],
         product: { key: 'ceramic_superconductor', quantity: 1 },
         energyCost: 200,
@@ -616,7 +616,7 @@ const reactions = [
         unlockTier: 11,
         reactants: [
             { key: 'ceramic_superconductor', quantity: 1 },
-            { key: 'carbon_nanotube', quantity: 1 }
+            { key: 'carbon_nanotube', quantity: 2 }
         ],
         product: { key: 'cryogenic_matrix', quantity: 1 },
         energyCost: 250,
@@ -634,7 +634,7 @@ const reactions = [
         unlockTier: 11,
         reactants: [
             { key: 'metallic_hydrogen', quantity: 1 },
-            { key: 'stainless_steel', quantity: 1 }
+            { key: 'stainless_steel', quantity: 2 }
         ],
         product: { key: 'nuclear_fuel_pellet', quantity: 1 },
         energyCost: 350,
@@ -655,7 +655,7 @@ const reactions = [
         reactants: [
             { key: 'hydrogen_plasma', quantity: 1 },
             { key: 'cryogenic_matrix', quantity: 1 },
-            { key: 'ballistic_composite', quantity: 1 }
+            { key: 'ballistic_composite', quantity: 2 }
         ],
         product: { key: 'reactive_plasma_core', quantity: 1 },
         energyCost: 500,
@@ -673,7 +673,7 @@ const reactions = [
         unlockTier: 12,
         reactants: [
             { key: 'metallic_hydrogen', quantity: 1 },
-            { key: 'ceramic_superconductor', quantity: 1 }
+            { key: 'ceramic_superconductor', quantity: 2 }
         ],
         product: { key: 'quantum_substrate', quantity: 1 },
         energyCost: 450,
