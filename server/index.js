@@ -5,6 +5,7 @@ const reactionsRouter = require('./routes/reactions');
 const userRouter = require('./routes/users');
 const atomsRouter = require('./routes/atoms');
 const authRouter = require('./routes/auth');
+const devRouter = require('./routes/dev');
 const { reactorRuntime } = require('./realtime/reactorRuntime');
 const cors = require('cors');
 const http = require('http');
@@ -22,6 +23,7 @@ app.use('/api', reactionsRouter);
 app.use('/api', userRouter);
 app.use('/api', atomsRouter);
 app.use('/api', authRouter);
+app.use('/api/dev', devRouter); // Mount dev routes without guards for testing; will be conditionally enabled below.
 
 // Dev admin routes — mounted only when BOTH guards pass.
 // NODE_ENV !== 'production' prevents accidental exposure in production builds.

@@ -192,6 +192,66 @@
   gap: 6px;
 }
 
+.reactor-caps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.reactor-caps-header:hover .panel-title {
+  color: var(--text);
+}
+
+.caps-toggle-hint {
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  color: rgba(34, 197, 94, 0.55);
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.reactor-caps-header:hover .caps-toggle-hint {
+  color: rgba(34, 197, 94, 0.85);
+}
+
+/* ── Upgrades collapsible header ── */
+
+.upgrades-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.upgrades-header:hover .panel-title {
+  color: var(--text);
+}
+
+.upgrades-toggle-hint {
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  color: rgba(167, 139, 250, 0.55);
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.upgrades-header:hover .upgrades-toggle-hint {
+  color: rgba(167, 139, 250, 0.85);
+}
+
 .reactor-caps-list {
   display: flex;
   flex-wrap: wrap;

@@ -170,6 +170,22 @@ const userSchema = mongoose.Schema({
         }
     }],
 
+    blueprints: [{
+        blueprintKey:  { type: String, required: true },
+        level:         { type: Number, default: 1, min: 1 },
+        purchasedAt:   { type: Date, default: Date.now }
+    }],
+
+    generators: [{
+        moduleKey:     { type: String, required: true },
+        level:         { type: Number, default: 1, min: 1 },
+        constructedAt: { type: Date, default: Date.now },
+        pausedAt:      { type: Date, default: null },
+        lastTickAt:    { type: Date, default: Date.now }
+    }],
+
+    lastActiveAt: { type: Date, default: Date.now },
+
     // Stores completion events for users who were offline at resolution time.
     // Drained and emitted exactly once on next WebSocket connect.
     // deliveredAt is set to the delivery timestamp; null means undelivered.

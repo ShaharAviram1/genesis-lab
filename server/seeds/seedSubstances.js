@@ -710,16 +710,166 @@ const substances = [
         color: '#43A047',
         hintText: 'Charge and discharge, cycle after cycle. The heart of portable power.',
         isActive: true
+    },
+
+    // ── Gen 4 — The Edge of Physics (8) ─────────────────────────────────────
+    {
+        substanceKey: 'hydrogen_plasma',
+        type: 'material',
+        name: 'Hydrogen Plasma',
+        symbol: 'H⁺',
+        formula: 'H (ionized)',
+        category: 'plasma',
+        generationTier: 4,
+        unlockTier: 4,
+        unlocksUserTier: 11,
+        baseEnergy: 150,
+        shardValue: 8,
+        stabilityFactor: 0.65,
+        reactivity: 0.92,
+        fantasyWeight: 4,
+        color: '#67E8F9',
+        hintText: 'Hydrogen stripped of its electron. The fundamental state of stellar matter. Every star in the universe runs on this.',
+        isActive: true
+    },
+    {
+        substanceKey: 'ballistic_composite',
+        type: 'material',
+        name: 'Ballistic Composite',
+        symbol: 'BComp',
+        formula: 'ARF·CNT',
+        category: 'advanced_material',
+        generationTier: 4,
+        unlockTier: 4,
+        baseEnergy: 180,
+        shardValue: 8,
+        stabilityFactor: 0.96,
+        reactivity: 0.04,
+        fantasyWeight: 4,
+        color: '#78350F',
+        hintText: 'Aramid and nanotube, sintered under pressure into one matrix. Lighter than steel. More resistant to impact than either material alone.',
+        isActive: true
+    },
+    {
+        substanceKey: 'ceramic_superconductor',
+        type: 'material',
+        name: 'Ceramic Superconductor',
+        symbol: 'CeSC',
+        formula: 'SiO₂·Si:Au (cryo)',
+        category: 'advanced_material',
+        generationTier: 4,
+        unlockTier: 4,
+        baseEnergy: 250,
+        shardValue: 10,
+        stabilityFactor: 0.94,
+        reactivity: 0.03,
+        fantasyWeight: 4,
+        color: '#7C3AED',
+        hintText: 'Electrical resistance collapses to zero at 93 Kelvin. Glass and silicon, reorganized by cold into something that should not exist at room temperature.',
+        isActive: true
+    },
+    {
+        substanceKey: 'metallic_hydrogen',
+        type: 'material',
+        name: 'Metallic Hydrogen',
+        symbol: 'MH',
+        formula: 'H (metallic)',
+        category: 'exotic_material',
+        generationTier: 4,
+        unlockTier: 4,
+        baseEnergy: 350,
+        shardValue: 12,
+        stabilityFactor: 0.72,
+        reactivity: 0.45,
+        fantasyWeight: 5,
+        color: '#BFDBFE',
+        hintText: 'At the pressures found inside gas giants, hydrogen stops being a gas and becomes a metal. Electrons move freely through a solid hydrogen lattice. The reactor holds it there.',
+        isActive: true
+    },
+    {
+        substanceKey: 'cryogenic_matrix',
+        type: 'material',
+        name: 'Cryogenic Matrix',
+        symbol: 'CryM',
+        formula: 'CeSC·CNT (vac)',
+        category: 'exotic_material',
+        generationTier: 4,
+        unlockTier: 4,
+        baseEnergy: 300,
+        shardValue: 11,
+        stabilityFactor: 0.91,
+        reactivity: 0.06,
+        fantasyWeight: 4,
+        color: '#0EA5E9',
+        hintText: 'Superconductor reinforced by nanotube in near-vacuum. A magnetic containment scaffold that operates near absolute zero — built to hold plasma without touching it.',
+        isActive: true
+    },
+    {
+        substanceKey: 'nuclear_fuel_pellet',
+        type: 'material',
+        name: 'Nuclear Fuel Pellet',
+        symbol: 'NFP',
+        formula: 'MH·SSt',
+        category: 'nuclear',
+        generationTier: 4,
+        unlockTier: 4,
+        unlocksUserTier: 12,
+        baseEnergy: 400,
+        shardValue: 14,
+        stabilityFactor: 0.88,
+        reactivity: 0.55,
+        fantasyWeight: 4,
+        color: '#D97706',
+        hintText: 'Metallic hydrogen compressed into a stainless steel lattice under radiation bombardment. Energy density beyond any conventional fuel. The Gen 5 chain begins here.',
+        isActive: true
+    },
+    {
+        substanceKey: 'reactive_plasma_core',
+        type: 'material',
+        name: 'Reactive Plasma Core',
+        symbol: 'RPC',
+        formula: 'H⁺·CryM·BC',
+        category: 'plasma',
+        generationTier: 4,
+        unlockTier: 4,
+        baseEnergy: 500,
+        shardValue: 16,
+        stabilityFactor: 0.61,
+        reactivity: 0.88,
+        fantasyWeight: 5,
+        color: '#F97316',
+        hintText: 'The reactor built a reactor. Plasma, containment field, and structural vessel — converged into the embryonic form of a fusion engine.',
+        isActive: true
+    },
+    {
+        substanceKey: 'quantum_substrate',
+        type: 'material',
+        name: 'Quantum Substrate',
+        symbol: 'QSub',
+        formula: 'MH·CeSC',
+        category: 'exotic_material',
+        generationTier: 4,
+        unlockTier: 4,
+        baseEnergy: 450,
+        shardValue: 15,
+        stabilityFactor: 0.85,
+        reactivity: 0.18,
+        fantasyWeight: 4,
+        color: '#6366F1',
+        hintText: 'Metallic hydrogen and ceramic superconductor, merged under simultaneous extreme pressure and cold. A lattice at the boundary between classical and quantum material behavior.',
+        isActive: true
     }
 ];
 
-// Expected: 18 Gen 1 + 13 Gen 2 + 9 Gen 3 = 40 total
+// Expected: 18 Gen 1 + 13 Gen 2 + 9 Gen 3 + 8 Gen 4 = 48 total
 const gen1 = substances.filter(s => s.generationTier === 1).length;
 const gen2 = substances.filter(s => s.generationTier === 2).length;
 const gen3 = substances.filter(s => s.generationTier === 3).length;
+const gen4 = substances.filter(s => s.generationTier === 4).length;
 console.assert(gen1 === 18, `Gen 1 count wrong: ${gen1}`);
 console.assert(gen2 === 13, `Gen 2 count wrong: ${gen2}`);
 console.assert(gen3 === 9,  `Gen 3 count wrong: ${gen3}`);
+console.assert(gen4 === 8,  `Gen 4 count wrong: ${gen4}`);
 
 (async () => {
     try {

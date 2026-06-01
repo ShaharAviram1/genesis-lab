@@ -532,6 +532,157 @@ const reactions = [
         hintText: 'Your most advanced materials may converge into something entirely new.',
         description: 'Lithium ions shuttling between graphene and silicon electrodes. Portable power, realized.',
         isActive: true
+    },
+
+    // ── Gen 4 Tier 9 — The Edge of Physics (Gen 4 entry wave) ────────────────
+    {
+        reactionKey: 'gen4_hydrogen_plasma',
+        name: 'Hydrogen Plasma Ionization',
+        generationTier: 4,
+        unlockTier: 9,
+        reactants: [
+            { key: 'hydrogen', quantity: 1 }
+        ],
+        product: { key: 'hydrogen_plasma', quantity: 1 },
+        energyCost: 100,
+        reactionTime: 180,
+        conditions: ['plasma_state', 'extreme_temperature'],
+        discoveredByDefault: false,
+        hintText: 'A plasma-state reactor can do to elements what stars do naturally.',
+        description: 'Hydrogen stripped to bare protons under plasma-state conditions. The electron releases as energy. What remains is the fundamental state of stellar matter — the same phase of hydrogen that powers every star in the observable universe.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen4_ballistic_composite',
+        name: 'Ballistic Composite Sintering',
+        generationTier: 4,
+        unlockTier: 9,
+        reactants: [
+            { key: 'aramid_fiber', quantity: 1 },
+            { key: 'carbon_nanotube', quantity: 1 }
+        ],
+        product: { key: 'ballistic_composite', quantity: 1 },
+        energyCost: 120,
+        reactionTime: 270,
+        conditions: ['extreme_temperature', 'high_pressure'],
+        discoveredByDefault: false,
+        hintText: 'Your strongest structural materials may combine into something greater than either alone.',
+        description: 'Aramid fiber and carbon nanotube hot-pressed under extreme temperature and high pressure into a unified composite matrix. The nanotube lattice embeds within the aramid polymer structure. The result: a material with a protection-to-weight ratio no single substance achieves alone — and the structural vessel the plasma track will eventually require.',
+        isActive: true
+    },
+
+    // ── Gen 4 Tier 10 ─────────────────────────────────────────────────────────
+    {
+        reactionKey: 'gen4_ceramic_superconductor',
+        name: 'Ceramic Superconductor Formation',
+        generationTier: 4,
+        unlockTier: 10,
+        reactants: [
+            { key: 'glass', quantity: 1 },
+            { key: 'doped_silicon', quantity: 1 }
+        ],
+        product: { key: 'ceramic_superconductor', quantity: 1 },
+        energyCost: 200,
+        reactionTime: 360,
+        conditions: ['extreme_cold'],
+        discoveredByDefault: false,
+        hintText: 'The material that opened Gen 3 may carry a different property at extreme cold.',
+        description: 'Glass and doped silicon cooled to cryogenic conditions until their electrical resistance collapses to zero. A high-temperature superconductor — high-temperature in the scientific sense: it superconducts at 93 Kelvin, far warmer than classical superconductors, but still requiring the extreme cold the reactor now commands. While the plasma track burns, the cold track crystallizes.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen4_metallic_hydrogen',
+        name: 'Metallic Hydrogen Compression',
+        generationTier: 4,
+        unlockTier: 10,
+        reactants: [
+            { key: 'hydrogen_plasma', quantity: 1 }
+        ],
+        product: { key: 'metallic_hydrogen', quantity: 1 },
+        energyCost: 300,
+        reactionTime: 720,
+        conditions: ['extreme_pressure'],
+        discoveredByDefault: false,
+        hintText: 'Plasma under sufficient pressure becomes something else entirely.',
+        description: 'Hydrogen plasma subjected to pressures equivalent to the interior of a gas giant. Under these conditions, electrons are no longer bound to individual protons — they move freely through a solid hydrogen lattice. Metallic hydrogen is theoretically the most energetic rocket propellant ever synthesized. The reactor holds it stable. For now.',
+        isActive: true
+    },
+
+    // ── Gen 4 Tier 11 ─────────────────────────────────────────────────────────
+    {
+        reactionKey: 'gen4_cryogenic_matrix',
+        name: 'Cryogenic Matrix Assembly',
+        generationTier: 4,
+        unlockTier: 11,
+        reactants: [
+            { key: 'ceramic_superconductor', quantity: 1 },
+            { key: 'carbon_nanotube', quantity: 1 }
+        ],
+        product: { key: 'cryogenic_matrix', quantity: 1 },
+        energyCost: 250,
+        reactionTime: 540,
+        conditions: ['extreme_cold', 'vacuum'],
+        discoveredByDefault: false,
+        hintText: 'A superconductor needs structure to function as a containment field.',
+        description: 'Ceramic superconductor reinforced by carbon nanotube in near-vacuum conditions. The nanotube provides the structural lattice; the superconductor provides the magnetic field. Together they form a containment scaffold capable of channeling plasma streams without direct contact. It operates correctly only near absolute zero.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen4_nuclear_fuel_pellet',
+        name: 'Nuclear Fuel Pellet Fabrication',
+        generationTier: 4,
+        unlockTier: 11,
+        reactants: [
+            { key: 'metallic_hydrogen', quantity: 1 },
+            { key: 'stainless_steel', quantity: 1 }
+        ],
+        product: { key: 'nuclear_fuel_pellet', quantity: 1 },
+        energyCost: 350,
+        reactionTime: 720,
+        conditions: ['extreme_pressure', 'radiation_bombardment'],
+        discoveredByDefault: false,
+        hintText: 'Metallic hydrogen needs a casing that can survive what it contains.',
+        description: 'Metallic hydrogen compressed into a stainless steel lattice under radiation bombardment. The pellet is dense, stable by the standards of what it contains, and carries energy density beyond any conventional fuel. Producing the nuclear fuel pellet is the event that opens the final tier of Gen 4 — and begins the approach to Gen 5.',
+        isActive: true
+    },
+
+    // ── Gen 4 Tier 12 — Capstones ─────────────────────────────────────────────
+    {
+        reactionKey: 'gen4_reactive_plasma_core',
+        name: 'Reactive Plasma Core Assembly',
+        generationTier: 4,
+        unlockTier: 12,
+        reactants: [
+            { key: 'hydrogen_plasma', quantity: 1 },
+            { key: 'cryogenic_matrix', quantity: 1 },
+            { key: 'ballistic_composite', quantity: 1 }
+        ],
+        product: { key: 'reactive_plasma_core', quantity: 1 },
+        energyCost: 500,
+        reactionTime: 900,
+        conditions: ['plasma_state'],
+        discoveredByDefault: false,
+        hintText: 'Three separate tracks converge into something none of them could be alone.',
+        description: 'Three parallel tracks converge: the plasma track (hydrogen plasma), the cold track (cryogenic matrix), and the structural track (ballistic composite). The resulting assembly is an embryonic fusion reactor — not manufactured by the reactor but built by it. The plasma is contained. The containment is structured. The structure survives the plasma. The reactor built a reactor inside itself.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen4_quantum_substrate',
+        name: 'Quantum Substrate Lattice Formation',
+        generationTier: 4,
+        unlockTier: 12,
+        reactants: [
+            { key: 'metallic_hydrogen', quantity: 1 },
+            { key: 'ceramic_superconductor', quantity: 1 }
+        ],
+        product: { key: 'quantum_substrate', quantity: 1 },
+        energyCost: 450,
+        reactionTime: 900,
+        conditions: ['extreme_pressure', 'extreme_cold'],
+        discoveredByDefault: false,
+        hintText: 'Two extreme-state materials subjected simultaneously to their opposing conditions.',
+        description: 'Metallic hydrogen and ceramic superconductor merged under simultaneous extreme pressure and extreme cold. The resulting lattice operates at the boundary between classical and quantum material behavior: electrons in the superconducting state, protons in the metallic lattice, the whole structure held in a phase with no stable analog at normal conditions. The quantum substrate is where Gen 5 physics begins to be legible.',
+        isActive: true
     }
 ];
 

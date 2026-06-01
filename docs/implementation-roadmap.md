@@ -1,10 +1,56 @@
 # Genesis Lab — Implementation Roadmap
 
-**Version:** 1.2  
-**Status:** Active Implementation — Synthesis Engine Hardening Phase  
-**Date:** 2026-05-29  
-**Inputs:** reaction-graph-design.md, generation-philosophy-v2.md, substance-importance-audit.md, substance-universe.md, queue-system-plan.md  
+**Version:** 1.4  
+**Status:** Active Implementation — Prestige & Economy Foundation Phase  
+**Date:** 2026-06-01  
+**Inputs:** reaction-graph-design.md, generation-philosophy-v2.md, substance-importance-audit.md, substance-universe.md, queue-system-plan.md, prestige-system-redesign.md, prestige-loop-analysis.md, economic-progression-analysis.md  
 **Scope:** Full implementation sequencing from design lock to game-complete state
+
+---
+
+> **Roadmap Revision Note (2026-05-30):**  
+> Audited after completion of Phase F (conditions enforcement), Phase B2 (Gen 4 content seeding), and Gen 4 full playthrough validation. Preamble, phase headings, Stage 13 description, Phase G status, and Appendix naming deviations updated. No implementation code changed.
+
+---
+
+> **Roadmap Revision Note (2026-06-01) — Prestige & Economy Foundation Insertion:**
+>
+> **Why this revision was made:**  
+> Three analysis documents produced since v1.3 (prestige-loop-analysis.md, automation-system-design.md, economic-progression-analysis.md) established findings that make the prior sequencing untenable:
+>
+> 1. **Automation is not an independent feature.** It is the first branch of a redesigned prestige system. Implementing it before the prestige architecture is decided produces automation that will have to be refactored when that architecture is defined.
+> 2. **The current prestige system addresses the wrong walls.** Energy and cost multipliers solve walls that barely exist. The Time, Queue, and Capability walls — the ones that worsen with each run — have zero prestige coverage. The prestige system must be redesigned before new branches are added.
+> 3. **The game currently lacks a meaningful economic wall.** Energy income (40–100 energy/second) is 50–100× faster than reaction energy demand. No synthesis is economically gated. Long-duration synthesis without a scarcity redesign creates only longer timers, not deeper progression.
+> 4. **Gen 5–6 cannot be responsibly designed** until the prestige economy is recalibrated and the Gen 5 economic gate mechanism is specified. Seeding Gen 5 content before those decisions are made will require re-seeding.
+>
+> **What changed:**
+> - Era V renamed from "Automation, Long-Duration Synthesis & Gen 5–6 Content" to **"Prestige & Economy Foundation"**
+> - Three new phases added: **Phase P** (Prestige System Redesign), **Phase Q** (Economy & Scarcity Overhaul), **Phase R** (Prestige Branch #1 Implementation)
+> - Old Era V restructured into **Era VI** (Long-Duration Synthesis & Gen 5 Content) and **Era VII** (Gen 6 Content)
+> - Old Era VI (Polish) renumbered to **Era VIII**
+> - **Phase H** (Automation Framework) retired; automation is now Phase R under the prestige branch architecture
+> - **Phase B3** split into **B3** (Gen 5 Design + Seeding + Validation) and **B4** (Gen 6 Design + Seeding + Validation)
+> - **Phase J** split into **J1** (Economy Architecture — design) and **J2** (Economy Balancing — tuning)
+> - Phase I (Long-Duration Synthesis) repositioned after Phase R, not before it
+> - Dependency graph restructured to reflect the new critical path
+> - Automation philosophy references updated throughout (automation is prestige infrastructure, not an idle-game feature)
+>
+> **What was removed:**
+> - Phase H as an independent automation feature (absorbed into Phase R as prestige infrastructure)
+> - The framing "this is the idle in the idle game" from the automation description
+> - The combined Gen 5–6 seeding phase (now Gen 5 and Gen 6 are designed and validated separately)
+> - The single-phase economy balancing pass (now split into architecture-first design)
+>
+> **What was reordered:**
+> - Phase I (Long-Duration Synthesis) now follows Phase R (Automation), not precedes Gen 5 seeding directly from Phase G
+> - Phase J1 (Economy Architecture) now precedes Phase B3 (Gen 5 seeding) — economic wall design must happen before content is designed against it
+> - Gen 6 seeding (Phase B4) is now explicitly deferred until Gen 5 results are observed
+>
+> **New critical path:**
+> Phase G completion → Phase P → Phase Q → Phase R → Phase J1 + Phase I (parallel) → Phase B3 → Phase J2 → Phase B4 → Phase K → Phase L
+>
+> **Recommended next implementation target:**  
+> **Phase G completion** (inventory grant, tier set, time acceleration multiplier — the three remaining debug endpoints). Phase G is a hard prerequisite for Phase Q economy work and for all late-generation testing. It must be finished before the prestige and economy design phases can be validated with real playthrough data.
 
 ---
 
@@ -31,16 +77,22 @@ Genesis Lab has a working technical foundation:
 - **Unlock orchestration (Gen 1–3)** — `unlockTier` advances at completion via `snapshot.productUnlocksUserTier`; tier gating enforced across all routes
 - **Offline completion delivery** — `pendingNotifications` with `deliveredAt`; HTTP routes create pending notifications when user is offline; WS connect drains and marks delivered exactly once; no replay
 - **Atomic double-completion hardening** — Stage 12; `processing → resolving → completed/failed` atomic claim via `findOneAndUpdate` + `$elemMatch`; stale resolving recovery after 30s; multi-tab WS sync fixed (all sockets per username share one session `Set`)
-- **Dev/admin debug tooling** — Stage 13; queue inspect, fast-forward `expectedCompletion`, delivered notification cleanup; double-gated (`NODE_ENV !== production` AND `DEV_ADMIN_ENABLED=true`)
+- **Dev/admin debug tooling** — Stage 13; queue inspect, fast-forward `expectedCompletion`, capability grant/revoke, delivered notification cleanup; double-gated (`NODE_ENV !== production` AND `DEV_ADMIN_ENABLED=true`)
+- **Conditions enforcement engine (Phase F)** — `conditionRegistry.js` (9 conditions: 5 substance-based, 4 tier-based), `validateConditions.js`, `evaluateCapabilityUnlocks.js` (tier-crossing semantics); wired at queue start in reactions.js and reactorRuntime.js; `reactorCapabilities: [String]` on User model; UI enforcement in SelectedReactionPanel (Reactor Requirements section, lacks-capability status, collapsible Reactor Capabilities panel)
+- **Gen 4 content seeded (Phase B2)** — 8 substances (Tier 9–12 gate progression: graphene→9, lithium_ion_cell→10, hydrogen_plasma→11, nuclear_fuel_pellet→12), 8 reactions with full conditions enforcement; 48 total substances, 39 total reactions; Gen 4 full playthrough validated
 
 **Not yet built (full scope):**
-- **Conditions system (Phase F)** — conditions as gameplay-blocking requirements; **next major implementation phase**
-- Gen 4–6 content seeding — blocked on conditions system (Phase F)
-- Long-duration synthesis validation (synthesis times 4–72 hours, multi-hour persistence testing) — Phase I
-- Automation framework (passive element generators) — Phase H
-- Economy balancing (BEU costs calibrated, playtested) — Phase J
-- Reactor evolution (visual/audio/language changes per generation) — Phase K
-- Save/persistence hardening (migration versioning, corruption guards for 72h syntheses) — Phase L
+- **Debug tooling completion (Phase G)** — inventory grant, tier set, and time acceleration multiplier endpoints are missing; queue inspect, fast-forward, capability grant/revoke, and notification cleanup are operational
+- **Prestige system redesign (Phase P)** — shard economy recalibration, prestige branch architecture implementation-ready spec, Big Bang route redesign
+- **Economy & scarcity overhaul (Phase Q)** — economic wall design for generation boundaries, Gen 5 gate mechanism specification, shard reward calibration
+- **Automation infrastructure as prestige branch (Phase R)** — blueprint purchase system, module construction engine, prestige branch UI (replaces the current Upgrades panel)
+- Long-duration synthesis (Phase I) — synthesis times 4–72 hours, multi-hour persistence testing
+- Economy architecture design (Phase J1) — precedes Gen 5 seeding
+- Gen 5 design and content seeding (Phase B3)
+- Economy balancing (Phase J2)
+- Gen 6 design and content seeding (Phase B4)
+- Reactor evolution (Phase K)
+- Save/persistence hardening (Phase L)
 - Onboarding and tutorial
 
 The transition from this state to the designed game requires disciplined sequencing. Every major system depends on prior systems. Build out of order and you will re-build.
@@ -49,147 +101,77 @@ The transition from this state to the designed game requires disciplined sequenc
 
 ## Part 1 — Implementation Eras
 
-Six eras, sequential. Each era produces a testable, playable checkpoint.
+Eight eras, sequential. Each era produces a testable, playable checkpoint.
 
 ---
 
-### Era I — Content Foundation (Gen 1–3 Only)
-**Duration estimate:** 3–5 weeks  
+### Era I — Content Foundation (Gen 1–3 Only) ✅ COMPLETE
 **Deliverable:** A complete Gen 1→Gen 2→Gen 3 playthrough is possible from a fresh account, using the final designed substance and reaction data.
 
-This era does NOT build new systems. It replaces the placeholder content with the final designed Gen 1–3 content and verifies the existing systems handle it correctly.
+---
 
-**Scope boundary:** Only Gen 1–3 substances and reactions are seeded in this era. Gen 4–6 content is explicitly deferred until the systems that gate it (conditions engine, long-duration synthesis) are stable. Seeding unreachable content prematurely creates false impressions of progress and clutters the development database with data that cannot be tested.
-
-Why first: every subsequent era — balancing, conditions, automation, unlock gating — requires real content to test against. Building systems against placeholder data produces systems calibrated to wrong inputs. Content is the foundation.
+### Era II — Unlock Orchestration ✅ COMPLETE
+**Deliverable:** Tier gating is functional. Gen 1→Gen 2→Gen 3 progression gates correctly. Conditions enforcement is operational for Gen 1–3. Gen 4 is seeded and reachable.
 
 ---
 
-### Era II — Unlock Orchestration
-**Duration estimate:** 2–4 weeks  
-**Deliverable:** Tier gating is functional. Discovering a milestone substance unlocks the next tier. Gen 1→Gen 2→Gen 3 progression gates correctly. The player cannot access Gen 4 content without completing Gen 3.
-
-Why second: unlock orchestration depends on content (you cannot gate reactions that don't exist) and enables all economy testing thereafter (you need to be locked out of advanced content to test whether early content is well-paced).
+### Era III — Synthesis Engine Hardening ✅ COMPLETE
+**Deliverable:** Synthesis queue supports real reaction times with persistence through server restarts. Multiple synthesis slots are architectured. Atomic double-completion hardening is in place.
 
 ---
 
-### Era III — Synthesis Engine Hardening
+### Era IV — Conditions, Debug Tooling & Gen 4 Content ✅ COMPLETE (Phase G partially complete)
+**Deliverable:** Conditions are enforced at synthesis queue time. Core debug tooling is operational (4 of 8 endpoints). Gen 4 content is seeded and reachable through a correctly gated, conditions-blocked playthrough.
+
+**Phase G in progress:** Three debug endpoints remain (inventory grant, tier set, time acceleration). Phase G completion is the single prerequisite for everything that follows.
+
+---
+
+### Era V — Prestige & Economy Foundation
+**Duration estimate:** 6–10 weeks  
+**Deliverable:** The prestige system is redesigned with a branch architecture, the economy is calibrated to support meaningful progression walls, and Automation Infrastructure is implemented as the first prestige branch (Phase R). A player on their second or later run experiences automation infrastructure at Gen 4 that their first run did not have.
+
+**Why this era must precede Gen 5:** Without a designed economic wall for Gen 5, seeding Gen 5 content produces reactions that are reachable on a first run. Without a redesigned prestige system, automation is implemented in isolation and must be refactored when the branch architecture is defined. Without economy architecture, Phase J2 balancing has no targets to balance toward.
+
+**Phases in this era:** G (completion), P, Q, R.
+
+---
+
+### Era VI — Long-Duration Synthesis & Gen 5 Content
+**Duration estimate:** 5–8 weeks  
+**Deliverable:** Synthesis times of 4–72 hours are stable and server-restart-safe. Gen 5 design is complete, content is seeded, and Gen 5 is technically reachable. Economy balancing for Gen 5 is underway.
+
+**Why Long-Duration Synthesis moves here:** Phase I (long-duration synthesis) was previously placed before automation. That ordering assumed automation was a midgame feature that needed to exist before Gen 5 timescales. Under the revised architecture, automation is post-Big-Bang prestige infrastructure. Phase I is a prerequisite for Gen 5 seeding, not for automation. Moving it here reflects that correct dependency without disrupting Gen 5 sequencing.
+
+**Phases in this era:** J1, I, B3, J2 (first pass).
+
+---
+
+### Era VII — Gen 6 Content
 **Duration estimate:** 3–5 weeks  
-**Deliverable:** Synthesis queue supports real reaction times (seconds through hours). Reactions persist through server restarts. Multiple synthesis slots work correctly. User substance inventory is tracked.
+**Deliverable:** Gen 6 design is complete (informed by Gen 5 observations), content is seeded, Gen 6 is technically reachable, economy balancing covers all six generations.
 
-Why third: the current reaction model may execute instantly or with short timers. Gen 3 reactions run 5–45 minutes; Gen 4 runs 30 minutes–4 hours; Gen 5 runs overnight; Gen 6 runs 72 hours. The engine must be stable before Gen 4+ content is seeded — long-duration synthesis requires fundamentally different queue persistence than short-duration.
+**Why Gen 6 is its own era:** Gen 6 should be designed after observing the results of Gen 5 in practice — particularly whether the Gen 5 economic wall held, whether the shard economy paced correctly, and whether the prestige branch investments provided the right quality of run compression. Designing Gen 6 before Gen 5 is observed repeats the errors that created the current design debt.
 
----
-
-### Era IV — Conditions, Debug Tooling & Gen 4 Content
-**Duration estimate:** 4–6 weeks  
-**Deliverable:** Conditions are enforced at synthesis queue time. A debug/test tooling suite is operational for time acceleration and state inspection. Gen 4 content is seeded (Phase B2) and reachable. The player can progress from Gen 3 through Gen 4 on a correctly gated, conditions-blocked playthrough.
-
-Why fourth: conditions depend on the synthesis engine being stable (you cannot add conditions to reactions whose timing isn't reliable) and depend on the unlock system working (Gen 4 must be properly gated before you can test whether reaching Gen 4 feels correct). Debug tooling must exist before Gen 4 content is seeded — Gen 4 has 30-minute to 4-hour reactions that require time acceleration to test practically. Gen 4 content (Phase B2) is only seeded after the conditions engine can enforce it.
+**Phases in this era:** B4, J2 (Gen 6 pass), K.
 
 ---
 
-### Era V — Automation, Long-Duration Synthesis & Gen 5–6 Content
-**Duration estimate:** 6–9 weeks  
-**Deliverable:** Passive element generators exist. Long-duration synthesis (up to 72 hours) is stable and server-restart-safe. Gen 5–6 content is seeded (Phase B3) and technically reachable. BEU costs across Gen 1–4 are playtested and calibrated. Full progression from Gen 1 to Gen 6 is technically possible (though not finally polished).
-
-Why fifth: automation requires the synthesis engine to be stable (generators feed into the queue system). Long-duration synthesis must be proven stable before Gen 5–6 content is seeded — there is no point introducing 24–72 hour reactions into the database until the queue system has survived server restarts without corruption. Gen 5–6 content (Phase B3) is only seeded after long-duration synthesis is validated. Economy calibration requires automation to be functional — you cannot balance energy costs when element supply is manually managed, because the bottleneck shifts dramatically when automation is present.
-
----
-
-### Era VI — Polish, Balancing, and Finalization
+### Era VIII — Polish, Balancing, and Finalization
 **Duration estimate:** 4–8 weeks  
 **Deliverable:** The game is content-complete, pacing-balanced, visually evolved across generations, save-hardened, and ready for a real player to experience Gen 1 through Gen 6.
 
-Why last: polish and balancing require all systems to exist. There is no point polishing reactor evolution visuals until the reactor actually changes state across six generations. There is no point balancing Gen 6 economy until you can actually reach Gen 6.
+**Phases in this era:** L (save hardening, onboarding, final balance, performance audit).
 
 ---
 
 ## Part 2 — Immediate Next Steps
 
-The single most important implementation decision: **what to build before anything else.**
+The following steps were the founding implementation sequence. They are preserved as historical record. All three are complete. The current active sequence begins at Phase G completion — see Part 4.
 
-### Step 1 — Schema Audit and Alignment (1 week, before any content seeding)
-
-The existing Reaction and Substance models need to be audited against the final design before content is seeded. Seeding wrong-schema content and then migrating it is expensive.
-
-**Specific gaps to resolve:**
-
-**Reaction model gaps:**
-- `reactionKey`: the design uses string identifiers (e.g., `gen3_doped_silicon`). The current model uses a numeric `reactionID`. Add a `reactionKey` string field (unique, indexed) — this is the stable reference identifier across seeds, saves, and saves migrations.
-- `conditions`: currently `type: Object`. Replace with `[String]` — an array of condition names. The design's conditions are string labels (`high_temperature`, `plasma_state`, `temporal_drift`). A typed array is queryable and diffable.
-- `reactionType` enum: the current enum (`synthesis`, `decomposition`, `combustion`, `fusion`, `transmutation`) does not match the design's `standard_synthesis`. Decide: keep the existing enum and map design terms to it, or add `standard_synthesis` to the enum. Recommendation: add `standard_synthesis` to the enum now. All Gen 1–6 reactions use it. The others remain for future use.
-- `reactionTime`: field exists but likely not enforced in queue logic. The existing type is `Number` (seconds). This is correct — do not change the type. Ensure the queue system uses it.
-- Missing: `generationTier` (Gen 1–6) as a separate field from `unlockTier` (1–21). These are related but distinct: `unlockTier` is the fine-grained progression gate, `generationTier` is the coarser narrative gate. Having both explicitly makes balancing and filtering far easier than inferring generation from unlock tier.
-
-**Substance model gaps:**
-- `type` enum: currently `["element", "compound"]`. The design includes substances that are neither (Dark Matter Crystal, Prima Materia, False Vacuum Seed). Add `"artifact"` to the enum for Gen 5–6 mythic substances. Elements and compounds keep their existing classification.
-- `reactionKey` cross-reference: the substance seed should include a `reactionKey` or stable string ID for the same reason as reactions.
-- Physical properties (atomicNumber, valenceElectrons, etc.): these are relevant for Gen 1–3 elements and should remain. They simply don't apply to Gen 4–6 substances, which is fine — sparse optional fields.
-- Missing: `hintText` — the design specifies hint text for every substance. This is a UI display field but it belongs in the model, not hardcoded in the client.
-- Missing: `generationTier` on Substance as well — which generation this substance belongs to.
-- Missing: `fantasyWeight` — a design-internal audit field (1–5 scale from the substance importance audit). Not required for gameplay but useful for future balancing and filtering passes.
-
-**User model gaps:**
-- Missing: `substanceInventory` — what the player currently holds (substance → quantity map).
-- Missing: `discoveredReactions` — array of reaction IDs the player has discovered.
-- Missing: `unlockedTier` — the player's current progression tier.
-- Missing: `activeQueue` — the player's active synthesis queue (in-progress reactions with start time, expected completion time).
-- Missing: `reactorCapabilities` — an array of condition strings representing the reactor capabilities the player has currently unlocked (e.g., `["high_temperature", "catalyst", "plasma_state"]`). This is a per-user field, not a per-reaction field. Conditions are a property of the reactor, not of individual reactions. A player whose reactor has `plasma_state` can queue any reaction that requires it.
-
-These user model additions are the core of the progression system. Without them, there is no user-specific state.
-
-**Do not build**: any new UI, any new visual systems, any automation. Only align the schema.
-
----
-
-### Step 2 — Gen 1–3 Substance and Reaction Seed (Phase B1) (2–3 weeks)
-
-Replace the existing placeholder seed files (`seedSubstances.js`, `seedReactions.js`) with Gen 1–3 content from the reaction graph design. **Do not seed Gen 4–6 content yet.**
-
-Gen 4 content depends on the conditions system (Phase F). Seeding it before that system exists means it sits in the database unreachable and untestable. Gen 5–6 content depends on long-duration synthesis stability (Phase I). Seeding it before that system is validated means 24–72 hour reaction entries exist in the database that cannot be correctly processed. Each content tier is seeded only after the system it requires is operational. See Phase B2 and Phase B3 in Part 4 for the Gen 4 and Gen 5–6 seeding phases respectively.
-
-**Seed strategy:**
-
-Build a two-pass seeder:
-1. **Pass 1 — Substances:** Seed all Gen 1–3 substances first (elements + compounds), generating MongoDB ObjectIDs.
-2. **Pass 2 — Reactions:** Seed all Gen 1–3 reactions, resolving reactant/product names to the ObjectIDs produced in Pass 1.
-
-Use `reactionKey` as the stable identifier for reactions in the seed file — the string key (e.g., `gen3_stainless_steel`) is human-readable, diffable in git, and survives database reset. Do not use auto-generated MongoDB IDs as the stable reference.
-
-**Content seeding order (Gen 1–3 only):**
-1. Gen 1 substances + reactions
-2. Gen 1 full playthrough validation — can an admin synthesize every Gen 1 product by manually setting inventory?
-3. Gen 2 substances + reactions
-4. Gen 2 full playthrough validation
-5. Gen 3 substances + reactions
-6. Gen 3 full playthrough validation
-
-Validate after each generation: no broken reactant references, no missing products, all unlock tiers consistent, all energy costs within the generation band.
-
-**What NOT to build during seeding:** automation, conditions enforcement, long-duration timers. Seed Gen 1–3 reactions with their correct `reactionTime` and `conditions` field values (accurate data), but don't enforce them yet. The content goes in first; the enforcement systems come later. Gen 4–6 data is not seeded at this step.
-
----
-
-### Step 3 — User Inventory and Queue Foundation (1–2 weeks, overlapping with seeding)
-
-Before unlock orchestration can work, the player needs a tracked inventory and synthesis queue. These are the minimal user-state additions that unlock all subsequent systems.
-
-**Substance inventory:** A map from substance MongoDB ID → quantity. Updated when:
-- A synthesis completes (add product, remove reactants)
-- An element generator produces (add element)
-- A Big Bang event occurs (clear inventory per designed rules)
-
-**Synthesis queue:** An array of in-progress reactions per user, each containing:
-- Reaction reference
-- Start timestamp
-- Expected completion timestamp (startTime + reactionTime)
-- Input substances consumed (deducted from inventory at queue time)
-- Status: `queued`, `in_progress`, `complete`
-
-This queue must persist to the database (not just server memory) — when the server restarts, active syntheses must resume from their correct positions. This is non-negotiable before long-duration synthesis is introduced.
-
-**Queue slots:** Design intent is multiple synthesis slots. Implement with a maximum slot count (start with 1, expand via progression — the slot count itself is a progression unlock). Keep the data model slot-count-agnostic from the start.
+### Step 1 — Schema Audit and Alignment ✅ COMPLETE (Phase A)
+### Step 2 — Gen 1–3 Content Seeding ✅ COMPLETE (Phase B1)
+### Step 3 — User Inventory and Queue Foundation ✅ COMPLETE (Phase C)
 
 ---
 
@@ -198,57 +180,61 @@ This queue must persist to the database (not just server memory) — when the se
 The following dependencies are absolute. Building out of order requires re-building.
 
 ```
-Schema audit (Phase A)
+Schema audit (Phase A) ✅
     │
-    └── Phase B1: Gen 1–3 content seeding + validation
+    └── Phase B1: Gen 1–3 content seeding + validation ✅
             │
-            ├── User inventory + queue foundation (Phase C)
+            ├── User inventory + queue foundation (Phase C) ✅
             │       │
-            │       ├── Unlock orchestration (Phase D)
-            │       │       │
-            │       │       └── Economy testing: Gen 1–3 (Phase J, first pass)
+            │       ├── Unlock orchestration (Phase D) ✅
             │       │
-            │       └── Synthesis engine: reaction time enforcement (Phase E)
+            │       └── Synthesis engine: reaction time enforcement (Phase E) ✅
             │               │
-            │               └── Conditions enforcement engine (Phase F)
+            │               └── Conditions enforcement engine (Phase F) ✅
             │                       │
-            │                       ├── Phase B2: Gen 4 content seeding
-            │                       │       │
-            │                       │       └── Economy testing: Gen 4 (Phase J, second pass)
-            │                       │
-            │                       └── Debug & test tooling (Phase G)  ←── REQUIRED before late-gen testing
+            │                       └── Phase B2: Gen 4 content seeding ✅
             │                               │
-            │                               ├── Automation framework (Phase H)
-            │                               │       │
-            │                               │       └── Economy balancing: Gen 1–4 with automation (Phase J)
-            │                               │
-            │                               └── Long-duration synthesis (Phase I)
+            │                               └── Debug & test tooling (Phase G) ← IN PROGRESS
             │                                       │
-            │                                       └── Phase B3: Gen 5–6 content seeding
+            │                                       └── Phase P: Prestige System Redesign
             │                                               │
-            │                                               └── Economy testing: Gen 5–6 (Phase J, final pass)
+            │                                               └── Phase Q: Economy & Scarcity Overhaul
             │                                                       │
-            │                                                       └── Reactor evolution (Phase K)
+            │                                                       └── Phase R: Prestige Branch #1 (Automation)
             │                                                               │
-            │                                                               └── Save hardening + polish (Phase L)
+            │                                                               ├── Phase J1: Economy Architecture (design)
+            │                                                               │       │
+            │                                                               │       └─── Phase I: Long-Duration Synthesis ──┐
+            │                                                               │                                               │
+            │                                                               └──────────────────────────────────────────────┘
+            │                                                                               │
+            │                                                                       Phase B3: Gen 5 Design + Seeding
+            │                                                                               │
+            │                                                                       Phase J2: Economy Balancing (Gen 5)
+            │                                                                               │
+            │                                                                       Phase B4: Gen 6 Design + Seeding
+            │                                                                               │
+            │                                                                       Phase J2: Economy Balancing (Gen 6)
+            │                                                                               │
+            │                                                                       Phase K: Reactor Evolution
+            │                                                                               │
+            │                                                                       Phase L: Save Hardening + Polish
 ```
 
 **Critical path summary:**
 
-- Phase B1 (Gen 1–3 seed) before everything: no system can be meaningfully tested without real content
-- Phase B2 (Gen 4 seed) depends on conditions enforcement (Phase F) and debug tooling (Phase G): conditions must be enforced before Gen 4 content is reachable; debug tooling must exist before Gen 4 timing can be tested
-- Phase B3 (Gen 5–6 seed) depends on long-duration synthesis (Phase I): 24–72 hour reactions must be server-restart-safe before they exist in the database
-- Debug tooling (Phase G) is a hard prerequisite for any late-generation testing — not optional polish
-- Automation (Phase H) depends on user inventory being tracked (Phase C): generators write to inventory
-- Economy balancing (Phase J) depends on automation (Phase H) — balancing before automation is balancing the wrong system
-- Reactor evolution (Phase K) depends on Gen 5–6 being reachable and all generation transitions working
-- Save hardening (Phase L) depends on long-duration synthesis existing — new corruption vectors don't exist until they do
+- **Phase G completion is the immediate blocker.** Inventory grant, tier set, and time acceleration are hard prerequisites for both economy validation work and accelerated playthrough testing.
+- **Phase P before Phase R:** The prestige branch architecture must be decided before the automation implementation begins. Implementing automation against an undecided architecture produces code that requires refactoring.
+- **Phase Q before Phase B3:** The Gen 5 economic gate mechanism must be specified before Gen 5 content is designed. Seeding Gen 5 reactions before knowing what creates the Gen 5 wall produces content that may require re-seeding.
+- **Phase J1 before Phase B3:** Economy architecture (design) must precede Gen 5 seeding. Gen 5 substance and reaction design depends on knowing what the economic wall looks like.
+- **Phase I before Phase B3:** Server-restart-safe long-duration synthesis must exist before 24–72 hour reactions are seeded into the database.
+- **Phase B4 after observing Phase B3:** Gen 6 is explicitly designed after Gen 5 results are known. No Gen 6 content is committed before Gen 5 is playtested.
+- **Phase B4 complete before Phase K:** Reactor evolution (visual, audio, language) calibrates to specific generation transitions. Content must be frozen before evolution is implemented.
+- **Phase L last:** Save hardening and corruption guards require all long-duration synthesis vectors to exist before they can be defended.
 
 ---
 
 ## Part 4 — Recommended Implementation Order
-
-The following is a specific, week-by-week recommended order of implementation work.
 
 ---
 
@@ -262,7 +248,7 @@ Deliverables:
 - `generationTier` (1–6) on both Reaction and Substance
 - `type: "artifact"` added to Substance enum
 - `hintText` field on Substance
-- `substanceInventory`, `discoveredReactions`, `unlockedTier`, `activeQueue` added to User
+- `inventory` (array), `unlockTier`, `activeQueue` added to User (see Appendix for deviation from original spec names)
 - `reactorCapabilities: [String]` added to User — stores the set of reactor capabilities the player has unlocked (e.g., `["high_temperature", "catalyst"]`). This field is the authoritative source for conditions enforcement: at queue time, check that every condition in `reaction.conditions` appears in `user.reactorCapabilities`.
 
 **Test:** Existing seed files still run. Existing tests still pass. No behavior change for any existing feature.
@@ -270,7 +256,7 @@ Deliverables:
 ---
 
 ### Phase B1 — Gen 1–3 Content Seeding ✅ COMPLETE
-**What:** Replace placeholder seeds with Gen 1–3 substance and reaction data from the reaction graph design. Gen 4–6 content is not seeded here — see Phase B2 and Phase B3.
+**What:** Replace placeholder seeds with Gen 1–3 substance and reaction data from the reaction graph design. Gen 4–6 content is not seeded here.
 
 Deliverables:
 - All Gen 1 substances seeded with correct fields (hintText, generationTier, unlockTier, energyCost, reactionTime, conditions)
@@ -287,7 +273,7 @@ Deliverables:
 **What:** Add user-level inventory tracking and synthesis queue persistence to the backend.
 
 Deliverables:
-- `substanceInventory` updated on reaction completion (remove reactants, add product)
+- `inventory` updated on reaction completion (remove reactants, add product)
 - `activeQueue` entries created on reaction queue, stored in DB
 - Queue entries resolve at server time: if `now > expectedCompletion`, reaction is complete on next user request
 - Inventory and queue state pushed to client via WebSocket on relevant state changes
@@ -298,31 +284,31 @@ Deliverables:
 ---
 
 ### Phase D — Unlock Orchestration ✅ COMPLETE for Gen 1–3 (via queue completion)
-**What:** Implement milestone-based tier gating. Synthesis of a gate substance unlocks the next tier. Players cannot access higher-tier reactions until they have synthesized the required predecessors.
+**What:** Implement milestone-based tier gating. Synthesis of a gate substance unlocks the next tier.
 
-**Status note:** Tier gating is fully functional for Gen 1–3 via the queue system. `completeReaction` advances `user.unlockTier` using `snapshot.productUnlocksUserTier` on first production of a gate substance. Routes enforce `unlockTier` gating. WS completion events carry `prevUnlockTier`/`newUnlockTier`. No separate orchestration layer is needed for Gen 1–3. Gen 4+ gate transitions will be validated as part of Phase B2/F work.
+**Status note:** Tier gating is fully functional for Gen 1–3 via the queue system. `completeReaction` advances `user.unlockTier` using `snapshot.productUnlocksUserTier` on first production of a gate substance. Routes enforce `unlockTier` gating. WS completion events carry `prevUnlockTier`/`newUnlockTier`. Gen 4+ gate transitions validated as part of Phase B2/F work.
 
 Deliverables:
-- Gate substance definitions (per tier transition): stored in a config or DB, not hardcoded in logic
+- Gate substance definitions stored in config or DB, not hardcoded in logic
 - On reaction completion: check if product is a gate substance → if so, evaluate tier advance
-- Tier advance: add new reactions to player's `discoveredReactions` (or make them discoverable)
+- Tier advance: new reactions become discoverable (via `discoveredByDefault` flag and `unlockTier` gating)
 - Client receives tier-unlock notification via WebSocket, UI reflects newly available reactions
 
 Gate definitions from the design:
 - Tier 1→4 (Gen 1→Gen 2): synthesize Iron Oxide + Ammonia
 - Tier 4→7 (Gen 2→Gen 3): synthesize Bronze + Sulfuric Acid
 - Tier 7→9 (Gen 3→Gen 4): synthesize Steel + Lithium-Ion Cell
-- Tier 9→13 (Gen 4→Gen 5): synthesize Reactive Plasma Core + Nuclear Fuel Pellet
-- Tier 13→17 (Gen 5→Gen 6): synthesize Event Horizon Condensate
+- Tier 9→13 (Gen 4→Gen 5): TBD in Phase Q (Gen 5 gate mechanism unspecified until economy overhaul)
+- Tier 13→17 (Gen 5→Gen 6): TBD in Phase B4
 
 **Test:** Fresh account, play Gen 1. Attempt to queue a Gen 2 reaction — blocked. Synthesize Iron Oxide. Synthesize Ammonia. Gen 2 reactions appear. Verify each gate transition.
 
 ---
 
 ### Phase E — Reaction Time Enforcement ✅ COMPLETE for Gen 1–3 (Stages 1–13)
-**Status:** Stage 12 (atomic double-completion hardening) and Stage 13 (debug tooling) are now complete. The synthesis queue is production-ready for Gen 1–3. Phase F (conditions) is the next major implementation phase.
+**Status:** Stage 12 (atomic double-completion hardening) and Stage 13 (debug tooling) are complete. The synthesis queue is production-ready for Gen 1–3. Phase F (conditions) and Phase B2 (Gen 4 seeding) are also complete.
 
-**What:** Enforce `reactionTime` from the seed data. Gen 1 reactions complete in 5–90 seconds. Gen 2 in 1–10 minutes. Gen 3 in 5–45 minutes. Reactions no longer resolve instantly.
+**What:** Enforce `reactionTime` from the seed data. Reactions no longer resolve instantly.
 
 Deliverables:
 - Queue entry created with `expectedCompletion = now + reactionTime`
@@ -330,144 +316,280 @@ Deliverables:
 - Server resolves completion on WebSocket reconnect or periodic check
 - Completion notification pushed to client via WebSocket
 
-Note: Gen 4–6 reaction times (30 min – 72 hours) do not need to be tested here — Gen 4 content is not yet seeded with unlock gating. But the queue system must be architected to support arbitrary duration from the start.
-
 **Test:** Queue a Gen 2 reaction (e.g., Sulfuric Acid at 8 minutes). Countdown displays correctly. After 8 minutes, synthesis completes, inventory updates, notification appears.
 
 ---
 
 ### Stage 12 — Atomic Double-Completion Hardening ✅ COMPLETE
-`resolveQueue` now uses a MongoDB atomic `findOneAndUpdate` claim with `$elemMatch` to transition each due entry from `processing → resolving` before running side effects. Only the request that wins the claim runs `completeReaction`. Stale `resolving` entries (>30s, indicating a server crash or save failure) are automatically recovered to `processing` on the next `resolveQueue` call — safe because `completeReaction` only adds, never deducts. Multi-tab WebSocket sync bug fixed in the same pass: `reactorSessions` now tracks a `Set` of sockets per username so all open tabs receive events.
+`resolveQueue` now uses a MongoDB atomic `findOneAndUpdate` claim with `$elemMatch` to transition each due entry from `processing → resolving` before running side effects. Only the request that wins the claim runs `completeReaction`. Stale `resolving` entries (>30s) are automatically recovered to `processing` on the next `resolveQueue` call. Multi-tab WebSocket sync bug fixed in the same pass.
 
-### Stage 13 — Debug/Admin Tooling ✅ COMPLETE
-`server/routes/dev.js` implements three dev-only endpoints: queue inspect (`GET /api/dev/users/:username/queue`), fast-forward (`POST /api/dev/users/:username/queue/:queueEntryId/fast-forward`), and delivered notification cleanup (`DELETE /api/dev/users/:username/pending-notifications/delivered`). Mounted behind a double gate: `NODE_ENV !== 'production'` AND `DEV_ADMIN_ENABLED=true`. Fast-forward sets `expectedCompletion` to `now - 1s` and lets the real lifecycle handle completion on the next user fetch — it does not call `completeReaction` directly.
+### Stage 13 — Debug/Admin Tooling ✅ COMPLETE (partial — see Phase G)
+`server/routes/dev.js` implements four dev-only endpoints: queue inspect, fast-forward, capability grant/revoke, and delivered notification cleanup. Mounted behind double gate: `NODE_ENV !== 'production'` AND `DEV_ADMIN_ENABLED=true`.
 
 ---
 
-### Phase F — Conditions Enforcement Engine (Weeks 9–12)
+### Phase F — Conditions Enforcement Engine ✅ COMPLETE
 **What:** Implement conditions as reactor-state requirements. A reaction with conditions `["plasma_state", "extreme_pressure"]` cannot be queued unless the reactor currently has those capabilities.
 
 Deliverables:
-- Conditions registry: a config mapping each condition name to what enables it (which reactor upgrade, which tier, which prior synthesis)
-- Reactor state per user: a set of currently active conditions
+- Conditions registry: a config mapping each condition name to what enables it (which tier, which prior synthesis)
+- Reactor state per user: `reactorCapabilities: [String]` on User model
 - Queue validation: reject queue attempts where reactor lacks required conditions, return specific error identifying which conditions are missing
 - Conditions UI: display which conditions a recipe requires, which are active vs. missing
-- Progression path to unlock conditions: defined in config, not hardcoded
+- `evaluateCapabilityUnlocks.js`: evaluates capability grants on reaction completion (tier-crossing and substance-based triggers)
 
-**Architecture note:** Conditions should be modeled as a reactor capability set, not as per-reaction unlock states. The player's reactor either has `plasma_state` capability or it doesn't — any reaction requiring `plasma_state` benefits from the same capability. Conditions are stored as `reactorCapabilities: [String]` on the User model. Queue validation: `reaction.conditions.every(c => user.reactorCapabilities.includes(c))`. This is a data lookup, not a code branch per condition.
+**Architecture note:** Conditions are modeled as a reactor capability set. `reaction.conditions.every(c => user.reactorCapabilities.includes(c))`. Adding Gen 5–6 conditions requires only a config entry, not new validation code.
 
-**Conditions registry:** A server-side config maps each condition name to its unlock prerequisite (tier reached, substance synthesized, upgrade purchased). This config is the single source of truth. Adding Gen 5–6 conditions later requires only a config entry, not new validation code.
-
-**Gen 1–3 conditions first:** Validate the engine with Gen 1–3 conditions (`high_temperature`, `catalyst`, `high_pressure`) before seeding Gen 4 content. Gen 4 content is seeded in the immediately following Phase B2, after this engine is confirmed stable.
-
-**Test:** Attempt to queue Hydrogen Plasma (requires `plasma_state`, `extreme_temperature`). Reactor lacks `plasma_state`. UI shows "reactor not capable: plasma_state." After unlocking `plasma_state` via the correct progression path, queue succeeds.
+**Test:** Attempt to queue Hydrogen Plasma (requires `plasma_state`, `extreme_temperature`). Reactor lacks `plasma_state`. UI shows "reactor not capable: plasma_state." After unlocking via correct progression path, queue succeeds.
 
 ---
 
-### Phase B2 — Gen 4 Content Seeding (Week 13, after Phase F validation)
+### Phase B2 — Gen 4 Content Seeding ✅ COMPLETE
 **What:** Seed all Gen 4 substances and reactions now that the conditions enforcement engine is operational and validated.
 
-Gen 4 content was intentionally withheld from Phase B1. It cannot be tested without the conditions system (Phase F) and cannot be played practically without time acceleration (Phase G). Both prerequisites are now in place.
-
-Deliverables:
+Deliverables (all complete):
 - All 8 Gen 4 substances seeded (Hydrogen Plasma, Ballistic Composite, Ceramic Superconductor, Metallic Hydrogen, Cryogenic Matrix, Nuclear Fuel Pellet, Reactive Plasma Core, Quantum Substrate)
 - All 8 Gen 4 reactions seeded with correct reactionKey, reactants, products, tiers, energy costs, reaction times, and conditions arrays
-- New Gen 4 conditions registered in conditions registry: `plasma_state`, `extreme_pressure`, `extreme_cold`, `radiation_bombardment`, `vacuum`, `extreme_temperature`
-- Seed validation script run: zero errors, all Gen 4 reactants resolve to Gen 3 products, all unlock tiers in correct range (9–12)
+- Gen 4 conditions all registered and enforced
+- Gen 4 full playthrough validated: Tier 9→10→11→12 gate progression confirmed
 
-**Test:** Using debug tooling (Phase G), manually advance a test account through Gen 3 gate substances. Verify Gen 4 recipes appear correctly. Attempt to queue Hydrogen Plasma without `plasma_state` — confirm block. Grant `plasma_state` capability — confirm queue succeeds. Run a full Gen 4 playthrough in accelerated time mode.
-
-**Content gate:** Gen 4 content should not be seeded until the conditions enforcement test in Checkpoint 4 passes.
+**Result:** Gen 4 is fully reachable. Hydrogen Plasma blocks without `plasma_state`; Nuclear Fuel Pellet blocks without `radiation_bombardment` + `extreme_pressure`. Reactive Plasma Core and Quantum Substrate both synthesize correctly at Tier 12.
 
 ---
 
-### Phase G — Debug & Test Tooling (Weeks 12–14)
-**What:** Build an admin/debug panel that enables time acceleration and state inspection. This is a required engineering deliverable, not a "nice to have." Without it, Gen 4–6 cannot be tested realistically.
+### Phase G — Debug & Test Tooling ← IN PROGRESS
 
-The absence of these tools is the reason Gen 5–6 content is held back until Phase B3: there is no responsible way to test 24–72 hour reactions without time acceleration. Every hour spent waiting for a real reaction timer during development is an hour of unproductive testing. This tooling pays for itself within the first Gen 4 test session.
+**What:** Complete the admin/debug suite required for economy validation, prestige playtesting, and all late-generation testing. This is a required engineering deliverable.
 
-Deliverables:
-- **Time acceleration:** A per-account multiplier (e.g., 100×, 1000×) that compresses synthesis timers during development. Implemented at the queue resolution layer — when checking whether `now > expectedCompletion`, apply the multiplier to elapsed time. Only active for accounts with a debug flag set.
-- **Force-complete queue:** Admin action to immediately resolve all active queue entries for a specific account, as if their synthesis timers had elapsed. Inventory updates correctly.
-- **Inventory grant:** Admin endpoint to add any substance × quantity to a player's inventory. Used to bypass Gen 1–3 production when testing Gen 4+ reactions.
-- **Tier set:** Admin endpoint to set a player's `unlockedTier` to any value, immediately unlocking or locking content for testing.
-- **Reactor capability grant/revoke:** Admin endpoint to add or remove strings from `user.reactorCapabilities`, enabling testing of conditions enforcement without completing the progression path.
-- **Offline progress simulation:** Admin action to simulate a player having been offline for N hours, triggering the full offline progress calculation (generator accumulation, queue resolution).
-- **Active queue inspect:** Admin view showing a player's full `activeQueue` — reaction key, start time, expected completion, status, reactants consumed. Essential for debugging stuck syntheses.
-- **Upstream cost display (optional):** Admin view showing the Metric A (total upstream BEU) for any substance, calculated from the live seed data. Used to verify economy calibration against design targets.
+**Current implementation status:**
 
-**Scope:** Debug tooling is admin-only and should never appear in production player-facing UI. Gate all debug endpoints behind an `isAdmin` flag or a separate admin-only route prefix.
+| Deliverable | Status |
+|---|---|
+| Active queue inspect | ✅ `GET /api/dev/users/:username/queue` |
+| Queue fast-forward | ✅ `POST /api/dev/users/:username/queue/:id/fast-forward` |
+| Reactor capability grant/revoke | ✅ `POST /api/dev/users/:username/capabilities` |
+| Delivered notification cleanup | ✅ `DELETE /api/dev/users/:username/pending-notifications/delivered` |
+| **Inventory grant** | ❌ not yet implemented |
+| **Tier set** | ❌ not yet implemented |
+| **Time acceleration multiplier** | ❌ not yet implemented |
+| Offline progress simulation | ❌ not yet implemented |
+| Upstream cost display | ❌ optional |
 
-**Test:** Using the debug panel, advance a fresh account from Gen 1 to Gen 6 in under 30 minutes using time acceleration and inventory grants. Verify all gate transitions trigger correctly, all conditions blocks work, and the Dark Matter Crystal synthesis completes without errors.
+**Remaining deliverables:**
 
----
+- **Inventory grant:** `POST /api/dev/users/:username/inventory` — body: `{ substanceKey: String, quantity: Number }`. Resolves substanceKey to ObjectId, adds to `user.inventory`. Required for Gen 4 economy testing, prestige playthrough validation, and Gen 5 seeding validation.
+- **Tier set:** `POST /api/dev/users/:username/tier` — body: `{ tier: Number }`. Sets `user.unlockTier` to any value, immediately unlocking or locking content. Required for rapid progression testing across generation boundaries.
+- **Time acceleration multiplier:** `POST /api/dev/users/:username/time-acceleration` — body: `{ multiplier: Number }`. Applied at queue resolution: compresses `expectedCompletion` by the multiplier. Required for Gen 4 economy balancing and hard prerequisite for Gen 5 testing. Without this endpoint, every Gen 4 reaction test requires 3–15 real minutes of waiting.
 
-### Phase H — Automation Framework (Weeks 16–19)
-**What:** Passive element generators produce elements (oxygen, hydrogen, carbon, nitrogen, etc.) over time without player action. This is the "idle" in the idle game.
+**Gate:** Phase G completion is the single prerequisite for Phases P, Q, and R. Do not begin prestige architecture work without inventory grant, tier set, and time acceleration in place — the validation methodology for those phases depends on rapid playthrough simulation.
 
-Deliverables:
-- Generator model: type (element), production rate (units/sec), upgrade level
-- Offline progress calculation: when player reconnects after offline period, calculate how much was produced during the gap (capped at reasonable maximum to prevent over-accumulation)
-- Generator upgrade system: production rate increases via progression
-- Generator UI: shows production rate, accumulated inventory, upgrade options
-
-**Architecture constraint:** The automation system must not auto-queue syntheses. It produces raw elements into inventory only. The player queues syntheses. This is a critical design constraint — automation trivializes discovery if it also queues reactions.
-
-**Test:** Leave the game for 1 hour with a hydrogen generator at rate X. Return. Inventory shows X × 3600 hydrogen (subject to cap). Synthesis queue is unchanged.
+**Test:** Using the complete debug suite, advance a fresh account from Gen 1 to Tier 12 in under 30 minutes using time acceleration and inventory grants. Verify all gate transitions trigger correctly and all conditions blocks work.
 
 ---
 
-### Phase I — Long-Duration Synthesis (Weeks 19–23)
-**What:** Synthesis times of 4–72 hours work correctly, persist through server restarts, and display correctly to the player with real-world calendar time. Gen 5–6 content is NOT seeded here — it is seeded in Phase B3 immediately after this phase is validated.
+### Phase P — Prestige System Redesign
 
-Deliverables:
+**What:** Resolve the three implementation blockers in `docs/prestige-system-redesign.md` and produce an implementation-ready specification for Phase R. This is a design completion phase, not an implementation phase.
+
+**Design blockers to resolve (from prestige-system-redesign.md §Part III):**
+
+**Blocker 1 — Shard economy confirmation (Option C recommended, not confirmed)**  
+Option C (fold existing multipliers into Branch 0 as Reactor Efficiency; add Automation Infrastructure as Branch 1) must be explicitly confirmed. This determines the prestige panel architecture, the Big Bang route, and whether multiplier purchases remain available going forward. Decision required before the prestige UI is touched.
+
+**Blocker 2 — Blueprint cost order of magnitude**  
+Blueprint costs need an order of magnitude decision before the purchase route can be configured meaningfully. The economic-progression-analysis.md established that ~40 shards per blueprint (the original design target) is misaligned by roughly one order of magnitude — a 20-run arc requires total upgrade spending of ~3,500–5,000 shards, and current Gen 4 runs yield ~328–361 shards each. Blueprint costs in the range of 100–500 shards each are indicated. The exact values are balancing questions; the order of magnitude must be decided now.
+
+**Blocker 3 — Construction material quantities**  
+The five V1 modules have confirmed material types (Graphene, Lithium-Ion Cell, Doped Silicon, Aramid Fiber, Stainless Steel, Carbon Nanotube per module). Exact quantities must be specified — a construction requiring 1 Graphene vs. 3 Graphene is a meaningfully different economic decision at the moment the player first enters Gen 4.
+
+**Deliverables:**
+- Option C confirmed (or alternative decided) with full UI implication documented
+- Blueprint cost range confirmed per module (even if not final — a working range suffices for implementation)
+- Construction material quantities per module specified (initial candidate values)
+- Big Bang route change spec: `user.generators` reset, `user.blueprints` survive — implementation-ready
+- Prestige branch interface wireframe (branch 0 + branch 1 layout)
+- Migration strategy execution plan (how the old Upgrades panel becomes the branch interface)
+
+**Gate:** Do not begin Phase R implementation until all three blockers are resolved. Do not begin Phase R until the blueprint cost range is confirmed — the purchase route cannot be tested without representative values.
+
+---
+
+### Phase Q — Economy & Scarcity Overhaul
+
+**What:** Design a progression economy capable of creating meaningful gates at each generation boundary, with specific attention to the Gen 5 gate mechanism. This is a design phase. No code changes.
+
+**Context:**  
+The economic-progression-analysis.md established that Genesis Lab currently has no meaningful economic wall. Energy income (40–100 energy/second at sustained activity) is 50–100× faster than reaction energy demand (0.4–0.8 energy/second). The game's economy is time-dominated, not resource-dominated. No synthesis is economically gated. Shard rewards at the first Big Bang (149 shards at Tier 9) are already within reach of affording 3+ blueprints, meaning automation can be unlocked in a single run without meaningful multi-run gating.
+
+**Required deliverables:**
+
+- **Gen 5 gate mechanism specification.** What prevents a zero-prestige player from reaching Gen 5 on a first run? Options include: a prestige-gated construction resource as a reaction input; a shard-consumed synthesis component; a dependency on automation modules that require Big Bang investment to build. Energy cost scaling alone cannot create a Gen 5 wall — the income model trivially supports any reasonable energy cost increase. This decision must be made before Gen 5 content is designed.
+
+- **Shard reward recalibration.** Current formula yields ~149 shards at Tier 9 first run and ~328 shards at Tier 12 Gen 4 run. The target: first Big Bang should yield enough to buy 1–2 small upgrades (taste of the system, not transformation). Gen 4 deep run should yield enough to maintain momentum across 2–3 upgrade tracks. The formula may need adjustment to widen the gap between Tier 9 and Tier 12 payouts — the current 2.2× ratio does not reflect the 3–5× additional effort required to go from Tier 9 to Tier 12. Adjustments do NOT require schema changes — only formula changes in `calculateGenesisShards.js`.
+
+- **Gen 5 shardValue specification.** Gen 5 substances will carry shardValues that feed the shard formula. These must be designed now (before Gen 5 content is seeded) so that the prestige pacing across Eras VI–VII is intentional, not accidental.
+
+- **Economic wall definition per generation boundary.** A specific, testable definition of what constitutes the economic gate at Gen 4→Gen 5 and Gen 5→Gen 6. This becomes the acceptance criterion for Phase B3 and B4 validation.
+
+- **Prestige progression arc targets.** What should Big Bang #1, #5, #10, and #20 feel different in economic terms? From the prestige-loop-analysis.md analysis, the targets are roughly: run 1 → taste of system; run 5 → Gen 1-2 noticeably faster; run 10 → spending most run time at Gen 4; run 20 → Gen 1-3 is warmup, Gen 4 capstones still hard. The economy must be calibrated to these targets, not to naive shard arithmetic.
+
+**Gate:** Do not begin Phase B3 (Gen 5 seeding) without a confirmed Gen 5 gate mechanism. Do not design Gen 5 reactions without knowing what they feed into or what they require from the prestige system.
+
+---
+
+### Phase R — Prestige Branch #1 Implementation (Automation Infrastructure)
+
+**What:** Implement the two-layer Automation Infrastructure system as the first prestige branch, as specified in `docs/prestige-system-redesign.md`. This phase replaces the former Phase H (Automation Framework), which treated automation as an independent idle-game feature. Automation is prestige infrastructure. The design, philosophy, and integration points are different accordingly.
+
+**Architecture:** Two-layer system confirmed by design.
+- Layer 1 — Blueprint (permanent, shard-purchased, survives Big Bang)
+- Layer 2 — Module construction (per-run, energy + Gen 4 materials, resets on Big Bang)
+
+**Implementation steps (from prestige-system-redesign.md §13):**
+
+**Step 1 — User model extension**  
+Add `blueprints: [{ blueprintKey: String, purchasedAt: Date }]` and `generators: [{ moduleKey: String, level: Number, constructedAt: Date, pausedAt: Date | null }]` to the User schema. Add `lastActiveAt: Date` for offline catch-up. Blueprint purchase amounts and construction requirements come from a server-side config, not hardcoded in schema.
+
+**Step 2 — Blueprint purchase and Big Bang integration**  
+Route `POST /api/users/:username/blueprints/:blueprintKey`: validates shard balance against blueprint cost config, deducts shards, appends to `user.blueprints`. In the Big Bang route: reset `user.generators = []`. Do NOT touch `user.blueprints` — blueprints survive Big Bang unconditionally. Also: fix the known activeQueue Big Bang bug (queue entries from previous run must be cancelled at Big Bang time, not leaked into the new run's inventory).
+
+**Step 3 — Construction and production engine**  
+Route `POST /api/users/:username/generators/:moduleKey/construct`: validates blueprint ownership, deducts energy + material costs from inventory, appends to `user.generators` at Level 1. In `reactorRuntime.js`: add a production tick (every 30 seconds or configurable): for each active generator, calculate yield since last tick, apply per-substance storage cap, write to inventory. Offline catch-up: compute from `lastActiveAt` delta on reconnect, capped at configurable maximum.
+
+**Step 4 — Upgrade route**  
+Route `POST /api/users/:username/generators/:moduleKey/upgrade`: validates blueprint ownership and constructed status, deducts upgrade cost (energy + materials from config), increments `level`.
+
+**Step 5 — UI: Prestige Branch Interface + Generators Panel**  
+Retire the existing flat Upgrades panel. Replace with a branch-organized prestige interface: Branch 0 (Reactor Efficiency — existing multipliers, repositioned) and Branch 1 (Automation Infrastructure — blueprint shop). Add `GeneratorsPanel.jsx` as a collapsible panel visible when any blueprint is owned — shows per-module construct vs. running state, upgrade button, pause toggle, storage-capped indicator.
+
+**V1 modules:**
+
+| Module | Produces | Construction Requires |
+|---|---|---|
+| Atmospheric Separator | Hydrogen, Oxygen | Energy + Graphene + Lithium-Ion Cell |
+| Carbon Scrubber | Carbon | Energy + Graphene + Doped Silicon |
+| Nitrogen Condenser | Nitrogen | Energy + Aramid Fiber + Doped Silicon |
+| Iron Smelter | Iron | Energy + Stainless Steel + Carbon Nanotube |
+| Sulfur Extractor | Sulfur | Energy + Stainless Steel + Carbon Nanotube |
+
+(Exact quantities: TBD — confirmed in Phase P Blocker 3)
+
+**Hard constraints (from prestige-system-redesign.md §2, Non-Goals):**
+- Automation never queues a reaction. The synthesis queue has exactly one entry point: the player.
+- Automation never produces Gen 2+ compounds. Only Gen 1 raw elements.
+- Automation cannot be constructed before Gen 4 materials are available in that run. Gen 1–3 is always fully manual.
+- Automation never triggers discovery or experiments.
+
+**Test:** With one blueprint owned, complete a run from fresh account to Gen 4. Verify automation cannot be constructed before first Graphene is available. Construct the module. Verify it produces the correct element into inventory at the correct rate. Big Bang. Verify `user.generators` is cleared but `user.blueprints` survives. On the next run, verify the blueprint shows as owned but the module must be constructed again.
+
+**Checkpoint (Prestige Branch #1 validation):**
+- Blueprint purchase persists through Big Bang
+- Module construction requires blueprint ownership
+- Module construction requires Gen 4 materials (cannot construct in Gen 1–3)
+- Production writes to inventory only — synthesis queue is unchanged
+- Big Bang resets all constructed modules
+- Blueprints survive Big Bang unconditionally
+- The prestige branch UI presents Branch 0 and Branch 1 as distinct branches in the same interface
+
+---
+
+### Phase J1 — Economy Architecture (Design)
+
+**What:** Define the economic wall for each generation boundary and produce the implementation-ready specification for Gen 5 gating. This phase runs in parallel with Phase I preparation (they have no dependency on each other).
+
+**Context:**  
+Phase J was previously a single balancing phase that ran concurrent with Gen 5–6 seeding and reactor evolution. The economic-progression-analysis.md revealed that the game's economy currently lacks structure to create meaningful generation gates. Economy architecture (the design of what creates the walls) must precede economy balancing (tuning numbers within a confirmed design). These are different activities requiring different precedence.
+
+**Deliverables:**
+- Gen 5 gate mechanism implementation spec (from Phase Q's decision)
+- If the Gen 5 gate requires a new schema field (a prestige-gated resource, a shard-consumed component), that schema change is specified here and implemented before Phase B3 seeding
+- IV (Intrinsic Value) methodology adopted as a calibration tool for Gen 5–6 substance design — ensures new substances produce the correct economic curve
+- Gen 5–6 shardValue assignments finalized, informed by the desired prestige pacing arc
+- Shard formula changes (if any, from Phase Q) implemented in `calculateGenesisShards.js`
+
+**Gate:** Phase J1 deliverables must be complete before Phase B3 begins. Gen 5 substance and reaction design depends on knowing what the economic wall looks like.
+
+---
+
+### Phase I — Long-Duration Synthesis
+
+**What:** Synthesis times of 4–72 hours work correctly, persist through server restarts, and display correctly to the player with real-world calendar time.
+
+**Note on repositioning:** Phase I was previously placed before automation (Phase H). Under the revised architecture, automation is Post-Big-Bang prestige infrastructure (Phase R), not a prerequisite for long-duration synthesis. Phase I's correct position is after Phase R (automation must be live to validate that long-duration synthesis coexists correctly with the production tick engine) and before Phase B3 (Gen 5 content cannot be seeded before long-duration queue persistence is validated).
+
+**Deliverables:**
 - Time display: for any synthesis over 24 hours, display estimated real-world completion time ("Completes Thursday at 11:42 PM") alongside the countdown
-- Offline completion: a synthesis that completes while the player is offline is correctly resolved on reconnect, inventory updated, notification shown
-- Server restart safety: active queue entries survive server restart. Queue is stored in DB with wall-clock completion timestamps — server restart does not reset or corrupt in-progress syntheses.
-- Validation test: use the debug tooling (Phase G) to simulate a 48-hour synthesis at 100× speed, confirm it survives a server restart mid-synthesis and completes correctly
+- Offline completion: a synthesis that completes while the player is offline is correctly resolved on reconnect
+- Server restart safety: active queue entries survive server restart. Queue stored in DB with wall-clock completion timestamps.
+- Validation test: use Phase G debug tooling to simulate a 48-hour synthesis at 100× speed, confirm it survives a server restart mid-synthesis and completes correctly
 
 **Test:** Queue a 12-hour synthesis. Terminate the server process. Restart the server. Reconnect as the player. The synthesis is still in progress, countdown is correct, and it completes normally. Only after this test passes does Phase B3 seeding begin.
 
 ---
 
-### Phase B3 — Gen 5–6 Content Seeding (Weeks 22–24, after Phase I validation)
-**What:** Seed all Gen 5 and Gen 6 substances and reactions now that long-duration synthesis is validated and server-restart-safe.
+### Phase B3 — Gen 5 Design + Seeding + Validation
 
-Gen 5–6 content was intentionally withheld from Phase B1. Seeding 6–72 hour reactions before the queue system can safely persist them through server restarts guarantees data loss during development. Phase I has now proven queue persistence — it is safe to introduce this content.
+**What:** Design Gen 5 substance and reaction content (informed by Phase Q and Phase J1 decisions), seed it, and validate it end-to-end. Gen 6 content is explicitly deferred to Phase B4 — Gen 6 design should observe Gen 5 results first.
 
-Deliverables:
-- All 6 Gen 5 substances seeded (Fusion Plasma, Antihydrogen, Stellar Core Fragment, Graviton Lens, Dark Matter Proxy, Event Horizon Condensate)
-- All 6 Gen 5 reactions seeded with correct reactionKey, reactants, products, tiers, energy costs, reaction times (6h–48h), and conditions arrays
-- New Gen 5 conditions registered: `singularity_pressure`, `containment_instability`, `relativistic_spin`, `zero_point_cooling`, `gravitational_shear`
-- All 6 Gen 6 substances seeded (Prima Materia, Aether, Void Crystal, False Vacuum Seed, Philosopher's Stone, Dark Matter Crystal)
-- All 6 Gen 6 reactions seeded with correct reactionKey, reactants, products, tiers, energy costs, reaction times (24h–72h), and conditions arrays
-- New Gen 6 conditions registered: `temporal_drift`, `vacuum_decay`, `causality_shear`
-- Seed validation script run on full Gen 1–6 content: zero errors
+**Dependencies (all must be complete):**
+- Phase Q: Gen 5 gate mechanism confirmed
+- Phase J1: Economy architecture and Gen 5 shardValues specified
+- Phase I: Long-duration synthesis queue is server-restart-safe
 
-**Test:** Using debug tooling (Phase G), advance a test account from Gen 1 through Gen 6 using time acceleration and inventory grants. Verify every Gen 5 and Gen 6 recipe appears at the correct unlock tier. Verify conditions blocks work for Gen 5–6 conditions. Queue a 48-hour Gen 5 synthesis at 1000× acceleration — confirm it completes and inventory updates correctly.
+**Note on previous scope:** Phase B3 previously seeded both Gen 5 and Gen 6 simultaneously. This is split because Gen 6 design benefits from observing whether the Gen 5 economic wall held, whether the prestige pacing was correct at Gen 5 timescales, and whether the Gen 5 substance graph required adjustments after initial playtesting.
 
-**Content gate:** Gen 5–6 content must not be seeded until the long-duration survival test in Checkpoint 6 passes.
+**Deliverables:**
+- Gen 5 substance design (informed by Phase Q gate mechanism and IV curve targets)
+- All Gen 5 substances seeded with correct shardValues, unlockTiers, and reaction times
+- All Gen 5 reactions seeded with reactants, products, conditions, and economic gate requirements
+- New Gen 5 conditions registered (names TBD in Phase Q)
+- Gen 5 full playthrough validated using Phase G debug tooling (time acceleration + inventory grants)
+- Gen 5 economic wall validated: zero-prestige player cannot reach Gen 5 on run 1 (if that is the decided gate)
 
----
-
-### Phase J — Economy Balancing (Weeks 23–29, overlapping with B3 and K)
-**What:** Systematic playtest of the economy across all six generations, verifying BEU costs, production rates, synthesis times, and unlock pacing feel correct.
-
-This is not a single phase — it is a continuous parallel track that runs alongside content seeding and system hardening.
-
-Balancing order:
-1. Gen 1 economy (immediately after Phase B1 complete)
-2. Gen 2 economy (after Phase D unlock gating)
-3. Gen 3 economy (after Phase E reaction time enforcement)
-4. Gen 4 economy (after Phase B2 Gen 4 seeding + conditions enforcement validated)
-5. Gen 5–6 economy (after Phase B3 Gen 5–6 seeding + long-duration synthesis validated)
-
-Balancing tools needed: the debug/test tooling from Phase G — time acceleration, inventory grants, tier setting, and cumulative upstream cost display. Without these tools, balancing is guesswork. Do not attempt late-generation economy balancing without the Phase G tooling operational.
+**Gate:** Do not begin Phase B4 until Gen 5 has been playtested and the economic wall observation is documented.
 
 ---
 
-### Phase K — Reactor Evolution (Weeks 26–30)
-**What:** The reactor's visual state, notification language, audio (if applicable), and UI language evolve as the player progresses through generations.
+### Phase J2 — Economy Balancing (Tuning)
+
+**What:** Systematic numeric calibration across all six generations. This phase runs in passes — one pass after Gen 5 seeding (Phase B3), one pass after Gen 6 seeding (Phase B4).
+
+**Balancing order:**
+1. Gen 1–3 economy: already partially validated — re-verify after Phase R automation is live (automation changes the feedstock constraint materially)
+2. Gen 4 economy with automation: validate with Phase R automation operational
+3. Gen 5 economy (after Phase B3 seed + Gen 5 playthrough)
+4. Gen 6 economy (after Phase B4 seed + Gen 6 playthrough)
+
+**Tools required:** Phase G debug tooling (time acceleration, inventory grants, tier setting). Without these, balancing is guesswork.
+
+**What changes:** BEU costs, reaction times, production rates, shard formula constants. What does not change: the structural graph, substance names, reaction inputs/outputs, or generation assignments.
+
+---
+
+### Phase B4 — Gen 6 Design + Seeding + Validation
+
+**What:** Design Gen 6 substance and reaction content (informed by Gen 5 observations), seed it, and validate end-to-end.
+
+**Why deferred from B3:** Gen 6 design should be informed by Gen 5 results. If the Gen 5 economic wall did not hold as designed, Gen 6 design must be adjusted. If the Gen 5 shard payouts were miscalibrated, Gen 6 shardValues must be adjusted. Designing Gen 6 before Gen 5 is observed produces speculative content that may require re-seeding.
+
+**Deliverables:**
+- Gen 6 substance design (informed by Gen 5 observations and Gen 6 philosophy from generation-philosophy-v2.md)
+- All Gen 6 substances seeded (Prima Materia, Aether, Void Crystal, False Vacuum Seed, Philosopher's Stone, Dark Matter Crystal)
+- All Gen 6 reactions seeded with correct reactionKey, reactants, products, tiers, energy costs, reaction times (24h–72h), and conditions arrays
+- New Gen 6 conditions registered (`temporal_drift`, `vacuum_decay`, `causality_shear`)
+- Gen 6 full playthrough validated using Phase G debug tooling
+- Gen 6 economic wall validated
+- Seed validation script passes on complete Gen 1–6 content with zero errors
+
+**Content gate:** Gen 6 content must not be seeded until the Gen 5 economic wall observation is documented and Gen 5 balancing (Phase J2 first pass) is complete.
+
+---
+
+### Phase K — Reactor Evolution
+
+**What:** The reactor's visual state, notification language, and UI language evolve as the player progresses through generations.
+
+**Prerequisite:** Phase B4 complete. Content must be frozen before evolution is implemented — visual and language transitions calibrate to specific substance names and generation boundaries that cannot change after implementation.
 
 Deliverables:
 - Generation-state tracking: client knows which generation the player is in
@@ -476,11 +598,12 @@ Deliverables:
 - UI language shift for Gen 6 completions: drop "synthesis complete" framing, use "[Substance] — [status]"
 - Gen 6 visual quieting: reactor becomes more still as it becomes more powerful
 
-**Test:** Play-through from Gen 1 to Gen 6 using the debug tooling from Phase G (time acceleration, inventory grants). Verify visual and language state changes at each generation transition feel distinct and correct.
+**Test:** Playthrough from Gen 1 to Gen 6 using Phase G debug tooling. Verify visual and language state changes at each generation transition feel distinct and correct.
 
 ---
 
-### Phase L — Save Hardening and Polish (Weeks 28–34)
+### Phase L — Save Hardening and Polish
+
 **What:** The game survives server restarts, database migrations, and extended play sessions without corruption. UI polish, onboarding, and final balance passes.
 
 Deliverables:
@@ -497,104 +620,97 @@ Deliverables:
 
 ---
 
-### Risk 1 — Economy Collapse at Automation Boundary (HIGH)
-**What:** When element generators go live, the resource that was scarce (hydrogen, oxygen, carbon) becomes abundant. BEU costs calibrated without automation will be too cheap once generators run.
+### Risk 1 — Prestige Economy Misalignment Persists (HIGH)
+**What:** The prestige system is redesigned (Phase P) but the specific shard reward calibration decisions are not made rigorously in Phase Q before Gen 5 content is designed. Gen 5 seeding assumes an economic gate that does not hold in practice.
 
-**Consequence:** Gen 1–3 becomes trivial. The player synthesizes everything in minutes. Discovery pacing is destroyed.
+**Consequence:** Gen 5 is reachable without prestige on run 1. The Gen 5 "wall" is illusory. Players do not feel meaningful prestige pressure to improve their reactor before attempting Gen 5. The prestige loop fails to sustain engagement.
 
 **Mitigation:**
-- Balance Gen 1–3 costs only after automation is live (Phase G)
-- Use production rate caps that prevent over-accumulation during offline periods
-- Generator production rates should be calibrated so that a player who pays attention can synthesize faster, but not infinitely faster
-- Keep the synthesis queue as the binding constraint: even with infinite elements, reaction time (not energy) is the gate
+- Phase Q deliverables include a specific, testable definition of the Gen 5 economic gate — not a vague intention, but an exact mechanism
+- Phase B3 validation includes an explicit test: a zero-prestige fresh account must not be able to reach Gen 5 within a reasonable run (if that is the decided gate type)
+- If the gate mechanism uses a new schema field (e.g., a prestige-gated construction resource), that field is added in Phase J1 and seeded before Phase B3 content is designed against it
 
-**Test point:** Phase H completion (automation live). Run Gen 1 with automation active for 1 hour. Can the player reach Gen 2? If yes in under 30 minutes, generators are too fast.
+**Test point:** Phase B3 validation. Run a zero-prestige playthrough using time acceleration. Verify Gen 5 is blocked by the intended mechanism.
 
 ---
 
 ### Risk 2 — Long-Duration Synthesis Queue Corruption (HIGH)
-**What:** Gen 5–6 synthesis times are 6–72 hours. If a server restart corrupts the queue — or worse, a schema migration truncates the `activeQueue` — a player loses 24–72 hours of real time.
+**What:** Gen 5–6 synthesis times are 6–72 hours. If a server restart corrupts the queue — or a schema migration truncates `activeQueue` — a player loses 24–72 hours of real time.
 
-**Consequence:** Player trust destroyed. Unrecoverable without manual intervention. At 72-hour synthesis times, losing a Philosopher's Stone synthesis is a week of play lost.
+**Consequence:** Player trust destroyed. Unrecoverable without manual intervention.
 
 **Mitigation:**
-- Queue entries stored in MongoDB with wall-clock timestamps from the start (Phase C), not in server memory
-- Queue entries are immutable once created: the only mutation is `status: "complete"` after completion
-- Migration scripts must explicitly handle `activeQueue` entries — never drop the field or the collection that contains it
-- At every schema migration checkpoint: verify active queues survive the migration in a staging environment before touching production
+- Queue entries stored in MongoDB with wall-clock timestamps (already implemented in Phase C)
+- Queue entries are immutable once created: the only mutation is status transition to `completed`
+- Migration scripts must explicitly handle `activeQueue` entries — never drop the field or collection
+- At every schema migration checkpoint: verify active queues survive the migration in a staging environment
 
-**Test point:** Phase I completion (long-duration synthesis). Automated test: queue a synthesis, deliberately crash the server, restart, verify queue survives.
+**Test point:** Phase I completion. Automated test: queue a synthesis, deliberately crash the server, restart, verify queue survives.
 
 ---
 
 ### Risk 3 — Conditions System Complexity Explosion (MEDIUM-HIGH)
-**What:** The conditions system starts with 3 conditions (Gen 2) and ends with 15 conditions (Gen 6). If conditions are implemented as per-reaction logic rather than as a reactor capability registry, each new condition requires new code. The system becomes unmanageable by Gen 5.
+**What:** The conditions system starts with 9 conditions (Gen 1–4) and ends with 15+ conditions (Gen 6). If conditions are implemented as per-reaction logic rather than as a reactor capability registry, each new condition requires new code.
 
-**Consequence:** Gen 4–6 conditions are either not implemented or implemented with hacks. The game loses its physical escalation identity — conditions become aesthetic labels, not gameplay reality.
+**Consequence:** Gen 5–6 conditions are either not implemented or implemented with hacks.
 
 **Mitigation:**
-- Architect conditions as a data-driven registry from Phase F: condition names map to unlock requirements in configuration, not in code
-- Adding a new condition (e.g., `causality_shear` in Gen 6) should require: (a) adding it to the registry config, (b) seeding the reactions that require it. No new code for the condition itself.
-- Validate this architecture at Gen 4 (5 new conditions) — if adding Gen 4 conditions requires writing 5 new code blocks, the architecture is wrong
+- Conditions are data-driven: `conditionRegistry.js` is the single source of truth. Adding a new condition requires only a config entry and seed data — no new code.
+- Validated at Phase F (Gen 4 conditions added without new code). The architecture is already proven correct.
 
-**Test point:** Phase F completion. Adding a hypothetical new condition should take less than 30 minutes (config change + test). If it takes longer, refactor before Gen 5.
+**Test point:** Phase B3 seeding. Adding Gen 5 conditions should require config changes only, no new validation code.
 
 ---
 
 ### Risk 4 — Progression Deadlock (MEDIUM)
-**What:** The unlock orchestration gates Gen N+1 behind specific Gen N milestone substances. If a player gets into a state where: (a) they have discovered the gate substance's recipe, (b) they have the reactants, (c) but a bug in the queue or inventory system prevents synthesis completion — they are stuck.
+**What:** A player gets into a state where they have the recipe, the reactants, and the correct tier, but a bug prevents synthesis completion — and they are stuck.
 
-**Consequence:** Player cannot progress. Recovery requires admin intervention or a save reset.
+**Consequence:** Recovery requires admin intervention or a save reset.
 
 **Mitigation:**
-- Gate substances should have `discoveredByDefault: true` — the player sees the recipe from the moment the relevant tier unlocks. No discovery dependency on top of the synthesis dependency.
-- Queue completion should be idempotent: completing the same reaction twice should not double-credit the inventory (guard with status transition: `in_progress` → `complete` is the only valid transition, checked atomically)
-- Admin tools: ability to manually adjust a player's `unlockedTier` and `substanceInventory` for recovery
+- Gate substances should have `discoveredByDefault: true`
+- Queue completion is idempotent (atomic `processing → resolving → completed` transition)
+- Phase G debug tooling allows admin inventory/tier adjustment for recovery
 
-**Test point:** Phase D completion (unlock orchestration). Simulate every Gen 1→Gen 2→Gen 3 gate transition in automated tests. Each should complete without deadlock.
+**Test point:** Phase D completion. Simulate every Gen 1→Gen 2→Gen 3 gate transition. Each should complete without deadlock.
 
 ---
 
 ### Risk 5 — Gen 5–6 Pacing Failure (MEDIUM)
-**What:** The 96-hour Gen 5 critical path and 276-hour Gen 6 critical path are correct in design but may be too slow or too fast in practice. If a single 48-hour synthesis (Event Horizon Condensate) becomes the only activity for two real days, players may abandon.
+**What:** Long synthesis windows in Gen 5–6 (6–48 hours) leave the player with nothing to do while waiting.
 
 **Consequence:** Late-game retention failure. The game's most ambitious content is never reached by most players.
 
 **Mitigation:**
-- Gen 5–6 are explicitly not mass-market pacing. The design intends this for dedicated players. Accept the filter.
-- However: ensure the player always has something to queue during long synthesis windows. If Gen 5's 48-hour capstone is running and nothing else can be done, the experience is worse than if a Gen 4 restocking synthesis can be queued in parallel.
-- The production pressure audit (§10.7–10.8 of reaction-graph-design.md) documents which Gen 4 substances need to be restocked for Gen 5 forward progress. These re-runs give the player activity during long synthesis windows.
-- Parallel reactor slots are the primary mitigation: always have something running in every slot.
+- Automation infrastructure (Phase R) ensures Gen 1 feedstock production runs during long synthesis windows
+- The production pressure audit documents which Gen 4 substances need restocking for Gen 5 forward progress
+- Queue slot expansion (a future prestige branch) is the primary long-term mitigation
 
-**Test point:** Phase I completion (long-duration synthesis validated, Phase B3 seeded). Test Gen 5 progression with a second reactor slot using debug time acceleration. The player should always have a productive queue option during long synthesis windows.
+**Test point:** Phase I completion (long-duration synthesis validated, Phase B3 seeded). Test Gen 5 progression with automation active using debug time acceleration.
 
 ---
 
-### Risk 6 — Automation Trivializing Discovery (MEDIUM)
-**What:** If automation systems auto-queue reactions in addition to generating elements, discovery becomes passive rather than active. The player doesn't experience the moment of synthesizing their first Bronze — the generator did it for them.
+### Risk 6 — Automation Implemented Before Prestige Architecture Is Decided (HIGH — now mitigated)
+**What:** If Phase R implementation begins before Phase P resolves the three design blockers (shard economy option, blueprint cost order of magnitude, construction material quantities), the implementation will be built against an unconfirmed architecture and require refactoring when that architecture is confirmed.
 
-**Consequence:** Discovery pacing destroyed. The reactor-centric identity (the player and the reactor doing this together) is broken.
+**Consequence:** Automation is refactored once or twice before shipping. Delay to Era V completion.
 
-**Mitigation:**
-- Automation only produces raw elements. It never queues reactions.
-- The synthesis queue requires an explicit player action: the player must choose to queue a reaction, see the recipe, and commit the energy. This is non-negotiable.
-- Every automation upgrade that increases production rate should NOT also affect synthesis queue behavior.
+**Mitigation:** Phase P is a hard prerequisite for Phase R. No Phase R implementation work begins until all three Phase P blockers are resolved. Phase G completion gates Phase P, which gates Phase R. The sequencing enforces this.
 
-**Architecture guard:** This constraint should be encoded in code comments at the automation system's core: "Automation writes to inventory only. It does not interact with the synthesis queue."
+**Why this risk was elevated:** The former Phase H (Automation Framework) was positioned as an independent feature rather than as a prestige branch. This created pressure to implement it without prestige design being settled. Under the current architecture, Phase P must precede Phase R structurally — the ordering enforces the correct dependency.
 
 ---
 
 ### Risk 7 — Content Graph Bugs in Seed Data (MEDIUM)
-**What:** The seed data has 50+ substances and 50+ reactions with complex cross-references. A single incorrect reactant reference (wrong substance ID, wrong quantity, wrong unlock tier) silently corrupts the progression graph.
+**What:** The seed data has 50+ substances and 50+ reactions with complex cross-references. A single incorrect reactant reference silently corrupts the progression graph.
 
-**Consequence:** A reaction is unreachable (wrong tier), consumes the wrong substance, or has no product. The player is stuck without knowing why.
+**Consequence:** A reaction is unreachable (wrong tier), consumes the wrong substance, or has no product.
 
 **Mitigation:**
-- Build a seed validation script that runs on every seed: verify every reactant and product resolves to a valid substance, every unlock tier is consistent with the substance's generation, no circular dependencies, every gate substance has `discoveredByDefault: true`
+- Seed validation script runs on every seed: verifies no dangling references, all unlock tiers consistent, no circular dependencies
 - Run the validation script in CI: seed changes that break validation fail the build
-- The seed is the source of truth — validate it before any other system builds on it
 
-**Test point:** Phase B1 completion. The seed validation script passes on the complete Gen 1–3 seed with zero errors. Run again after Phase B2 and Phase B3 to validate Gen 4 and Gen 5–6 content respectively.
+**Test point:** Phase B1 completion. Seed validation passes with zero errors. Run again after Phase B2, B3, and B4.
 
 ---
 
@@ -604,247 +720,275 @@ Avoid "build everything then test." Test at each era boundary.
 
 ---
 
-### Checkpoint 1 — Gen 1–3 Content Validity (End of Phase B1)
-**What to verify:**
-- Gen 1–3 substance seed: all 40+ substances present, no missing fields, all `hintText` populated
-- Gen 1–3 reaction seed: all 30+ reactions present, all reactants resolve, all unlock tiers correct, all gate substances have `discoveredByDefault: true`
-- Seed validation script: zero errors
-- Admin can manually set any player to any tier and synthesize any Gen 1–3 product
-
-**Gate:** Do not begin Phase D (unlock orchestration) until this checkpoint passes. Do not seed Gen 4 content (Phase B2) until after Phase F conditions engine is validated.
+### Checkpoint 1 — Gen 1–3 Content Validity ✅ COMPLETE (End of Phase B1)
 
 ---
 
-### Checkpoint 2 — Gen 1 Playthrough (End of Phase D, Gen 1 only)
-**What to verify:**
-- Fresh account: player starts at tier 1, sees only Gen 1 discoveredByDefault reactions
-- Player synthesizes Iron Oxide (iron + oxygen) — Gen 2 unlocks
-- Player synthesizes Ammonia (nitrogen + hydrogen) — Gen 2 unlocks fully
-- Gen 2 reactions now visible; Gen 3 still locked
-
-**Gate:** Do not begin Gen 2–3 gating verification until Gen 1 gate is confirmed clean.
+### Checkpoint 2 — Gen 1 Playthrough ✅ COMPLETE (End of Phase D, Gen 1 only)
 
 ---
 
-### Checkpoint 3 — Full Gen 1→Gen 3 Playthrough (End of Phase E)
-**What to verify:**
-- Fresh account reaches Gen 3 milestone substances (Steel, Lithium-Ion Cell) through correct progression
-- All synthesis times are enforced (no instant reactions in Gen 2–3)
-- Energy costs feel correctly weighted at each tier
-- No deadlocks or blocked states
-
-**This is the first real balancing checkpoint.** If Gen 1 is too fast or Gen 2 is too slow, fix it now before Gen 4+ content is added.
+### Checkpoint 3 — Full Gen 1→Gen 3 Playthrough ✅ COMPLETE (End of Phase E)
 
 ---
 
-### Checkpoint 4 — Conditions Engine Validation (End of Phase F + Phase B2)
-**What to verify:**
-- Gen 1–3 conditions (`high_temperature`, `catalyst`, `high_pressure`) are enforced correctly against `user.reactorCapabilities`
-- Debug tooling (Phase G) is operational: time acceleration and inventory grant working
-- Phase B2 Gen 4 seed complete: all 8 Gen 4 substances and reactions seeded with zero validation errors
-- Gen 4 conditions (`plasma_state`, `extreme_pressure`, `extreme_cold`, `radiation_bombardment`, `vacuum`) are enforced
-- Attempting to queue a Gen 4 reaction without the required conditions is correctly rejected with a specific missing-condition error
-- The correct progression path exists to unlock each Gen 4 condition
-- Gen 4 full playthrough (using debug time acceleration): Reactive Plasma Core and Nuclear Fuel Pellet reachable
-
-**Gate:** Do not begin Phase H (automation) until conditions enforcement passes for both Gen 1–3 and Gen 4 conditions. Do not begin Phase J economy balancing for Gen 4 until this checkpoint passes.
+### Checkpoint 4 — Conditions Engine + Gen 4 Validation ✅ COMPLETE (End of Phase F + Phase B2)
+**Verified:**
+- Gen 1–3 and Gen 4 conditions enforced correctly
+- Gen 4 full playthrough: Reactive Plasma Core and Nuclear Fuel Pellet reachable
+- Phase G partial: 4 of 8 debug endpoints operational
 
 ---
 
-### Checkpoint 5 — Automation Balance Validation (End of Phase H)
+### Checkpoint 5 — Debug Tooling Complete (End of Phase G)
 **What to verify:**
-- Generators produce elements at designed rates
-- Offline progress calculation is correct (test by simulating a 4-hour offline gap)
-- Gen 1 economy with automation is re-validated: not too fast, not too slow
-- Generators do not interact with the synthesis queue
+- Inventory grant: admin can add any substance × quantity to any player inventory
+- Tier set: admin can set player unlockTier to any value instantly
+- Time acceleration: synthesis timers compress by the configured multiplier
+- Full Gen 1→Tier 12 playthrough in under 30 minutes using the complete debug suite
+
+**Gate:** Do not begin Phase P until this checkpoint passes. All economy validation work depends on rapid playthrough capability.
 
 ---
 
-### Checkpoint 6 — Long-Duration Survival Test (End of Phase I + Phase B3)
+### Checkpoint 6 — Prestige Architecture Confirmed (End of Phase P)
+**What to verify:**
+- Shard economy option confirmed (Option C or explicit alternative)
+- Blueprint cost range confirmed (order of magnitude with working values)
+- Construction material quantities per module specified
+- Prestige branch UI wireframe approved
+- Big Bang route change spec complete
+
+**Gate:** Do not begin Phase R implementation until this checkpoint passes.
+
+---
+
+### Checkpoint 7 — Economy Architecture Confirmed (End of Phase Q)
+**What to verify:**
+- Gen 5 gate mechanism specified and testable
+- Shard reward calibration targets documented
+- Gen 5 shardValues specified
+- Prestige progression arc targets documented (run 1/5/10/20 feel targets)
+
+**Gate:** Do not begin Phase B3 without this checkpoint passing. Do not design Gen 5 substance content before the economic wall mechanism is confirmed.
+
+---
+
+### Checkpoint 8 — Prestige Branch #1 Operational (End of Phase R)
+**What to verify:**
+- Blueprint purchase persists through Big Bang
+- Module construction requires Gen 4 materials (cannot construct in Gen 1–3)
+- Production writes to inventory only; synthesis queue is unchanged by automation
+- Big Bang resets all constructed modules; blueprints survive
+- Prestige branch interface presents Branch 0 and Branch 1 correctly
+- Gen 1–4 economy re-validated with automation active: not trivially accelerated
+
+---
+
+### Checkpoint 9 — Long-Duration Survival Test (End of Phase I)
 **What to verify:**
 - A 12-hour synthesis persists through a server restart with no data loss
-- A 48-hour synthesis (simulated at 1000× speed using Phase G debug tooling) completes correctly
-- Offline completion resolves correctly on reconnect — inventory updates, notification fires
-- Phase B3 Gen 5–6 seed complete: all 12 Gen 5–6 substances and reactions seeded with zero validation errors
-- Gen 5–6 full playthrough (using debug time acceleration): Event Horizon Condensate and Dark Matter Crystal reachable
-- Gen 5–6 conditions (`singularity_pressure`, `containment_instability`, `temporal_drift`, `vacuum_decay`, `causality_shear`, etc.) enforced correctly
+- A 48-hour synthesis (simulated at 1000× speed) completes correctly
+- Offline completion resolves correctly on reconnect
 
-**Gate:** Do not begin Phase J Gen 5–6 economy balancing until this checkpoint passes. Do not begin Phase K reactor evolution until Gen 5–6 is technically reachable.
+**Gate:** Do not begin Phase B3 until this checkpoint passes.
 
 ---
 
-### Checkpoint 7 — Full Gen 1→Gen 6 Technical Completion (End of Phase B3 + Phase J first pass)
+### Checkpoint 10 — Gen 5 Technical Completion (End of Phase B3)
 **What to verify:**
-- A player account can be manually advanced through all six generations using Phase G debug tooling (time acceleration, inventory grants, tier setting)
-- All 6 Gen 6 substances are synthesizable
-- Dark Matter Crystal synthesis completes correctly, inventory updates, notification fires, no database errors
-- No database corruption at any point in the full accelerated playthrough
-- Conditions enforcement correct for all 15+ conditions across Gen 1–6
+- Gen 5 full playthrough using debug tooling: all Gen 5 substances reachable
+- Gen 5 economic wall holds: zero-prestige player is blocked by the intended mechanism
+- Gen 5 conditions enforced (all new conditions registered and enforced correctly)
+- Seed validation script passes on Gen 1–5 content with zero errors
 
-**This checkpoint is NOT a final balance verification.** It confirms technical completeness only. Economy balancing continues through Phase J.
+**Gate:** Do not begin Phase B4 until Gen 5 is playtested and economic wall observation is documented.
 
 ---
 
-### Checkpoint 8 — Economy Final Balance (End of Phase J, ongoing)
+### Checkpoint 11 — Full Gen 1→Gen 6 Technical Completion (End of Phase B4)
 **What to verify:**
+- A player account can be manually advanced through all six generations using Phase G debug tooling
+- All Gen 6 substances are synthesizable
+- Dark Matter Crystal synthesis completes correctly
+- No database corruption at any point in the accelerated playthrough
+
+**This checkpoint confirms technical completeness only.** Economy balancing continues through Phase J2.
+
+---
+
+### Checkpoint 12 — Economy Final Balance (End of Phase J2)
+**Target pacing ranges:**
 - Gen 1: new player reaches Gen 2 in approximately 30–60 minutes of active play
 - Gen 2: player reaches Gen 3 in approximately 2–4 hours of active play
 - Gen 3: player reaches Gen 4 gate in approximately 1–2 weeks of casual play
-- Gen 4: player reaches Gen 5 gate in approximately 1–2 months of casual play
+- Gen 4: player reaches Gen 5 gate in approximately 1–2 months of casual play (first prestige likely required)
 - Gen 5: player reaches Gen 6 gate in approximately 1–3 months of casual play
 - Gen 6: Dark Matter Crystal completes approximately 1–3 months after Gen 6 entry
-
-These are target ranges, not hard requirements. If blind playtesting shows the pacing is wrong at any generation boundary, the costs or reaction times must be adjusted — not the design.
 
 ---
 
 ### Content Freeze Checkpoint — Before Phase K (Reactor Evolution)
 **What:** No new substances, reactions, conditions, or generation content is added after this point. The content graph is frozen.
 
-**Why:** Reactor evolution (visual, audio, language changes) is calibrated to specific generation transitions and specific substance names. If content changes after evolution is implemented, every transition must be re-tested. Content changes also invalidate economy balancing — adding a substance mid-balance disrupts the dependency graph and invalidates upstream cost calculations.
-
----
-
-**Content discipline across all phases — three stages:**
-
-**Stage 1 — Content Expansion (Phases B1, B2, B3):**  
-New substances and reactions are added as each content phase runs. This is the only stage where the seed data is actively expanded. Changes are welcome, validated, and expected. The seed validation script is the quality gate.
-
-**Stage 2 — Balance Phase (Phases J and K, overlapping):**  
-Content is complete. Numeric values (BEU costs, reaction times, production rates) may be adjusted based on playtesting. No new substances or reactions are added. No reactions are removed. Structural graph changes (adding a new input to an existing reaction, changing which substance gates a tier transition) require explicit written justification, because they invalidate economy calculations upstream.
-
-**Stage 3 — Content Freeze (Before Phase K completes):**  
-All content changes, including numeric adjustments, require a documented justification and a re-run of the seed validation script and affected economy calculations. The content graph is locked. The only changes permitted are bug fixes (broken references, incorrect tier assignments).
-
-**Warning — content drift after balancing begins:**  
-The most common failure mode in idle game development: a new substance idea emerges during balance testing, it gets added "quickly," it disrupts the progression graph, the balance pass has to restart, and a new idea emerges during the new balance pass. Content drift after balancing begins forces repeated rebalancing, graph instability, and delays the final freeze indefinitely.
-
-**Guard:** After Phase B1 content is validated, any proposal to add a new Gen 1–3 substance must be evaluated against the existing graph for dependency impact before it is seeded. After Phase B3, no new substances are added under any circumstances without an explicit content-freeze exception approved in writing.
+**Why:** Reactor evolution (visual, audio, language) calibrates to specific generation transitions and specific substance names. Content changes after evolution is implemented require re-testing every transition.
 
 ---
 
 ## Part 7 — Philosophy Preservation
 
-This section contains constraints that **must not be violated** by any future implementation decision. They are listed not because violation is likely in early phases, but because the pressure to violate them increases as the codebase grows and new engineers or new design discussions arise.
+This section contains constraints that **must not be violated** by any future implementation decision.
 
 ---
 
 ### Constraint 1 — The Reactor Is the Game
 The reactor is not a background widget. It is not a timer display. It is the central interactive object.
 
-**Violation pattern to watch for:** As the game grows, feature requests will emerge for non-reactor activities — collection screens, crafting trees, skill trees, upgrade panels. Each of these, if given equal visual weight to the reactor, erodes the reactor-centric identity.
+**Violation pattern:** Feature requests for non-reactor activities — collection screens, crafting trees, skill trees, upgrade panels — given equal visual weight to the reactor.
 
-**Guard:** Every new UI surface is evaluated first: does it help the player interact with the reactor, or does it become a second game inside the game? If it's a second game, reject it.
+**Guard:** Every new UI surface is evaluated: does it help the player interact with the reactor, or does it become a second game inside the game?
 
 ---
 
 ### Constraint 2 — Anti-Encyclopedia Design
-Substances are not information sources. They are things the player made. The reactor does not show the player a chemistry textbook when they synthesize Iron Oxide.
+Substances are not information sources. They are things the player made.
 
-**Violation pattern to watch for:** The temptation to add a "substance detail screen" with physical properties, historical context, synthesis notes, electron configuration diagrams. This is an encyclopedia, not a reactor.
+**Violation pattern:** A "substance detail screen" with physical properties, historical context, electron configuration diagrams — an encyclopedia, not a reactor.
 
-**Guard:** Each substance has exactly one piece of information beyond its name: the `hintText`. The hint text is a single line that communicates the substance's emotional meaning or forward trajectory. It is not a Wikipedia article. It is what the reactor tells you.
+**Guard:** Each substance has exactly one piece of information beyond its name: the `hintText`. One line. What the reactor tells you.
 
 ---
 
 ### Constraint 3 — Synthesis Queue Is Player-Driven, Not Automated
-The player queues every synthesis. No system, no automation, no trigger queues a synthesis on the player's behalf.
+The player queues every synthesis. No system, no automation module, no trigger queues a synthesis on the player's behalf.
 
-**Violation pattern to watch for:** "Quality of life" automation that watches the player's inventory and auto-queues a synthesis when the reactants are available. This seems helpful. It destroys the discovery experience.
+**What automation does:** Automation Infrastructure (Phase R) writes produced elements directly to inventory. It does not interact with the synthesis queue at any point.
 
-**Guard:** The synthesis queue has one entry point: the player explicitly selecting a reaction and pressing queue. If a PR adds any other entry point, reject it.
+**What automation does not do:** Automation never queues a reaction. Never triggers discovery. Never advances a tier. The synthesis queue has exactly one entry point: the player explicitly selecting a reaction and pressing queue.
+
+**Violation pattern:** "Quality of life" automation that watches inventory and auto-queues a synthesis when reactants are available. Or automation being extended to queue Gen 2+ compound synthesis.
+
+**Guard:** The synthesis queue entry point is architecturally singular. Any PR adding a second entry point is rejected. This is the most important guard in the codebase.
 
 ---
 
 ### Constraint 4 — Conditions Are Physical Requirements, Not Flavor Text
-A reaction with `conditions: ["plasma_state"]` cannot execute if the reactor does not have plasma state capability. The condition is a hard block, not a visual label.
+A reaction with `conditions: ["plasma_state"]` cannot execute if the reactor does not have `plasma_state` capability. Hard block, not a visual label.
 
-**Violation pattern to watch for:** Implementing conditions as cosmetic tags on reactions that display in the UI but don't actually validate at queue time. This is the path of least resistance and it destroys the conditions system's design intent.
+**Violation pattern:** Implementing conditions as cosmetic tags that display in the UI but don't validate at queue time.
 
-**Guard:** The conditions enforcement test in Checkpoint 4 verifies this. If a reaction with an unmet condition can be queued, the test fails.
+**Guard:** Checkpoint 4 (already passed). If a reaction with an unmet condition can be queued, the enforcement is broken.
 
 ---
 
 ### Constraint 5 — Emotional Pacing Is Not Negotiable
-The pacing design is not a suggestion. The synthesis times are not placeholder values to be "tuned down" when playtesters say things feel slow.
+Synthesis times are not placeholder values to be tuned down when playtesters say things feel slow.
 
-**Violation pattern to watch for:** Playtest feedback "Gen 3 feels slow, can we halve the synthesis times?" — and then halving them, because it makes the tester happy. Gen 3 synthesis times (5–45 minutes) are correct. They are slower than Gen 2 by design. The pacing IS the game.
+**Violation pattern:** "Gen 3 feels slow — can we halve the synthesis times?" halved because it makes the tester happy.
 
-**Guard:** Economy balancing changes must be justified against the pacing targets in the reaction graph design (§10.10, §11.10). A change to synthesis times must come with a written justification that accounts for the downstream effect on generation completion time. Not "it felt slow in testing."
+**Guard:** Economy balancing changes must be justified against the pacing targets. A change to synthesis times requires a written justification accounting for downstream effect on generation completion time.
 
 ---
 
 ### Constraint 6 — Gen 6 Scarcity Philosophy
 Gen 6 substances are artifacts, not resources. They are synthesized once. They are not mass-produced. They are not automated.
 
-**Violation pattern to watch for:** Extending the generator system to produce Gen 5+ substances passively. Adding a "+1 Antihydrogen/day" automation at some upgrade level. This feels like meaningful late-game automation. It destroys the scarcity identity of Gen 5–6.
+**Violation pattern:** Extending automation scope to produce Gen 5+ substances passively.
 
-**Guard:** The automation system's scope is explicitly bounded: generators produce raw elements only (Gen 1 tier). Every extension of automation scope must be evaluated against this constraint explicitly, in writing, before implementation.
+**Guard:** Automation scope is bounded at Gen 1 raw elements. Every extension of automation scope must be evaluated against this constraint explicitly, in writing, before implementation.
 
 ---
 
 ### Constraint 7 — Myth Through Physics, Not Through Magic
-The game's escalation from chemistry to cosmic alchemy must remain scientifically grounded at every step. "Philosopher's Stone" is justified by the physics of gravitational lensing, spacetime-adjacent materials, and quantum vacuum transmutation. "Divine Core" is not justified by anything.
+The game's escalation from chemistry to cosmic alchemy must remain scientifically grounded at every step.
 
-**Violation pattern to watch for:** Future feature or content additions that introduce substances with non-physics-adjacent names because "they sound cool" or "fit the vibe." A Gen 7 that adds "Soul Fragment" or "Celestial Prism" would destroy what took six generations to build.
+**Violation pattern:** Future content additions introducing substances with non-physics-adjacent names because "they sound cool."
 
-**Guard:** The game is complete at Gen 6. There is no Gen 7. Dark Matter Crystal is the end. If the game needs more content, it extends within existing generations (more substances per gen, branching paths) rather than adding a new generation. This constraint protects the ending from escalation entropy.
+**Guard:** The game is complete at Gen 6. There is no Gen 7. Dark Matter Crystal is the end.
 
 ---
 
 ### Constraint 8 — The Ending Is Stillness
-The Dark Matter Crystal completion notification is "Dark Matter Crystal — stable." Two words after the substance name. No fanfare. No victory screen. No "You've completed Genesis Lab!" No percentage completion tracker hitting 100%.
+The Dark Matter Crystal completion notification is "Dark Matter Crystal — stable." Two words after the substance name. No fanfare. No victory screen.
 
-**Violation pattern to watch for:** A UI designer or a product requirement adding a completion screen with animation and "You did it!" text. This is the correct instinct for most games. It is the wrong instinct for this game.
+**Violation pattern:** A completion screen with animation and "You did it!" text.
 
-**Guard:** The completion experience is specified in §11.11 of the reaction graph design. It is not open for redesign without explicit re-evaluation of the game's tonal thesis.
+**Guard:** The completion experience is specified in §11.11 of the reaction graph design. Not open for redesign without explicit re-evaluation of the game's tonal thesis.
+
+---
+
+### Constraint 9 — Automation Is Prestige Infrastructure, Not an Idle-Game Feature
+Automation modules are not convenience features that passively remove clicking. They are permanent capabilities the reactor earns across Big Bang cycles. They are purchased with Genesis Shards (permanent) and constructed with Gen 4 materials (per-run). They require reaching Gen 4 in a given run before they can be activated.
+
+**Violation pattern:** Implementing automation as a midgame unlock (available before first Big Bang). Framing automation as "reducing clicking." Treating automation as a quality-of-life feature rather than a prestige infrastructure investment.
+
+**Guard:** Automation modules cannot be constructed without a blueprint. Blueprints require Genesis Shards. Genesis Shards are earned only through Big Bang. Therefore: zero Big Bangs = zero blueprints = zero automation. This is structural. If any implementation path allows automation before a Big Bang has occurred, it violates this constraint.
 
 ---
 
 ## Appendix — Model Change Summary
 
-Quick reference for the schema changes required in Phase A:
+Quick reference for the schema changes made in Phase A. Where the implemented field name differs from the original spec, the actual name is shown.
 
 ### Reaction model additions:
 ```
 reactionKey: { type: String, required: true, unique: true, index: true }
 generationTier: { type: Number, required: true, min: 1, max: 6 }
-// conditions: change from { type: Object } to:
+// conditions: changed from { type: Object } to:
 conditions: { type: [String], default: [] }
-// reactionType enum: add "standard_synthesis"
+// reactionType enum: "standard_synthesis" added
 ```
 
 ### Substance model additions:
 ```
-reactionKey: { type: String, required: true, unique: true, index: true }
+// Implemented as substanceKey (not reactionKey — substanceKey is the correct name for a substance identifier)
+substanceKey: { type: String, required: true, unique: true, index: true }
 generationTier: { type: Number, required: true, min: 1, max: 6 }
 hintText: { type: String }
 fantasyWeight: { type: Number, min: 1, max: 5 }
-// type enum: add "artifact"
+// type enum: "artifact" added (also "material" for intermediate Gen 3+ substances)
 ```
 
-### User model additions:
+### User model additions (Phase A + Phase R pending):
 ```
-substanceInventory: {
-  type: Map,
-  of: Number,  // substanceId → quantity
-  default: {}
-}
-discoveredReactions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reaction' }]
-unlockedTier: { type: Number, default: 1 }
-activeQueue: [{
-  reaction: { type: mongoose.Schema.Types.ObjectId, ref: 'Reaction' },
-  startTime: { type: Date, required: true },
-  expectedCompletion: { type: Date, required: true },
-  status: { type: String, enum: ['queued', 'in_progress', 'complete'], default: 'queued' },
-  reactantsConsumed: [{ substance: ObjectId, quantity: Number }]
+// Implemented as inventory array (not substanceInventory Map) — array form required for
+// MongoDB .populate() support. Functionally equivalent.
+inventory: [{
+  substance: { type: ObjectId, ref: 'Substance', required: true },
+  quantity:  { type: Number, required: true, min: 0 }
 }]
+
+// discoveredReactions not implemented as an explicit field.
+// Discovery is handled implicitly: reactions have discoveredByDefault: Boolean,
+// and queue entries carry wasDiscovery: Boolean.
+
+// Implemented as unlockTier (not unlockedTier)
+unlockTier: { type: Number, default: 0 }
+
+activeQueue: [{
+  reaction:           { type: ObjectId, ref: 'Reaction' },
+  reactionKey:        { type: String, required: true },
+  slot:               { type: Number, default: 0 },
+  startTime:          { type: Date, required: true },
+  expectedCompletion: { type: Date, required: true },
+  completedAt:        { type: Date, default: null },
+  pruneAfter:         { type: Date, default: null },
+  status:             { type: String, enum: ['processing', 'resolving', 'completed', 'failed'], default: 'processing' },
+  claimedAt:          { type: Date, default: null },
+  reactantsConsumed:  { type: Boolean, default: false },
+  revealOnCompletion: { type: Boolean, default: false },
+  wasDiscovery:       { type: Boolean, default: false },
+  snapshot: {
+    reactionName, energyCost, productKey, productName,
+    productQuantity, productUnlocksUserTier, reactants: [{ substanceKey, name, quantity }]
+  }
+}]
+
 // Per-user reactor capability set.
-// Conditions belong to the reactor, not to individual reactions.
-// A player with "plasma_state" in reactorCapabilities can queue ANY
-// reaction that lists "plasma_state" in its conditions array.
-// Queue validation: reaction.conditions.every(c => user.reactorCapabilities.includes(c))
-// Examples: "high_temperature", "catalyst", "plasma_state",
-//           "extreme_cold", "singularity_pressure", "temporal_drift"
 reactorCapabilities: { type: [String], default: [] }
+
+// Added in Phase R (pending):
+blueprints: [{ blueprintKey: String, purchasedAt: Date }]
+generators: [{ moduleKey: String, level: Number, constructedAt: Date, pausedAt: Date | null }]
+lastActiveAt: { type: Date }
 ```

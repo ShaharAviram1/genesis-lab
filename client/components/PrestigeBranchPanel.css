@@ -1,0 +1,177 @@
+.prestige-branch-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prestige-shard-balance {
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--violet);
+}
+
+.prestige-section-title {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.blueprint-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  background: rgba(155, 89, 182, 0.08);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.blueprint-card.owned {
+  border-color: rgba(155, 89, 182, 0.6);
+  background: rgba(155, 89, 182, 0.14);
+}
+
+.blueprint-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.blueprint-name {
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--violet);
+  white-space: nowrap;
+}
+
+.blueprint-produces {
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.blueprint-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.blueprint-owned-chip {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--violet);
+  background: rgba(155, 89, 182, 0.2);
+  border-radius: 4px;
+  padding: 3px 7px;
+}
+
+.blueprint-cost {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.blueprint-btn {
+  font-size: 0.62rem;
+  padding: 5px 10px;
+  border-color: rgba(155, 89, 182, 0.4);
+  color: var(--violet);
+  white-space: nowrap;
+}
+
+.blueprint-btn:hover:not(:disabled) {
+  border-color: var(--violet);
+  box-shadow: 0 0 10px var(--violet-glow);
+  color: #d8b4fe;
+}
+
+.blueprint-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Legacy section */
+.legacy-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legacy-toggle-label {
+  font-family: var(--font-display);
+  font-size: 0.60rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.legacy-toggle-hint {
+  font-family: var(--font-body);
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.legacy-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.legacy-note {
+  font-family: var(--font-body);
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-style: italic;
+  margin-bottom: 4px;
+}
+
+.legacy-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.legacy-stat-label {
+  opacity: 0.7;
+}
+
+.legacy-stat-value {
+  font-family: var(--font-display);
+  font-size: 0.60rem;
+  font-weight: 700;
+  color: var(--violet);
+  opacity: 0.7;
+}

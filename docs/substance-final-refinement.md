@@ -151,8 +151,40 @@ Every substance from substance-universe.md v2.0 rated on the fantasy weight hier
 | Hydrazine | 2 | **MAYBE** | Rocket propellant. Fantasy weight 3 if framed as "rocket fuel." Cut if no clear Gen 5 downstream. |
 | Rhenium Superalloy | 1 | **CUT** | Obscure name, no player recognition, no Gen 5 downstream. Cut. |
 
-**Gen 4 survivors: 8 + 1 maybe = 8–9**  
+**Gen 4 survivors (pre-reaction-graph list): 8 + 1 maybe = 8–9**  
 `Uranium, Yttrium, Hydrogen Plasma, Reactive Plasma Core, Synthetic Diamond, Metallic Hydrogen, Ceramic Superconductor, Nuclear Fuel Pellet [+ Hydrazine if Gen 5 downstream confirmed]`
+
+---
+
+### Gen 4 — Design Decisions Applied (2026-05-29)
+
+**Superseded by reaction-graph-design.md §9.3.** The table above was written before the reaction graph was designed. The reaction graph is authoritative. The following changes apply:
+
+**Retired from Gen 4 (no reactions authored, no reactant roles):**
+- Uranium — eliminated during reaction graph design. Gen 4 introduces no new elements (§9.1: "Gen 4 does not introduce new elemental discoveries"). Nuclear chain is represented by the nuclear_fuel_pellet product without naming uranium as an inventory item.
+- Yttrium — same rationale. Ceramic superconductor synthesis uses glass + doped_silicon (Gen 3 materials), not yttrium.
+- Synthetic Diamond — no reaction authored. Ballistic Composite is the extreme-pressure structural material.
+- Hydrazine — no Gen 5 downstream confirmed. Cut.
+
+**Actual Gen 4 product list (8 substances, canonical):**
+
+| substanceKey | Name | unlockTier (reaction) | unlocksUserTier |
+|---|---|---|---|
+| hydrogen_plasma | Hydrogen Plasma | 9 | **11** |
+| ballistic_composite | Ballistic Composite | 9 | — |
+| ceramic_superconductor | Ceramic Superconductor | 10 | — |
+| metallic_hydrogen | Metallic Hydrogen | 10 | — |
+| cryogenic_matrix | Cryogenic Matrix | 11 | — |
+| nuclear_fuel_pellet | Nuclear Fuel Pellet | 11 | **12** |
+| reactive_plasma_core | Reactive Plasma Core | 12 | — |
+| quantum_substrate | Quantum Substrate | 12 | — |
+
+**Tier progression anchors assigned:**
+- `hydrogen_plasma.unlocksUserTier = 11` — first plasma state production opens the Tier 11 wave (cryogenic_matrix, nuclear_fuel_pellet)
+- `nuclear_fuel_pellet.unlocksUserTier = 12` — the nuclear milestone opens the Tier 12 capstones (reactive_plasma_core, quantum_substrate)
+
+**Reactant key decision:**
+- Gen 4 reactions use `carbon_nanotube` as the reactant key (matching the existing Gen 3 substance seed). The design table in reaction-graph-design.md §9.3 uses `nanotube` as a shorthand — the implementation will use `carbon_nanotube` throughout. The Gen 3 substance seed is unchanged.
 
 ---
 

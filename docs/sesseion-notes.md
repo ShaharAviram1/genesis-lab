@@ -910,10 +910,102 @@ curl -X DELETE http://localhost:3000/api/dev/users/alchemist/pending-notificatio
 
 ---
 
-## What Is Actually Next
+## What Is Actually Next (as of post-Phase-B2, 2026-05-29)
 
-1. **Conditions System v1 (Phase F)** — The queue system is stable. Implement `reaction.conditions` validation against `user.reactorCapabilities` at queue start time. Gen 1–3 conditions first (`high_temperature`, `catalyst`, `high_pressure`).
-2. **Gen 4 content seeding (Phase B2)** — Blocked until conditions system is operational.
+1. **Gen 4 playtesting and energy calibration** — Seed is live. energyCost values are conservative (100–500 range) and expected to need tuning after first playtest runs through Tier 9→12.
+2. **Gen 5 content seeding (Phase B3)** — Not started. Do not begin until Gen 4 is stable.
 3. **Automated pruning of delivered pendingNotifications** — Low priority. TODOs are in place in the code.
 4. **Multi-slot queue UI** — Deferred. Architecture supports multiple slots; UI is single-slot.
-5. **Long-duration Gen 5/6 stress testing (Phase I)** — Not relevant until conditions and Gen 4 are in place.
+5. **Long-duration Gen 5/6 stress testing (Phase I)** — Not relevant until Gen 4 is stable.
+
+---
+
+## Phase B2 — Gen 4 Content Seeding (Completed 2026-05-29)
+
+### New Substances (8)
+
+| substanceKey | name | category | unlocksUserTier | shardValue |
+|---|---|---|---|---|
+| hydrogen_plasma | Hydrogen Plasma | plasma | 11 | 8 |
+| ballistic_composite | Ballistic Composite | advanced_material | — | 8 |
+| ceramic_superconductor | Ceramic Superconductor | advanced_material | — | 10 |
+| metallic_hydrogen | Metallic Hydrogen | exotic_material | — | 12 |
+| cryogenic_matrix | Cryogenic Matrix | exotic_material | — | 11 |
+| nuclear_fuel_pellet | Nuclear Fuel Pellet | nuclear | 12 | 14 |
+| reactive_plasma_core | Reactive Plasma Core | plasma | — | 16 |
+| quantum_substrate | Quantum Substrate | exotic_material | — | 15 |
+
+### New Reactions (8)
+
+| reactionKey | unlockTier | energyCost | reactionTime | conditions |
+|---|---|---|---|---|
+| gen4_hydrogen_plasma | 9 | 100 | 180s | plasma_state, extreme_temperature |
+| gen4_ballistic_composite | 9 | 120 | 270s | extreme_temperature, high_pressure |
+| gen4_ceramic_superconductor | 10 | 200 | 360s | extreme_cold |
+| gen4_metallic_hydrogen | 10 | 300 | 720s | extreme_pressure |
+| gen4_cryogenic_matrix | 11 | 250 | 540s | extreme_cold, vacuum |
+| gen4_nuclear_fuel_pellet | 11 | 350 | 720s | extreme_pressure, radiation_bombardment |
+| gen4_reactive_plasma_core | 12 | 500 | 900s | plasma_state |
+| gen4_quantum_substrate | 12 | 450 | 900s | extreme_pressure, extreme_cold |
+
+### Tier Progression Gates
+
+| Tier | Granted by | Reactions unlocked |
+|---|---|---|
+| 9 | graphene (Gen 3) | gen4_hydrogen_plasma, gen4_ballistic_composite |
+| 10 | lithium_ion_cell (Gen 3) | gen4_ceramic_superconductor, gen4_metallic_hydrogen |
+| 11 | hydrogen_plasma (Gen 4) | gen4_cryogenic_matrix, gen4_nuclear_fuel_pellet |
+| 12 | nuclear_fuel_pellet (Gen 4) | gen4_reactive_plasma_core, gen4_quantum_substrate |
+
+---
+
+## Phase F — Conditions System (Completed 2026-05-29)
+
+Implemented the full conditions/capabilities system:
+
+- `server/config/conditionRegistry.js` — 9 entries (5 substance-based, 4 tier-based)
+- `server/utils/validateConditions.js` — pure function, called first in `startQueueSynthesis`
+- `server/utils/evaluateCapabilityUnlocks.js` — accepts `previousUnlockTier` + `newUnlockTier`; tier-based unlocks fire only when the completion crosses the gate tier
+- `server/utils/completeReaction.js` — extended to call `evaluateCapabilityUnlocks`, returns `newCapabilities`
+- `server/routes/reactions.js` — validateConditions wired as first check; missingConditions propagated in error response
+- `server/realtime/reactorRuntime.js` + `server/utils/resolveQueue.js` — `newCapabilities` included in WS event and pendingNotification payloads
+- `server/routes/users.js` — `reactorCapabilities` in GET response; reset to `[]` on Big Bang
+- `server/routes/dev.js` — `POST /api/dev/users/:username/capabilities` for grant/revoke tooling
+- `client/src/pages/LabSimulation.jsx` — `reactorCapabilities` state; WS toast on unlock; compact chip panel in right sidebar
+- `client/components/SelectedReactionPanel.jsx` — Reactor Requirements section; lacks-capability amber status; disabled button when missing
+- `client/components/SelectedReactionPanel.css` — reactor-requirements, lacks-capability, reactor-caps-panel styles
+
+**Bug fixed:** `evaluateCapabilityUnlocks` originally used `user.unlockTier >= tier`, causing all tier-based capabilities to unlock simultaneously when a high-tier user completed any reaction. Fixed to `tier > previousUnlockTier && tier <= newUnlockTier`.
+
+---
+
+## Gen 4 Design Decisions (2026-05-29)
+
+These decisions resolve all implementation blockers identified in the Gen 4 readiness review. No further design sign-off is required before seeding.
+
+### Decision 1 — Reactant key: use `carbon_nanotube`
+
+Gen 4 reactions that use carbon nanotube as a reactant will reference the existing key `carbon_nanotube` (matching the Gen 3 substance seed). The reaction-graph-design.md §9.3 uses `nanotube` as a shorthand in the design table — the implementation diverges intentionally to avoid renaming the existing seeded substance.
+
+Affected reactions: `gen4_ballistic_composite`, `gen4_cryogenic_matrix`.
+
+### Decision 2 — `hydrogen_plasma.unlocksUserTier = 11`
+
+Producing Hydrogen Plasma (the first Gen 4 Track A milestone, unlockTier 9) raises `user.unlockTier` to 11. This gates the Tier 11 reaction wave (`gen4_cryogenic_matrix`, `gen4_nuclear_fuel_pellet`). Rationale: Hydrogen Plasma is the first plasma-state synthesis — its production signals that the player has crossed from Gen 4 entry into active extreme-physics territory.
+
+### Decision 3 — `nuclear_fuel_pellet.unlocksUserTier = 12`
+
+Producing Nuclear Fuel Pellet (unlockTier 11) raises `user.unlockTier` to 12. This gates the Tier 12 capstone wave (`gen4_reactive_plasma_core`, `gen4_quantum_substrate`). Rationale: Nuclear Fuel Pellet is the Gen 5 gate substance — its production is the appropriate trigger for opening the Gen 4 finale tier. This also means the player must complete both Track A (metallic_hydrogen → nuclear_fuel_pellet) before the capstones open.
+
+### Decision 4 — Retired Gen 4 substances
+
+Uranium, Yttrium, Synthetic Diamond, and Hydrazine are retired from Gen 4. They appear in substance-final-refinement.md (a pre-reaction-graph document) but have no reactions in reaction-graph-design.md §9.3. The reaction-graph-design.md is the authoritative source. Updated in substance-final-refinement.md §Gen 4 addendum.
+
+### Canonical Gen 4 Tier Progression After Decisions
+
+| User unlockTier | Granted by | Gen 4 reactions unlocked |
+|---|---|---|
+| 9 | graphene production (Gen 3) | gen4_hydrogen_plasma, gen4_ballistic_composite |
+| 10 | lithium_ion_cell production (Gen 3) | gen4_ceramic_superconductor, gen4_metallic_hydrogen |
+| 11 | hydrogen_plasma production (Gen 4) | gen4_cryogenic_matrix, gen4_nuclear_fuel_pellet |
+| 12 | nuclear_fuel_pellet production (Gen 4) | gen4_reactive_plasma_core, gen4_quantum_substrate |

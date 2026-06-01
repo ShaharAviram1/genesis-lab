@@ -8,7 +8,7 @@ import AtomPanel from "../../components/AtomPanel";
 import ReactionPanel from "../../components/ReactionPanel";
 import SelectedReactionPanel from "../../components/SelectedReactionPanel";
 import EnergyPanel from "../../components/EnergyPanel";
-import PrestigePanel from "../../components/PrestigePanel";
+import PrestigeBranchPanel from "../../components/PrestigeBranchPanel";
 import HeaderPanel from "../../components/HeaderPanel";
 import BigBangPanel from "../../components/BigBangPanel";
 import QueuePanel from "../../components/QueuePanel";
@@ -34,7 +34,7 @@ const LabSimulation = ({ username, onLogout }) => {
     const [creatingAtom, setCreatingAtom] = useState("");
     const [genesisShards, setGenesisShards] = useState(0);
     const [prestigeUpgrades, setPrestigeUpgrades] = useState({ energy: 0, matter: 0, chemistry: 0 });
-    const [upgrading, setUpgrading] = useState("");
+    const [blueprints, setBlueprints] = useState([]);
     const [bigBangPhase, setBigBangPhase] = useState(null); // null | 'collapse' | 'singularity' | 'flash' | 'expansion' | 'rebirth'
     const [expectedShards, setExpectedShards] = useState(0);
     const [previousUnlockTier, setPreviousUnlockTier] = useState(0);
@@ -42,6 +42,8 @@ const LabSimulation = ({ username, onLogout }) => {
     const [energyRate, setEnergyRate] = useState(0);
     const [reactionLog, setReactionLog] = useState([]);
     const [reactorCapabilities, setReactorCapabilities] = useState([]);
+    const [capsExpanded, setCapsExpanded] = useState(false);
+    const [upgradesExpanded, setUpgradesExpanded] = useState(false);
     const [notebookOpen, setNotebookOpen] = useState(false);
     const [newlyRevealedTier, setNewlyRevealedTier] = useState(null);
     const [justDiscoveredReactionKey, setJustDiscoveredReactionKey] = useState(null);
@@ -76,7 +78,7 @@ const LabSimulation = ({ username, onLogout }) => {
 
 
     const bigBangActive = !!bigBangPhase;
-    const isBusy = checking || performing || creatingAtom || upgrading || bigBangActive;
+    const isBusy = checking || performing || creatingAtom || bigBangActive;
     const reactorOccupied = activeQueue.some(e => e.status === 'processing' || e.status === 'resolving');
 
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -135,13 +137,17 @@ const LabSimulation = ({ username, onLogout }) => {
             7:  "Materials Lab opens",
             8:  "Precision metallurgy unlocked",
             9:  "Carbon nanoscience begins",
-            10: "Gen 1–3 complete"
+            10: "Gen 1–3 complete",
+            11: "Plasma synthesis achieved",
+            12: "Nuclear fuel synthesized"
         };
         const message = tierMessages[newTier] || "New tier unlocked";
         showToast("milestone", `✦ Tier ${newTier}: ${message}`);
     };
 
     const getCurrentGoal = () => {
+        const hasProduced = (key) => inventory.some(i => i.substance?.substanceKey === key);
+
         if (unlockTier === 0) return inventory.length === 0
             ? "Synthesize your first atoms."
             : "Test whether simple gases can form a stable compound.";
@@ -153,8 +159,13 @@ const LabSimulation = ({ username, onLogout }) => {
         if (unlockTier === 6) return "The first structural materials are within range. Look to what the reactor already knows.";
         if (unlockTier === 7) return "Advanced refinement is open. Seek rare metals through complex chemical processes.";
         if (unlockTier === 8) return "Engineered carbon structures may now be achievable.";
-        if (unlockTier === 9) return "Bring your most advanced materials together for the final synthesis.";
-        return "The reactor has synthesized everything in the known universe. The Big Bang awaits.";
+        if (unlockTier === 9) return "The plasma era begins. Converge your most advanced materials and ionize the first plasma-state substance.";
+        if (unlockTier === 10) return "Stabilize your first plasma-state material — Hydrogen Plasma opens the next tier.";
+        if (unlockTier === 11) return "Develop cryogenic containment and a nuclear-grade fuel source.";
+        // Tier 12+: capstone detection via inventory substanceKey
+        const gen4Done = hasProduced('reactive_plasma_core') && hasProduced('quantum_substrate');
+        if (gen4Done) return "Gen 4 complete. The reactor is ready for cosmic-scale synthesis.";
+        return "Complete the Gen 4 capstone syntheses — converge all three extreme-state tracks.";
     };
 
     const createAtom = async (atom) => {
@@ -198,33 +209,25 @@ const LabSimulation = ({ username, onLogout }) => {
         }
     }
 
-    const upgradePrestige = async (type) => {
+    const purchaseBlueprint = async (blueprintKey) => {
         try {
-            if (type === "energy") {
-                setUpgrading("energy");
-            }
-            else if (type === "matter") {
-                setUpgrading("matter");
-            }
-            else if (type === "chemistry") {
-                setUpgrading("chemistry");
-            }
-            const res = await fetchWithTimeout(`http://localhost:3000/api/prestige/upgrade/${user}`, { method: "POST" , body: JSON.stringify({ upgrade: type }), headers: { 'Content-Type': 'application/json' }});
+            const res = await fetchWithTimeout(
+                `http://localhost:3000/api/users/${user}/blueprints/${blueprintKey}`,
+                { method: 'POST' }
+            );
             const data = await res.json();
-            if (data.success) {
-                await fetchUserData();
-                await fetchReactions();
-                await fetchAtoms();
-                showToast('success', `${type.charAt(0).toUpperCase() + type.slice(1)} upgrade purchased`);
+            if (!res.ok) {
+                showToast('error', data.error || 'Blueprint purchase failed');
+                return;
             }
+            setGenesisShards(data.genesisShards);
+            setBlueprints(data.blueprints);
+            showToast('success', 'Blueprint purchased');
         }
         catch (err) {
-            showToast('error', err instanceof FetchTimeoutError ? 'Upgrade timed out' : 'Upgrade failed');
+            showToast('error', err instanceof FetchTimeoutError ? 'Purchase timed out' : 'Blueprint purchase failed');
         }
-        finally {
-            setUpgrading("");
-        }
-    }
+    };
 
 
     const experiment = async (substances) => {
@@ -388,6 +391,7 @@ const LabSimulation = ({ username, onLogout }) => {
             setUnlockTier(data.unlockTier);
             setGenesisShards(data.genesisShards);
             setPrestigeUpgrades(data.prestigeUpgrades);
+            setBlueprints(data.blueprints || []);
             setReactionLog(data.reactionLog || []);
             setReactorCapabilities(data.reactorCapabilities || []);
         }
@@ -606,21 +610,41 @@ const LabSimulation = ({ username, onLogout }) => {
                         <QueuePanel activeQueue={activeQueue} />
                         {reactorCapabilities.length > 0 && (
                             <div className="panel-card reactor-caps-panel">
-                                <div className="panel-title">Reactor Capabilities</div>
-                                <div className="reactor-caps-list">
-                                    {reactorCapabilities.map(key => (
-                                        <span key={key} className="reactor-cap-chip">
-                                            {key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                                        </span>
-                                    ))}
-                                </div>
+                                <button className="reactor-caps-header" onClick={() => setCapsExpanded(e => !e)}>
+                                    <span className="panel-title">Reactor Capabilities</span>
+                                    <span className="caps-toggle-hint">
+                                        {reactorCapabilities.length} active {capsExpanded ? '▴' : '▾'}
+                                    </span>
+                                </button>
+                                {capsExpanded && (
+                                    <div className="reactor-caps-list">
+                                        {reactorCapabilities.map(key => (
+                                            <span key={key} className="reactor-cap-chip">
+                                                {key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                         <ReactionPanel reactions={reactions} checkReaction={checkReaction} selectedReaction={selectedReaction} energy={energy} isBusy={isBusy} newlyRevealedTier={newlyRevealedTier} justDiscoveredReactionKey={justDiscoveredReactionKey} />
                         <SelectedReactionPanel selectedReaction={selectedReaction} inventory={inventory} performReaction={performReaction} isBusy={isBusy} result={result} onClose={() => { setSelectedReaction(null); setResult(""); }} reactorOccupied={reactorOccupied} reactorCapabilities={reactorCapabilities} />
                         <div className="panel-card prestige-card">
-                            <div className="panel-title">Upgrades</div>
-                            <PrestigePanel prestigeUpgrades={prestigeUpgrades} upgradePrestige={upgradePrestige} genesisShards={genesisShards} upgrading={upgrading} isBusy={isBusy} />
+                            <button className="upgrades-header" onClick={() => setUpgradesExpanded(e => !e)}>
+                                <span className="panel-title">Upgrades</span>
+                                <span className="upgrades-toggle-hint">
+                                    {upgradesExpanded ? 'expanded ▴' : 'collapsed ▾'}
+                                </span>
+                            </button>
+                            {upgradesExpanded && (
+                                <PrestigeBranchPanel
+                                    genesisShards={genesisShards}
+                                    blueprints={blueprints}
+                                    prestigeUpgrades={prestigeUpgrades}
+                                    purchaseBlueprint={purchaseBlueprint}
+                                    isBusy={isBusy}
+                                />
+                            )}
                         </div>
                         <div className="bigbang-zone">
                             <BigBangPanel bigBang={bigBang} bigBangActive={bigBangActive} expectedShards={expectedShards} />
