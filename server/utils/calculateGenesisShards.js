@@ -1,5 +1,5 @@
 function calculateGenesisShards(runTotals, unlockTier) {
-    let genesisShards = unlockTier ** 2 - 1;
+    let genesisShards = Math.max(0, Math.floor(unlockTier * 1.3) - 1);
     for (const entry of runTotals) {
         const base = entry.substance.shardValue || 0;
         if (base > 0) {

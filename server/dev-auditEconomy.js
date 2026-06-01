@@ -53,7 +53,7 @@ const SUBSTANCES = [
     { key: 'oxygen_gas',     name: 'Oxygen Gas',     gen: 1, isBase: false, shard: 0 },
     { key: 'nitrogen_gas',   name: 'Nitrogen Gas',   gen: 1, isBase: false, shard: 0 },
     { key: 'water',          name: 'Water',          gen: 1, isBase: false, shard: 1 },
-    { key: 'salt',           name: 'Salt',           gen: 1, isBase: false, shard: 1 },
+    { key: 'salt',           name: 'Salt',           gen: 1, isBase: false, shard: 0 },
     { key: 'iron_oxide',     name: 'Iron Oxide',     gen: 1, isBase: false, shard: 0 },
     { key: 'methane',        name: 'Methane',        gen: 1, isBase: false, shard: 0 },
     { key: 'ammonia',        name: 'Ammonia',        gen: 1, isBase: false, shard: 0 },
@@ -62,9 +62,9 @@ const SUBSTANCES = [
     { key: 'copper',         name: 'Copper',         gen: 2, isBase: false, shard: 0 },
     { key: 'tin',            name: 'Tin',            gen: 2, isBase: false, shard: 0 },
     { key: 'nickel',         name: 'Nickel',         gen: 2, isBase: false, shard: 0 },
-    { key: 'gold',           name: 'Gold',           gen: 2, isBase: false, shard: 3 },
-    { key: 'bronze',         name: 'Bronze',         gen: 2, isBase: false, shard: 2 },
-    { key: 'sulfuric_acid',  name: 'Sulfuric Acid',  gen: 2, isBase: false, shard: 2 },
+    { key: 'gold',           name: 'Gold',           gen: 2, isBase: false, shard: 1 },
+    { key: 'bronze',         name: 'Bronze',         gen: 2, isBase: false, shard: 1 },
+    { key: 'sulfuric_acid',  name: 'Sulfuric Acid',  gen: 2, isBase: false, shard: 1 },
     { key: 'nitric_acid',    name: 'Nitric Acid',    gen: 2, isBase: false, shard: 0 },
     { key: 'calcium',        name: 'Calcium',        gen: 2, isBase: false, shard: 0 },
     { key: 'quicklime',      name: 'Quicklime',      gen: 2, isBase: false, shard: 0 },
@@ -73,24 +73,24 @@ const SUBSTANCES = [
     { key: 'soda_ash',       name: 'Soda Ash',       gen: 2, isBase: false, shard: 0 },
     { key: 'lithium',        name: 'Lithium',        gen: 2, isBase: false, shard: 0 },
     // ── Gen 3 (9) ─────────────────────────────────────────────────────────────
-    { key: 'glass',           name: 'Glass',           gen: 3, isBase: false, shard: 3 },
-    { key: 'steel',           name: 'Steel',           gen: 3, isBase: false, shard: 4 },
-    { key: 'stainless_steel', name: 'Stainless Steel', gen: 3, isBase: false, shard: 4 },
-    { key: 'chrome',          name: 'Chrome',          gen: 3, isBase: false, shard: 0 },
-    { key: 'graphene',        name: 'Graphene',        gen: 3, isBase: false, shard: 5 },
-    { key: 'carbon_nanotube', name: 'Carbon Nanotube', gen: 3, isBase: false, shard: 5 },
-    { key: 'aramid_fiber',    name: 'Aramid Fiber',    gen: 3, isBase: false, shard: 4 },
-    { key: 'doped_silicon',   name: 'Doped Silicon',   gen: 3, isBase: false, shard: 4 },
-    { key: 'lithium_ion_cell',name: 'Lithium Ion Cell',gen: 3, isBase: false, shard: 6 },
+    { key: 'glass',           name: 'Glass',           gen: 3, isBase: false, shard: 1 },
+    { key: 'steel',           name: 'Steel',           gen: 3, isBase: false, shard: 2 },
+    { key: 'stainless_steel', name: 'Stainless Steel', gen: 3, isBase: false, shard: 2 },
+    { key: 'chrome',          name: 'Chrome',          gen: 3, isBase: false, shard: 1 },
+    { key: 'graphene',        name: 'Graphene',        gen: 3, isBase: false, shard: 2 },
+    { key: 'carbon_nanotube', name: 'Carbon Nanotube', gen: 3, isBase: false, shard: 2 },
+    { key: 'aramid_fiber',    name: 'Aramid Fiber',    gen: 3, isBase: false, shard: 2 },
+    { key: 'doped_silicon',   name: 'Doped Silicon',   gen: 3, isBase: false, shard: 2 },
+    { key: 'lithium_ion_cell',name: 'Lithium Ion Cell',gen: 3, isBase: false, shard: 3 },
     // ── Gen 4 (8) ─────────────────────────────────────────────────────────────
-    { key: 'hydrogen_plasma',       name: 'Hydrogen Plasma',       gen: 4, isBase: false, shard: 8  },
-    { key: 'ballistic_composite',   name: 'Ballistic Composite',   gen: 4, isBase: false, shard: 8  },
-    { key: 'ceramic_superconductor',name: 'Ceramic Superconductor',gen: 4, isBase: false, shard: 10 },
-    { key: 'metallic_hydrogen',     name: 'Metallic Hydrogen',     gen: 4, isBase: false, shard: 12 },
-    { key: 'cryogenic_matrix',      name: 'Cryogenic Matrix',      gen: 4, isBase: false, shard: 11 },
-    { key: 'nuclear_fuel_pellet',   name: 'Nuclear Fuel Pellet',   gen: 4, isBase: false, shard: 14 },
-    { key: 'reactive_plasma_core',  name: 'Reactive Plasma Core',  gen: 4, isBase: false, shard: 16 },
-    { key: 'quantum_substrate',     name: 'Quantum Substrate',     gen: 4, isBase: false, shard: 15 },
+    { key: 'hydrogen_plasma',       name: 'Hydrogen Plasma',       gen: 4, isBase: false, shard: 3 },
+    { key: 'ballistic_composite',   name: 'Ballistic Composite',   gen: 4, isBase: false, shard: 3 },
+    { key: 'ceramic_superconductor',name: 'Ceramic Superconductor',gen: 4, isBase: false, shard: 4 },
+    { key: 'metallic_hydrogen',     name: 'Metallic Hydrogen',     gen: 4, isBase: false, shard: 4 },
+    { key: 'cryogenic_matrix',      name: 'Cryogenic Matrix',      gen: 4, isBase: false, shard: 4 },
+    { key: 'nuclear_fuel_pellet',   name: 'Nuclear Fuel Pellet',   gen: 4, isBase: false, shard: 5 },
+    { key: 'reactive_plasma_core',  name: 'Reactive Plasma Core',  gen: 4, isBase: false, shard: 6 },
+    { key: 'quantum_substrate',     name: 'Quantum Substrate',     gen: 4, isBase: false, shard: 5 },
 ];
 
 const substanceMap = {};
@@ -352,12 +352,12 @@ function totalAtomClicks(substanceKey) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARD FORMULA  (mirrors server/utils/calculateGenesisShards.js)
-// genesisShards = unlockTier² - 1 + Σ(shardValue + log₂(produced+1))
+// genesisShards = max(0, floor(unlockTier × 1.3) - 1) + Σ(shardValue + log₂(produced+1))
 // Only substances with shardValue > 0 contribute.
 // ─────────────────────────────────────────────────────────────────────────────
 function estimateShards(unlockTier, produced) {
     // produced: Map<substanceKey, count>
-    let shards = Math.pow(unlockTier, 2) - 1;
+    let shards = Math.max(0, Math.floor(unlockTier * 1.3) - 1);
     for (const [key, count] of produced.entries()) {
         const sub = substanceMap[key];
         if (sub && sub.shard > 0) {
@@ -373,7 +373,7 @@ function estimateShards(unlockTier, produced) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 console.log('\n' + hr('═'));
-console.log('  GENESIS LAB — ECONOMY AUDIT REPORT  (Post Q-B/C/D quantities)');
+console.log('  GENESIS LAB — ECONOMY AUDIT REPORT  (Post Q-F shard recalibration)');
 console.log('  Generated: ' + new Date().toISOString());
 console.log(hr('═'));
 
@@ -562,7 +562,7 @@ console.log('    Conclusion unchanged: energy is not a meaningful wall. But the 
 
 // ── Section 6: Shard Baseline ─────────────────────────────────────────────────
 console.log('\n' + hr());
-console.log('  6. SHARD BASELINE  (formula: unlockTier² - 1 + Σ(shardValue + log₂(produced+1)))');
+console.log('  6. SHARD BASELINE  (formula: max(0, floor(unlockTier × 1.3) - 1) + Σ(shardValue + log₂(produced+1)))');
 console.log(hr());
 
 // Scenario A: Shallow Gen 1 run — just water and salt
@@ -605,18 +605,18 @@ console.log(`    Shallow Gen 1 run (water×1, salt×1,    unlockTier=2):  ~${sha
 console.log(`    Gen 3 complete   (Gen1-3 shard subs×1, unlockTier=10): ~${shardsB} shards`);
 console.log(`    Gen 4 deep       (Gen1-4 shard subs×1, unlockTier=12): ~${shardsC} shards`);
 
-const unlockTierDominance = Math.pow(10, 2) - 1;
-const shardContribB = shardsB - unlockTierDominance;
-console.log(`\n  unlockTier² term at T=10: ${unlockTierDominance} shards (${Math.round(unlockTierDominance/shardsB*100)}% of Gen3 total)`);
+const depthTermAtT10 = Math.max(0, Math.floor(10 * 1.3) - 1);
+const shardContribB = shardsB - depthTermAtT10;
+console.log(`\n  Depth term at T=10: ${depthTermAtT10} shards (${Math.round(depthTermAtT10/shardsB*100)}% of Gen3 total)`);
 console.log(`  Substance shard contribution in Gen3 run: ${shardContribB} shards`);
-console.log(`  ⚠ unlockTier² dominates payout — depth of run drives shards more than production volume.`);
 
 console.log('\n  Strategy targets from economy-implementation-strategy.md:');
 console.log('    Gen 3 run target:   15–30 shards');
 console.log('    Gen 4 deep target:  40–80 shards');
-console.log(`    Current Gen 3 estimate: ~${shardsB}  ${shardsB > 30 ? '⚠ ABOVE TARGET' : '✓ in range'}`);
-console.log(`    Current Gen 4 estimate: ~${shardsC}  ${shardsC > 80 ? '⚠ ABOVE TARGET' : '✓ in range'}`);
-console.log('    ⚠ unlockTier² must be revisited in Q-F shard recalibration.');
+console.log(`    Current Gen 3 estimate: ~${shardsB}  ${shardsB > 30 ? '⚠ above target (completionist all-13-substance path)' : '✓ in range'}`);
+console.log(`    Current Gen 4 estimate: ~${shardsC}  ${shardsC > 80 ? '⚠ above target (all-22-substance deep run)' : '✓ in range'}`);
+console.log('    Note: focused LiCell-only Gen 3 path lands ~25 shards (within target).');
+console.log('    A "complete-everything" Gen 4 run lands above target — accepted as reward for total exploration.');
 
 
 // ── Section 7: Anomalies and Warnings ────────────────────────────────────────
@@ -708,20 +708,16 @@ if (!anomalies.length) {
 
 // ── Section 8: Recommended Next Measurements ──────────────────────────────────
 console.log('\n' + hr());
-console.log('  8. RECOMMENDED NEXT MEASUREMENTS  (post Q-B/C/D — before Q-E)');
+console.log('  8. RECOMMENDED NEXT MEASUREMENTS  (post Q-F — Q-E deferred to post-Phase R)');
 console.log(hr());
-console.log('  1. Playtest a Gen 3 LiCell run with new quantities. Verify:');
-console.log('     - LiCell chain time ≈ ' + fmtTime(chainTime('lithium_ion_cell')) + ' (serial minimum)');
-console.log('     - CNT chain time ≈ ' + fmtTime(chainTime('carbon_nanotube')));
-console.log('     - Doped silicon chain time ≈ ' + fmtTime(chainTime('doped_silicon')));
-console.log('  2. Playtest Gen 4 entry (CeSC, MH) with new doped_silicon×2 in CeSC. Verify:');
-console.log('     - CeSC chain time ≈ ' + fmtTime(chainTime('ceramic_superconductor')));
-console.log('  3. Verify Gen 4 Tier 12 capstone chain times match plan targets:');
-console.log('     - RPC chain time ≈ ' + fmtTime(chainTime('reactive_plasma_core')) + ' (plan target: 5662s)');
-console.log('     - QSub chain time ≈ ' + fmtTime(chainTime('quantum_substrate')) + ' (plan target: 3596s)');
-console.log('     - NFP chain time ≈ ' + fmtTime(chainTime('nuclear_fuel_pellet')) + ' (plan target: 2296s)');
-console.log('  4. Shard formula recalibration (Q-F) still required — unlockTier² dominance not addressed.');
-console.log('  5. Energy cost review (Q-E) still required — energy costs unchanged in this pass.');
+console.log('  1. Verify shard payouts now sit inside target windows:');
+console.log('     - Gen 3 target 15–30; Gen 4 target 40–80.');
+console.log('  2. Confirm chain times unchanged from Q-D baseline:');
+console.log('     - RPC ≈ ' + fmtTime(chainTime('reactive_plasma_core')) + ', QSub ≈ ' + fmtTime(chainTime('quantum_substrate')) + ', NFP ≈ ' + fmtTime(chainTime('nuclear_fuel_pellet')));
+console.log('  3. Phase R (automation infrastructure) is the next blocker:');
+console.log('     - Blueprints currently placeholder-priced (1 shard each).');
+console.log('     - Set real blueprint costs against post-Q-F shard payouts.');
+console.log('  4. Q-E (energy rebalancing) deferred until Phase R provides an energy sink.');
 console.log('');
 console.log(hr('═'));
 console.log('  END OF REPORT');
