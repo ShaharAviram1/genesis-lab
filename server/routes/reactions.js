@@ -8,7 +8,7 @@ const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser,
 const completeReaction = require('../utils/completeReaction');
 const { resolveQueue, resolveAndPruneUserQueue, addPendingNotifications } = require('../utils/resolveQueue');
 const validateConditions = require('../utils/validateConditions');
-const { getMaxSlots } = require('./../config/prestigeConfig');
+const { getMaxSlots, getReactionTimeMultiplier } = require('./../config/prestigeConfig');
 
 const router = express.Router();
 
@@ -227,7 +227,8 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
     const usedSlots = new Set(occupiedEntries.map(e => e.slot));
     let assignedSlot = 0;
     while (usedSlots.has(assignedSlot)) assignedSlot++;
-    console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} → ACCEPT slot=${assignedSlot}`);
+    const diagMultiplier = getReactionTimeMultiplier(user, reaction.generationTier).toFixed(4);
+    console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} gen=${reaction.generationTier} timeMultiplier=${diagMultiplier} → ACCEPT slot=${assignedSlot}`);
 
     // Discovery state must be read from the populated mongoose doc before toObject()
     const revealOnCompletion = !isReactionDiscovered(user, reaction);
@@ -251,11 +252,15 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
     // Build queue entry — snapshot is the authoritative source for reward delivery
     const now = new Date();
     const product = reactionObj.product.substance;
+    // Apply reaction-acceleration multiplier (Math.max guards against 0/negative
+    // configurations; current optimizer config can only reduce times, not invert them).
+    const timeMultiplier = getReactionTimeMultiplier(user, reactionObj.generationTier);
+    const effectiveTime  = Math.max(0, reactionObj.reactionTime * timeMultiplier);
     const queueEntry = {
         reactionKey:        reactionObj.reactionKey,
         slot:               assignedSlot,
         startTime:          now,
-        expectedCompletion: new Date(now.getTime() + reactionObj.reactionTime * 1000),
+        expectedCompletion: new Date(now.getTime() + effectiveTime * 1000),
         status:             'processing',
         reactantsConsumed:  true,
         revealOnCompletion,
@@ -343,13 +348,12 @@ router.get("/reactions", async (req, res) => {
 router.get("/reactions/available", async (req, res) => {
     try {
         if (!req.query.user) { return res.status(400).json({ error: "Missing username" }); }
-        const user = await User.findOne({ username: req.query.user });
+        let user = await User.findOne({ username: req.query.user });
         if (!user) { return res.status(404).json({ error: "user not found" }); }
 
         try {
-            const { completions, userModified } = await resolveAndPruneUserQueue(user);
-            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
-            if (userModified) await user.save();
+            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
@@ -390,7 +394,7 @@ router.get("/reactions/:reactionKey", async (req, res) => {
             return res.status(400).json({ error: "Missing username" });
         }
         await flushPendingMongoEnergyForUser(req.query.user);
-        const user = await User.findOne({ username: req.query.user })
+        let user = await User.findOne({ username: req.query.user })
             .populate('inventory.substance')
             .populate('runTotals.substance');
         if (!user) {
@@ -398,9 +402,8 @@ router.get("/reactions/:reactionKey", async (req, res) => {
         }
 
         try {
-            const { completions, userModified } = await resolveAndPruneUserQueue(user);
-            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
-            if (userModified) await user.save();
+            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
@@ -431,15 +434,14 @@ router.post("/perform/:reactionKey", async (req, res) => {
             return res.status(400).json({ error: "missing username" });
         }
         await flushPendingMongoEnergyForUser(req.query.user);
-        const user = await User.findOne({ username: req.query.user })
+        let user = await User.findOne({ username: req.query.user })
             .populate('inventory.substance')
             .populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         try {
-            const { completions, userModified } = await resolveAndPruneUserQueue(user);
-            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
-            if (userModified) await user.save();
+            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
@@ -471,15 +473,14 @@ router.post("/reactions/experiment", async (req, res) => {
             return res.status(400).json({ error: "missing username" });
         }
         await flushPendingMongoEnergyForUser(req.query.user);
-        const user = await User.findOne({ username: req.query.user })
+        let user = await User.findOne({ username: req.query.user })
             .populate('inventory.substance')
             .populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         try {
-            const { completions, userModified } = await resolveAndPruneUserQueue(user);
-            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
-            if (userModified) await user.save();
+            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
@@ -637,16 +638,15 @@ router.post("/reactions/queue/:reactionKey", async (req, res) => {
 
         await flushPendingMongoEnergyForUser(req.query.user);
 
-        const user = await User.findOne({ username: req.query.user })
+        let user = await User.findOne({ username: req.query.user })
             .populate('inventory.substance')
             .populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         // Resolve due entries before slot check — a just-finished reaction frees the slot
         try {
-            const { completions, userModified } = await resolveAndPruneUserQueue(user);
-            if (completions.length > 0 && !isUserConnected(user.username)) addPendingNotifications(user, completions);
-            if (userModified) await user.save();
+            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);

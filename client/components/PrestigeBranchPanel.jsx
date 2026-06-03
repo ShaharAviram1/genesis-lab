@@ -17,6 +17,35 @@ const REACTOR_CAPACITY = [
     }
 ];
 
+// Mirrors server/config/prestigeConfig.js reaction_acceleration entries.
+// Costs are balancing placeholders and may change after playtesting.
+const REACTION_ACCELERATION = [
+    {
+        key: 'foundry_optimizer',
+        name: 'Foundry Optimizer',
+        generationLabel: 'Gen 2',
+        perLevel: 0.9,
+        maxLevel: 5,
+        levelCosts: [5, 10, 20, 40, 80]
+    },
+    {
+        key: 'materials_lab_optimizer',
+        name: 'Materials Lab Optimizer',
+        generationLabel: 'Gen 3',
+        perLevel: 0.9,
+        maxLevel: 5,
+        levelCosts: [10, 20, 40, 80, 160]
+    },
+    {
+        key: 'fusion_chamber_optimizer',
+        name: 'Fusion Chamber Optimizer',
+        generationLabel: 'Gen 4',
+        perLevel: 0.9,
+        maxLevel: 5,
+        levelCosts: [15, 30, 60, 120, 240]
+    }
+];
+
 const ATOM_MODULES = [
     { key: 'atmospheric_separator', name: 'Atmospheric Separator', produces: ['hydrogen', 'oxygen'], cost: 1 },
     { key: 'carbon_scrubber',       name: 'Carbon Scrubber',       produces: ['carbon'],             cost: 1 },
@@ -24,6 +53,11 @@ const ATOM_MODULES = [
     { key: 'iron_smelter',          name: 'Iron Smelter',          produces: ['iron'],               cost: 1 },
     { key: 'sulfur_extractor',      name: 'Sulfur Extractor',      produces: ['sulfur'],             cost: 1 },
 ];
+
+function percentReduction(perLevel, level) {
+    if (level <= 0) return 0;
+    return Math.round((1 - Math.pow(perLevel, level)) * 100);
+}
 
 export default function PrestigeBranchPanel({
     genesisShards,
@@ -35,6 +69,7 @@ export default function PrestigeBranchPanel({
     const [legacyExpanded, setLegacyExpanded] = useState(false);
 
     const ownedKeys = new Set((blueprints || []).map(b => b.blueprintKey));
+    const ownedLevels = new Map((blueprints || []).map(b => [b.blueprintKey, b.level || 0]));
 
     return (
         <div className="prestige-branch-panel">
@@ -76,6 +111,50 @@ export default function PrestigeBranchPanel({
                                             onClick={() => purchaseBlueprint(bp.key)}
                                         >
                                             Purchase Blueprint
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div>
+                <div className="prestige-section-title">Reaction Acceleration</div>
+                {REACTION_ACCELERATION.map(bp => {
+                    const level = ownedLevels.get(bp.key) || 0;
+                    const atMax = level >= bp.maxLevel;
+                    const nextCost = atMax ? null : bp.levelCosts[level];
+                    const canAfford = !atMax && (genesisShards ?? 0) >= nextCost;
+                    const currentReduction = percentReduction(bp.perLevel, level);
+                    const nextReduction = atMax ? currentReduction : percentReduction(bp.perLevel, level + 1);
+                    return (
+                        <div key={bp.key} className={`blueprint-card${level > 0 ? ' owned' : ''}`}>
+                            <div className="blueprint-info">
+                                <div className="blueprint-name">{bp.name}</div>
+                                <div className="blueprint-produces">
+                                    {bp.generationLabel} reactions
+                                    {level > 0
+                                        ? ` · −${currentReduction}% time (Lv ${level}/${bp.maxLevel})`
+                                        : ` · −10% per level (max ${bp.maxLevel})`}
+                                </div>
+                            </div>
+                            <div className="blueprint-controls">
+                                {atMax ? (
+                                    <span className="blueprint-owned-chip">MAX</span>
+                                ) : (
+                                    <>
+                                        <span className="blueprint-cost">
+                                            {level > 0 ? `Lv ${level + 1}: ` : 'Cost: '}{nextCost} shard{nextCost !== 1 ? 's' : ''}
+                                            {level > 0 && <> · −{nextReduction}%</>}
+                                        </span>
+                                        <button
+                                            className={`btn blueprint-btn${!canAfford ? ' unaffordable' : ''}`}
+                                            disabled={isBusy || !canAfford}
+                                            onClick={() => purchaseBlueprint(bp.key)}
+                                        >
+                                            {level > 0 ? 'Upgrade' : 'Purchase Blueprint'}
                                         </button>
                                     </>
                                 )}

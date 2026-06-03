@@ -22,18 +22,15 @@ const router = express.Router();
 router.get("/users/:username", async (req, res) => {
     try {
         await flushPendingMongoEnergyForUser(req.params.username);
-        const user = await User.findOne({ username: req.params.username }).populate('inventory.substance');
+        let user = await User.findOne({ username: req.params.username }).populate('inventory.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         try {
-            const { completions, userModified } = await resolveAndPruneUserQueue(user);
-            const connected = isUserConnected(user.username);
-            if (completions.length > 0 && !connected) addPendingNotifications(user, completions);
-            if (userModified) {
-                await user.save();
-                if (completions.length > 0) await user.populate('inventory.substance');
+            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            if (fresh) user = fresh;
+            if (completions.length > 0 && isUserConnected(user.username)) {
+                emitQueueCompletions(user.username, completions);
             }
-            if (completions.length > 0 && connected) emitQueueCompletions(user.username, completions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
         }
@@ -127,18 +124,30 @@ router.post("/users/:username/blueprints/:blueprintKey", async (req, res) => {
         const user = await User.findOne({ username });
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
+        const existing = user.blueprints.find(b => b.blueprintKey === blueprintKey);
+        const isLeveled = typeof moduleConfig.maxLevel === 'number' && Array.isArray(moduleConfig.levelCosts);
+        const currentLevel = existing?.level ?? 0;
+
+        // Resolve next-purchase cost: leveled → levelCosts[currentLevel]; binary → blueprintCost.
         let cost;
         try {
-            cost = requireConfigured(moduleConfig.blueprintCost, `${blueprintKey}.blueprintCost`);
+            if (isLeveled) {
+                if (currentLevel >= moduleConfig.maxLevel) {
+                    return res.status(400).json({ error: "Already at maximum level" });
+                }
+                cost = requireConfigured(moduleConfig.levelCosts[currentLevel], `${blueprintKey}.levelCosts[${currentLevel}]`);
+            } else {
+                if (existing) {
+                    return res.status(400).json({ error: "Blueprint already owned" });
+                }
+                cost = requireConfigured(moduleConfig.blueprintCost, `${blueprintKey}.blueprintCost`);
+            }
         } catch (configErr) {
             return res.status(configErr.statusCode || 503).json({ error: configErr.message });
         }
 
         if (user.genesisShards < cost) {
             return res.status(400).json({ error: "Not enough Genesis Shards" });
-        }
-        if (user.blueprints.some(b => b.blueprintKey === blueprintKey)) {
-            return res.status(400).json({ error: "Blueprint already owned" });
         }
         if (moduleConfig.requires) {
             const owned = user.blueprints.some(b => b.blueprintKey === moduleConfig.requires);
@@ -150,11 +159,16 @@ router.post("/users/:username/blueprints/:blueprintKey", async (req, res) => {
         }
 
         user.genesisShards -= cost;
-        user.blueprints.push({ blueprintKey });
+        if (existing) {
+            existing.level += 1;
+        } else {
+            user.blueprints.push({ blueprintKey, level: 1 });
+        }
         await user.save();
 
         return res.status(200).json({
             blueprintKey,
+            level: existing ? existing.level : 1,
             genesisShards: user.genesisShards,
             blueprints: user.blueprints
         });

@@ -62,6 +62,10 @@ const LabSimulation = ({ username, onLogout }) => {
     const wsRef = useRef(null);
     const wsEnergyActiveRef = useRef(false);
     const expiredPingsSentRef = useRef(new Set());
+    // While inside this window (set by an offline_summary event), per-product
+    // toasts for synthesis_completed / discovered / failed are suppressed so the
+    // user sees only the consolidated "while you were away" toast.
+    const offlineToastSuppressUntilRef = useRef(0);
     const showToast = useToast();
     const navigate = useNavigate();
 
@@ -507,6 +511,19 @@ const LabSimulation = ({ username, onLogout }) => {
                         reactionName:       data.reactionName || (data.revealOnCompletion ? 'Unknown Synthesis' : null)
                     }];
                 });
+            } else if (data.type === 'offline_summary') {
+                const products = Array.isArray(data.products) ? data.products : [];
+                const sample = products.slice(0, 3).join(', ');
+                const more = products.length > 3 ? ` +${products.length - 3} more` : '';
+                const discoveryNote = data.discoveries?.length ? ` · ${data.discoveries.length} discovered` : '';
+                const failNote = data.failed > 0 ? ` · ${data.failed} failed` : '';
+                const body = products.length > 0
+                    ? `While you were away: ${data.count} synthes${data.count === 1 ? 'is' : 'es'} completed (${sample}${more})${discoveryNote}${failNote}`
+                    : `While you were away: ${data.count} synthes${data.count === 1 ? 'is' : 'es'} completed${failNote}`;
+                showToast(data.discoveries?.length ? 'milestone' : 'success', body);
+                // Suppress per-product toasts for the immediately following individual events
+                // so the user does not get a flood of duplicate "X synthesized" toasts.
+                offlineToastSuppressUntilRef.current = Date.now() + 5000;
             } else if (data.type === 'synthesis_completed' || data.type === 'synthesis_discovered') {
                 const wasDiscovery = data.type === 'synthesis_discovered';
                 const completedKey = data.reactionKey;
@@ -517,7 +534,9 @@ const LabSimulation = ({ username, onLogout }) => {
                 setTimeout(() => {
                     setActiveQueue(prev => prev.filter(e => !(completedEntryId && e.queueEntryId === completedEntryId && e.status === 'completed')));
                 }, 2500);
-                showToast(wasDiscovery ? 'milestone' : 'success', `${data.productName} synthesized`);
+                if (Date.now() >= offlineToastSuppressUntilRef.current) {
+                    showToast(wasDiscovery ? 'milestone' : 'success', `${data.productName} synthesized`);
+                }
                 if (data.newCapabilities && data.newCapabilities.length > 0) {
                     data.newCapabilities.forEach(key => {
                         const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -544,7 +563,9 @@ const LabSimulation = ({ username, onLogout }) => {
                     setActiveQueue(prev => prev.filter(e => !(failedEntryId && e.queueEntryId === failedEntryId && e.status === 'failed')));
                 }, 2500);
                 setReactionEvent({ type: 'experiment_failed', timestamp: Date.now() });
-                showToast('error', 'Synthesis failed');
+                if (Date.now() >= offlineToastSuppressUntilRef.current) {
+                    showToast('error', 'Synthesis failed');
+                }
             }
         };
         return () => {

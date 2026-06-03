@@ -2,12 +2,14 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-height: 0; /* allow inner scroll regions to shrink inside the right-panel flex column */
 }
 
 .selected-reaction-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .close-btn {
@@ -31,6 +33,29 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.requirements-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.requirements-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.requirements-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+}
+
+.requirements-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
 }
 
 .requirement-row {
@@ -57,7 +82,10 @@
 
 .req-name {
   flex: 1;
+  min-width: 0;
   color: var(--text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .req-qty {
@@ -83,6 +111,7 @@
   text-align: center;
   padding: 5px 0;
   border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .perform-status.can-perform {
@@ -108,6 +137,7 @@
   border-color: var(--orange);
   color: var(--orange);
   box-shadow: 0 0 10px var(--orange-glow);
+  flex-shrink: 0;
 }
 
 .perform-btn:hover:not(:disabled) {
@@ -182,6 +212,7 @@
   cursor: not-allowed;
   border-color: #f59e0b;
   color: #f59e0b;
+  flex-shrink: 0;
 }
 
 /* ── Reactor Capabilities compact panel ── */

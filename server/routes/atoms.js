@@ -12,12 +12,12 @@ router.post('/atoms/create', async (req, res) => {
     try {
         if (!req.query.user) { return res.status(400).json({ error: "Missing username" }); }
         await flushPendingMongoEnergyForUser(req.query.user);
-        const user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
+        let user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         try {
-            const { completions, userModified } = await resolveAndPruneUserQueue(user);
-            if (userModified) await user.save();
+            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            if (fresh) user = fresh;
             if (completions.length > 0) emitQueueCompletions(user.username, completions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
@@ -56,12 +56,12 @@ router.post('/atoms/create', async (req, res) => {
 router.get("/atoms/:username", async (req, res) => {
     try {
         if (!req.params.username) { return res.status(400).json({ error: "Missing username" }); }
-        const user = await User.findOne({ username: req.params.username });
+        let user = await User.findOne({ username: req.params.username });
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         try {
-            const { completions, userModified } = await resolveAndPruneUserQueue(user);
-            if (userModified) await user.save();
+            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            if (fresh) user = fresh;
             if (completions.length > 0) emitQueueCompletions(user.username, completions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);

@@ -17,6 +17,39 @@ const PRESTIGE_CONFIG = {
             blueprintCost: 150
         },
 
+        // ── R1 — Reaction Acceleration (per-generation time multiplier) ─────
+        // Cost values below are balancing placeholders and may change after
+        // playtesting. Multiplier is multiplicative compounding per level:
+        // effectiveTime = baseTime × (reactionTimeMultiplierPerLevel)^level.
+        // At maxLevel=5 with 0.9 per level → 0.59049× (≈ -41% per blueprint).
+        foundry_optimizer: {
+            name: 'Foundry Optimizer',
+            category: 'reaction_acceleration',
+            generationTier: 2,
+            description: 'Reduces Gen 2 reaction time by 10% per level (max 5 levels).',
+            maxLevel: 5,
+            effect: { reactionTimeMultiplierPerLevel: 0.9 },
+            levelCosts: [5, 10, 20, 40, 80]
+        },
+        materials_lab_optimizer: {
+            name: 'Materials Lab Optimizer',
+            category: 'reaction_acceleration',
+            generationTier: 3,
+            description: 'Reduces Gen 3 reaction time by 10% per level (max 5 levels).',
+            maxLevel: 5,
+            effect: { reactionTimeMultiplierPerLevel: 0.9 },
+            levelCosts: [10, 20, 40, 80, 160]
+        },
+        fusion_chamber_optimizer: {
+            name: 'Fusion Chamber Optimizer',
+            category: 'reaction_acceleration',
+            generationTier: 4,
+            description: 'Reduces Gen 4 reaction time by 10% per level (max 5 levels).',
+            maxLevel: 5,
+            effect: { reactionTimeMultiplierPerLevel: 0.9 },
+            levelCosts: [15, 30, 60, 120, 240]
+        },
+
         // ── R2 — Atom Automation (placeholder; production engine not yet built) ──
         atmospheric_separator: {
             name: 'Atmospheric Separator',
@@ -65,5 +98,23 @@ function getMaxSlots(user) {
     return slots;
 }
 
+// Returns the multiplier applied to reactionTime for the given generationTier.
+// Iterates all owned blueprints tagged 'reaction_acceleration' that match the
+// generation, composing their per-level contributions multiplicatively. Future
+// branches can add new categories; each contributes a factor to the product.
+function getReactionTimeMultiplier(user, generationTier) {
+    let multiplier = 1;
+    for (const bp of user.blueprints || []) {
+        const cfg = PRESTIGE_CONFIG.modules[bp.blueprintKey];
+        if (!cfg) continue;
+        if (cfg.category !== 'reaction_acceleration') continue;
+        if (cfg.generationTier !== generationTier) continue;
+        const perLevel = cfg.effect?.reactionTimeMultiplierPerLevel ?? 1;
+        multiplier *= Math.pow(perLevel, bp.level || 0);
+    }
+    return multiplier;
+}
+
 module.exports = PRESTIGE_CONFIG;
 module.exports.getMaxSlots = getMaxSlots;
+module.exports.getReactionTimeMultiplier = getReactionTimeMultiplier;

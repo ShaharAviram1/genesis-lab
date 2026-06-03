@@ -140,28 +140,74 @@ function reactorRuntime(server) {
         sendReactorState(ws, session);
 
         // Step 1: Resolve any queue entries that completed while the user was offline.
-        // session.ws is set above, so the user is now connected — emit fresh completions
-        // live and do NOT create pending notifications for them (anti-duplication rule).
+        // The atomic wrapper holds a per-user mutex while it reloads, resolves, and saves —
+        // so this is race-safe against the parallel HTTP requests that fire on page load
+        // (Promise.all([fetchUserData, fetchReactions, fetchAtoms])). We pass bufferIfOffline=false
+        // because the user is now WS-connected; live emit handles delivery for these completions.
+        let resolvedCompletions = [];
         try {
-            const { completions, userModified } = await resolveAndPruneUserQueue(user);
-            if (userModified) await user.save();
-            if (completions.length > 0) emitQueueCompletions(ws.id, completions);
+            const { user: fresh, completions } = await resolveAndPruneUserQueue(user, { bufferIfOffline: false });
+            if (fresh) user = fresh;
+            resolvedCompletions = completions;
         } catch (queueErr) {
             console.error('Queue resolution error on WS connect for user', ws.id, ':', queueErr);
         }
 
-        // Step 2: Drain stored pending notifications created by HTTP routes that resolved
-        // the queue while the user had no WS session. Each is delivered exactly once:
-        // deliveredAt is set and persisted before moving on.
+        // Step 2: Identify undelivered pending notifications (drained from prior HTTP-driven
+        // resolutions that ran while no WS session existed). `user` is the fresh copy above,
+        // so this sees the latest pendingNotifications written by any concurrent HTTP route.
+        const pendingToDeliver = (user.pendingNotifications || []).filter(n => !n.deliveredAt);
+
+        // Step 3: Emit a one-shot "while you were away" summary BEFORE the individual events.
+        // The client uses this to suppress per-product toasts inside a short window so the
+        // user sees one consolidated toast instead of N noisy ones. Inventory/queue updates
+        // continue to fire through the individual events for animation and state correctness.
+        const offlineEvents = [
+            ...resolvedCompletions
+                .filter(c => c.entry?.status !== 'failed')
+                .map(c => ({
+                    productName: c.entry?.snapshot?.productName,
+                    wasDiscovery: !!c.wasDiscovery
+                })),
+            ...pendingToDeliver
+                .filter(n => n.type !== 'synthesis_failed')
+                .map(n => ({
+                    productName: n.payload?.productName,
+                    wasDiscovery: n.type === 'synthesis_discovered'
+                }))
+        ].filter(e => !!e.productName);
+        const failedCount =
+            resolvedCompletions.filter(c => c.entry?.status === 'failed').length +
+            pendingToDeliver.filter(n => n.type === 'synthesis_failed').length;
+        const offlineCount = offlineEvents.length + failedCount;
+        if (offlineCount > 0) {
+            emitToUser(ws.id, 'offline_summary', {
+                count:       offlineCount,
+                completed:   offlineEvents.length,
+                failed:      failedCount,
+                products:    offlineEvents.map(e => e.productName),
+                discoveries: offlineEvents.filter(e => e.wasDiscovery).map(e => e.productName)
+            });
+        }
+
+        // Step 4: Emit step-1 individual completion events.
+        if (resolvedCompletions.length > 0) emitQueueCompletions(ws.id, resolvedCompletions);
+
+        // Step 5: Drain undelivered pending notifications. Each is delivered exactly once.
+        // Use an atomic per-entry $set instead of full-document user.save() — that way
+        // an HTTP route that concurrently appends a new pending notification (during our
+        // drain emit loop) does not get its append overwritten by our save.
         try {
-            const pendingToDeliver = user.pendingNotifications.filter(n => !n.deliveredAt);
             if (pendingToDeliver.length > 0) {
                 const now = new Date();
                 for (const notification of pendingToDeliver) {
                     emitToUser(ws.id, notification.type, notification.payload);
-                    notification.deliveredAt = now;
                 }
-                await user.save();
+                await User.updateOne(
+                    { _id: user._id },
+                    { $set: { 'pendingNotifications.$[elem].deliveredAt': now } },
+                    { arrayFilters: [{ 'elem._id': { $in: pendingToDeliver.map(n => n._id) } }] }
+                );
                 console.log(`Delivered ${pendingToDeliver.length} pending notification(s) to user '${ws.id}'`);
             }
         } catch (drainErr) {

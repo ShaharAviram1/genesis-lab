@@ -123,15 +123,110 @@ function pruneCompletedEntries(user) {
     }
 }
 
-// Convenience wrapper: resolves due entries then prunes expired ones in a single call.
-// Returns { completions, userModified }.
-// Does NOT save — caller saves if userModified is true.
-async function resolveAndPruneUserQueue(user) {
-    const completions = await resolveQueue(user);
-    const beforePrune = user.activeQueue.length;
-    pruneCompletedEntries(user);
-    const pruned = beforePrune - user.activeQueue.length;
-    return { completions, userModified: completions.length > 0 || pruned > 0 };
+// Per-username mutex around resolveAndPruneUserQueue.
+//
+// The race this closes:
+//   Page load fires multiple HTTP requests + WS connect in parallel
+//   (Promise.all([fetchUserData, fetchReactions, fetchAtoms]) + ws).
+//   Each loads its own `user` snapshot, runs resolveQueue, then calls
+//   user.save() which writes the FULL document. The atomic claim
+//   (Stage 12 hardening) prevents double-completion, but two callers can
+//   each complete a DIFFERENT due entry — and the second save overwrites
+//   the first's activeQueue + inventory with its stale view, reverting the
+//   first caller's completed entry back to 'resolving'.
+//
+// Fix: serialize all resolveAndPruneUserQueue calls per user. Each acquires
+// the lock, reloads user from DB fresh inside the lock, runs the resolve,
+// saves, releases. Subsequent callers see the freshly-saved DB state.
+const userResolveLocks = new Map();
+async function withUserResolveLock(username, fn) {
+    while (userResolveLocks.has(username)) {
+        try { await userResolveLocks.get(username); } catch { /* ignore */ }
+    }
+    let release;
+    const lock = new Promise(r => { release = r; });
+    userResolveLocks.set(username, lock);
+    try {
+        return await fn();
+    } finally {
+        userResolveLocks.delete(username);
+        release();
+    }
+}
+
+// Lazy require avoids the circular dep between resolveQueue and reactorRuntime
+// at module-load time. By the time this is actually called, both modules are
+// fully loaded and the exports are stable.
+let _cachedIsUserConnected;
+function isUserConnectedLazy(username) {
+    if (!_cachedIsUserConnected) {
+        _cachedIsUserConnected = require('./../realtime/reactorRuntime').isUserConnected;
+    }
+    return _cachedIsUserConnected(username);
+}
+
+// Resolves due entries, prunes expired ones, optionally buffers offline
+// notifications, and saves — all atomically inside a per-user mutex.
+//
+// Returns { user, completions, userModified }:
+//   - `user` is a freshly-loaded copy with all populates applied.
+//     Callers MUST use this for any subsequent reads/writes to avoid
+//     overwriting our in-lock save with a stale snapshot.
+//   - `completions` mirrors the prior contract.
+//   - `userModified` is informational; the save has already happened.
+//
+// Options:
+//   bufferIfOffline (default true) — if user is not WS-connected and there
+//     are completions, addPendingNotifications is called before the save so
+//     buffered events are delivered on the next WS connect.
+async function resolveAndPruneUserQueue(originalUser, options = {}) {
+    const { bufferIfOffline = true } = options;
+    const username = originalUser.username;
+
+    return withUserResolveLock(username, async () => {
+        const user = await User.findById(originalUser._id)
+            .populate('inventory.substance')
+            .populate('runTotals.substance');
+        if (!user) {
+            return { user: null, completions: [], userModified: false };
+        }
+
+        const completions = await resolveQueue(user);
+        const beforeQueuePrune = user.activeQueue.length;
+        pruneCompletedEntries(user);
+        const queuePruned = beforeQueuePrune - user.activeQueue.length;
+        const notificationsPruned = prunePendingNotifications(user);
+
+        let pendingAdded = false;
+        if (bufferIfOffline && completions.length > 0 && !isUserConnectedLazy(username)) {
+            addPendingNotifications(user, completions);
+            pendingAdded = true;
+        }
+
+        const userModified = completions.length > 0 || queuePruned > 0 || notificationsPruned > 0 || pendingAdded;
+        if (userModified) await user.save();
+
+        return { user, completions, userModified };
+    });
+}
+
+// Removes pendingNotifications entries whose deliveredAt is set and older than 48h.
+// Undelivered notifications are preserved unconditionally (drain on next WS connect).
+// Returns the number of entries removed.
+const NOTIFICATION_RETENTION_MS = 48 * 60 * 60 * 1000;
+function prunePendingNotifications(user) {
+    if (!Array.isArray(user.pendingNotifications) || user.pendingNotifications.length === 0) return 0;
+    const cutoff = Date.now() - NOTIFICATION_RETENTION_MS;
+    const before = user.pendingNotifications.length;
+    user.pendingNotifications = user.pendingNotifications.filter(n => {
+        if (!n.deliveredAt) return true;                          // never prune undelivered
+        return new Date(n.deliveredAt).getTime() > cutoff;        // keep if still inside the 48h window
+    });
+    const pruned = before - user.pendingNotifications.length;
+    if (pruned > 0) {
+        console.log(`prunePendingNotifications: removed ${pruned} delivered notification(s) older than 48h for user '${user.username}'`);
+    }
+    return pruned;
 }
 
 // Builds and pushes pending notification objects for completions that occurred while
@@ -170,4 +265,4 @@ function addPendingNotifications(user, completions) {
     }
 }
 
-module.exports = { resolveQueue, pruneCompletedEntries, resolveAndPruneUserQueue, addPendingNotifications };
+module.exports = { resolveQueue, pruneCompletedEntries, resolveAndPruneUserQueue, addPendingNotifications, prunePendingNotifications };
