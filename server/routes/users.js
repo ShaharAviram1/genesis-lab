@@ -140,6 +140,14 @@ router.post("/users/:username/blueprints/:blueprintKey", async (req, res) => {
         if (user.blueprints.some(b => b.blueprintKey === blueprintKey)) {
             return res.status(400).json({ error: "Blueprint already owned" });
         }
+        if (moduleConfig.requires) {
+            const owned = user.blueprints.some(b => b.blueprintKey === moduleConfig.requires);
+            if (!owned) {
+                const prereq = PRESTIGE_CONFIG.modules[moduleConfig.requires];
+                const prereqName = prereq ? prereq.name : moduleConfig.requires;
+                return res.status(400).json({ error: `Requires ${prereqName}` });
+            }
+        }
 
         user.genesisShards -= cost;
         user.blueprints.push({ blueprintKey });

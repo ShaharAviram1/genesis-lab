@@ -23,6 +23,15 @@
   margin-bottom: 4px;
 }
 
+.prestige-section-title .section-subtitle {
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-left: 6px;
+}
+
 .blueprint-card {
   display: flex;
   flex-direction: row;

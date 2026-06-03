@@ -18,6 +18,14 @@ import ExperimentPanel from "../../components/ExperimentPanel";
 import LabNotebookPanel from "../../components/LabNotebookPanel";
 
 
+// How long a completed/failed entry remains visible in the reactor slot UI
+// before being dropped from activeQueue. Server retains entries up to 24h for
+// replay/debug; the client trims to a short flash so the slot returns to idle.
+const COMPLETED_VISIBLE_MS = 2500;
+
+function queueEntryIdentity(entry) {
+    return entry.queueEntryId || entry._id || `${entry.reactionKey}-${entry.startTime || ''}`;
+}
 
 const LabSimulation = ({ username, onLogout }) => {
     const [user, setUser] = useState(username || "");
@@ -79,7 +87,13 @@ const LabSimulation = ({ username, onLogout }) => {
 
     const bigBangActive = !!bigBangPhase;
     const isBusy = checking || performing || creatingAtom || bigBangActive;
-    const reactorOccupied = activeQueue.some(e => e.status === 'processing' || e.status === 'resolving');
+    // Slot derivation must mirror server/config/prestigeConfig.js getMaxSlots(user).
+    // Base 1 slot + 1 per owned reactor_capacity blueprint.
+    const SLOT_GRANTING_BLUEPRINTS = ['expanded_reactor_bay', 'triple_reactor_array'];
+    const ownedBlueprintKeys = new Set((blueprints || []).map(b => b.blueprintKey));
+    const maxSlots = 1 + SLOT_GRANTING_BLUEPRINTS.filter(k => ownedBlueprintKeys.has(k)).length;
+    const occupiedSlots = activeQueue.filter(e => e.status === 'processing' || e.status === 'resolving').length;
+    const reactorOccupied = occupiedSlots >= maxSlots;
 
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -448,12 +462,42 @@ const LabSimulation = ({ username, onLogout }) => {
                 setEnergy(data.energy);
                 setEnergyRate(data.energyPerSecond ?? 0);
             } else if (data.type === 'queue_state') {
-                setActiveQueue(data.queue || []);
+                // Hydrate from server queue, but strip stale terminal entries.
+                // Keep: active entries (processing/resolving) + recently-completed
+                // entries still inside their visibility window. Schedule removal
+                // for the latter when their remaining window expires.
+                const incoming = data.queue || [];
+                const nowMs = Date.now();
+                const visible = [];
+                const pendingTimeouts = [];
+                for (const e of incoming) {
+                    if (e.status === 'processing' || e.status === 'resolving') {
+                        visible.push(e);
+                        continue;
+                    }
+                    if (e.status === 'completed' || e.status === 'failed') {
+                        const completedAtMs = e.completedAt ? new Date(e.completedAt).getTime() : null;
+                        if (completedAtMs == null) continue;                           // retained without timestamp — treat as stale
+                        const age = nowMs - completedAtMs;
+                        if (age > COMPLETED_VISIBLE_MS) continue;                       // outside window — drop
+                        visible.push(e);
+                        pendingTimeouts.push({ key: queueEntryIdentity(e), remaining: COMPLETED_VISIBLE_MS - age });
+                    }
+                }
+                setActiveQueue(visible);
+                for (const { key, remaining } of pendingTimeouts) {
+                    setTimeout(() => {
+                        setActiveQueue(prev => prev.filter(x => queueEntryIdentity(x) !== key));
+                    }, Math.max(0, remaining));
+                }
             } else if (data.type === 'synthesis_queued') {
                 setQueueEvent({ type: 'synthesis_queued', timestamp: Date.now() });
                 setActiveQueue(prev => {
-                    if (prev.some(e => e.reactionKey === data.reactionKey && e.status === 'processing')) return prev;
+                    // Dedupe against literal event re-broadcast (multi-tab, server resend) by entry id —
+                    // NOT by reactionKey, which would block legitimate parallel queues of the same reaction.
+                    if (data.queueEntryId && prev.some(e => e.queueEntryId === data.queueEntryId)) return prev;
                     return [...prev, {
+                        queueEntryId:       data.queueEntryId,
                         reactionKey:        data.reactionKey,
                         slot:               data.slot,
                         status:             'processing',
@@ -466,11 +510,12 @@ const LabSimulation = ({ username, onLogout }) => {
             } else if (data.type === 'synthesis_completed' || data.type === 'synthesis_discovered') {
                 const wasDiscovery = data.type === 'synthesis_discovered';
                 const completedKey = data.reactionKey;
+                const completedEntryId = data.queueEntryId;
                 setActiveQueue(prev => prev.map(e =>
-                    e.reactionKey === completedKey ? { ...e, status: 'completed' } : e
+                    (completedEntryId && e.queueEntryId === completedEntryId) ? { ...e, status: 'completed' } : e
                 ));
                 setTimeout(() => {
-                    setActiveQueue(prev => prev.filter(e => !(e.reactionKey === completedKey && e.status === 'completed')));
+                    setActiveQueue(prev => prev.filter(e => !(completedEntryId && e.queueEntryId === completedEntryId && e.status === 'completed')));
                 }, 2500);
                 showToast(wasDiscovery ? 'milestone' : 'success', `${data.productName} synthesized`);
                 if (data.newCapabilities && data.newCapabilities.length > 0) {
@@ -491,12 +536,12 @@ const LabSimulation = ({ username, onLogout }) => {
                 });
                 fetchUserData();
             } else if (data.type === 'synthesis_failed') {
-                const failedKey = data.reactionKey;
+                const failedEntryId = data.queueEntryId;
                 setActiveQueue(prev => prev.map(e =>
-                    e.reactionKey === failedKey ? { ...e, status: 'failed' } : e
+                    (failedEntryId && e.queueEntryId === failedEntryId) ? { ...e, status: 'failed' } : e
                 ));
                 setTimeout(() => {
-                    setActiveQueue(prev => prev.filter(e => !(e.reactionKey === failedKey && e.status === 'failed')));
+                    setActiveQueue(prev => prev.filter(e => !(failedEntryId && e.queueEntryId === failedEntryId && e.status === 'failed')));
                 }, 2500);
                 setReactionEvent({ type: 'experiment_failed', timestamp: Date.now() });
                 showToast('error', 'Synthesis failed');
@@ -553,14 +598,17 @@ const LabSimulation = ({ username, onLogout }) => {
         const id = setInterval(async () => {
             const now = Date.now();
             for (const entry of processingEntries) {
-                if (expiredPingsSentRef.current.has(entry.reactionKey)) continue;
+                // Per-entry identity — never key on reactionKey, which collides
+                // when two slots run the same reaction in parallel.
+                const id = queueEntryIdentity(entry);
+                if (expiredPingsSentRef.current.has(id)) continue;
                 if (new Date(entry.expectedCompletion).getTime() <= now) {
-                    expiredPingsSentRef.current.add(entry.reactionKey);
+                    expiredPingsSentRef.current.add(id);
                     try {
                         await fetchUserData();
                     } catch {
                         // Allow retry on next tick
-                        expiredPingsSentRef.current.delete(entry.reactionKey);
+                        expiredPingsSentRef.current.delete(id);
                     }
                 }
             }
@@ -607,7 +655,7 @@ const LabSimulation = ({ username, onLogout }) => {
 
                     <div className="right-panel">
                         <EnergyPanel energy={energy} energyRate={energyRate} />
-                        <QueuePanel activeQueue={activeQueue} />
+                        <QueuePanel activeQueue={activeQueue} maxSlots={maxSlots} />
                         {reactorCapabilities.length > 0 && (
                             <div className="panel-card reactor-caps-panel">
                                 <button className="reactor-caps-header" onClick={() => setCapsExpanded(e => !e)}>

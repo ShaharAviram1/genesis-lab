@@ -1,7 +1,23 @@
 import { useState } from 'react';
 import './PrestigeBranchPanel.css';
 
-const MODULES = [
+const REACTOR_CAPACITY = [
+    {
+        key: 'expanded_reactor_bay',
+        name: 'Expanded Reactor Bay',
+        description: '+1 reactor slot (run 2 reactions in parallel)',
+        cost: 30
+    },
+    {
+        key: 'triple_reactor_array',
+        name: 'Triple Reactor Array',
+        description: '+1 reactor slot (third parallel slot)',
+        cost: 150,
+        requires: 'expanded_reactor_bay'
+    }
+];
+
+const ATOM_MODULES = [
     { key: 'atmospheric_separator', name: 'Atmospheric Separator', produces: ['hydrogen', 'oxygen'], cost: 1 },
     { key: 'carbon_scrubber',       name: 'Carbon Scrubber',       produces: ['carbon'],             cost: 1 },
     { key: 'nitrogen_condenser',    name: 'Nitrogen Condenser',    produces: ['nitrogen'],           cost: 1 },
@@ -27,8 +43,51 @@ export default function PrestigeBranchPanel({
             </div>
 
             <div>
-                <div className="prestige-section-title">Automation Infrastructure</div>
-                {MODULES.map(mod => {
+                <div className="prestige-section-title">Reactor Capacity</div>
+                {REACTOR_CAPACITY.map(bp => {
+                    const owned = ownedKeys.has(bp.key);
+                    const prereqOk = !bp.requires || ownedKeys.has(bp.requires);
+                    const canAfford = (genesisShards ?? 0) >= bp.cost;
+                    const prereqName = bp.requires
+                        ? REACTOR_CAPACITY.find(r => r.key === bp.requires)?.name
+                        : null;
+                    return (
+                        <div key={bp.key} className={`blueprint-card${owned ? ' owned' : ''}`}>
+                            <div className="blueprint-info">
+                                <div className="blueprint-name">{bp.name}</div>
+                                <div className="blueprint-produces">
+                                    {bp.description}
+                                    {!prereqOk && (
+                                        <span> · Requires {prereqName}</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="blueprint-controls">
+                                {owned ? (
+                                    <span className="blueprint-owned-chip">OWNED</span>
+                                ) : (
+                                    <>
+                                        <span className="blueprint-cost">
+                                            Cost: {bp.cost} shard{bp.cost !== 1 ? 's' : ''}
+                                        </span>
+                                        <button
+                                            className={`btn blueprint-btn${(!canAfford || !prereqOk) ? ' unaffordable' : ''}`}
+                                            disabled={isBusy || !canAfford || !prereqOk}
+                                            onClick={() => purchaseBlueprint(bp.key)}
+                                        >
+                                            Purchase Blueprint
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div>
+                <div className="prestige-section-title">Atom Automation <span className="section-subtitle">— R2 (in development)</span></div>
+                {ATOM_MODULES.map(mod => {
                     const owned = ownedKeys.has(mod.key);
                     const canAfford = (genesisShards ?? 0) >= mod.cost;
                     return (

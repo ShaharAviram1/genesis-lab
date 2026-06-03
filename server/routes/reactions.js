@@ -8,6 +8,7 @@ const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser,
 const completeReaction = require('../utils/completeReaction');
 const { resolveQueue, resolveAndPruneUserQueue, addPendingNotifications } = require('../utils/resolveQueue');
 const validateConditions = require('../utils/validateConditions');
+const { getMaxSlots } = require('./../config/prestigeConfig');
 
 const router = express.Router();
 
@@ -215,11 +216,18 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
         return { ok: false, status: 400, error: 'Reactor lacks required capabilities', missingConditions: missing };
     }
 
-    const MAX_SLOTS = 1;
-    const processingCount = user.activeQueue.filter(e => e.status === 'processing').length;
-    if (processingCount >= MAX_SLOTS) {
+    const maxSlots = getMaxSlots(user);
+    const occupiedEntries = user.activeQueue.filter(e => e.status === 'processing' || e.status === 'resolving');
+    const ownedBlueprintKeys = (user.blueprints || []).map(b => b.blueprintKey);
+    if (occupiedEntries.length >= maxSlots) {
+        console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} → REJECT (reactor occupied)`);
         return { ok: false, status: 400, error: 'Reactor is occupied' };
     }
+    // Assign the lowest unused slot index in [0, maxSlots)
+    const usedSlots = new Set(occupiedEntries.map(e => e.slot));
+    let assignedSlot = 0;
+    while (usedSlots.has(assignedSlot)) assignedSlot++;
+    console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} → ACCEPT slot=${assignedSlot}`);
 
     // Discovery state must be read from the populated mongoose doc before toObject()
     const revealOnCompletion = !isReactionDiscovered(user, reaction);
@@ -245,7 +253,7 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
     const product = reactionObj.product.substance;
     const queueEntry = {
         reactionKey:        reactionObj.reactionKey,
-        slot:               0,
+        slot:               assignedSlot,
         startTime:          now,
         expectedCompletion: new Date(now.getTime() + reactionObj.reactionTime * 1000),
         status:             'processing',
@@ -268,12 +276,17 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
     };
 
     user.activeQueue.push(queueEntry);
+    // Mongoose assigns _id to the subdocument synchronously on push.
+    // Read it back from the array so the WS payload can carry per-entry identity.
+    const insertedEntry = user.activeQueue[user.activeQueue.length - 1];
+    const queueEntryId = insertedEntry._id != null ? insertedEntry._id.toString() : undefined;
     await user.save();
     updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
 
     emitToUser(user.username, 'synthesis_queued', {
+        queueEntryId,
         reactionKey:        reactionObj.reactionKey,
-        slot:               0,
+        slot:               assignedSlot,
         startTime:          queueEntry.startTime,
         expectedCompletion: queueEntry.expectedCompletion,
         revealOnCompletion,

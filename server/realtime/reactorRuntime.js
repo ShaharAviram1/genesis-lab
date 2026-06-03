@@ -22,6 +22,7 @@ const MAX_ACTIVITY_LEVEL = 100; // Maximum cap for activity level
 // Sanitizes a single queue entry for WS transmission — strips product identity if undiscovered.
 function sanitizeQueueEntryForWS(entry) {
     const out = {
+        queueEntryId:       entry._id != null ? entry._id.toString() : undefined,
         reactionKey:        entry.reactionKey,
         slot:               entry.slot,
         status:             entry.status,
@@ -70,13 +71,16 @@ function emitToUser(username, eventType, payload) {
 // entry in the completions array returned by resolveQueue / resolveAndPruneUserQueue.
 function emitQueueCompletions(username, completions) {
     for (const { entry, wasDiscovery, prevUnlockTier, newUnlockTier, newCapabilities } of completions) {
+        const queueEntryId = entry._id != null ? entry._id.toString() : undefined;
         if (entry.status === 'failed') {
             emitToUser(username, 'synthesis_failed', {
+                queueEntryId,
                 reactionKey: entry.reactionKey,
                 reason:      'Synthesis failed'
             });
         } else {
             emitToUser(username, wasDiscovery ? 'synthesis_discovered' : 'synthesis_completed', {
+                queueEntryId,
                 reactionKey:     entry.reactionKey,
                 productName:     entry.snapshot.productName,
                 productKey:      entry.snapshot.productKey,

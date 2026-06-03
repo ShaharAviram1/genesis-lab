@@ -19,37 +19,94 @@ function formatCountdown(expectedCompletion, now) {
     return `${m}m ${rem < 10 ? '0' : ''}${rem}s`;
 }
 
-function QueuePanel({ activeQueue }) {
+// Pure lookup: prefer an active occupant; fall back to any terminal entry
+// still present in activeQueue. Hydration trimming (LabSimulation queue_state
+// handler) is the single source of truth for what is "still visible".
+function findSlotEntry(activeQueue, slotIndex) {
+    const matches = activeQueue.filter(e => e.slot === slotIndex);
+    return (
+        matches.find(e => e.status === 'processing' || e.status === 'resolving')
+        ?? matches.find(e => e.status === 'completed' || e.status === 'failed')
+        ?? null
+    );
+}
+
+function getStatusLabel(entry, now) {
+    if (!entry) return 'Available';
+    if (entry.status === 'resolving') return 'Finalizing';
+    if (entry.status === 'processing') {
+        const remaining = new Date(entry.expectedCompletion) - now;
+        return remaining <= 0 ? 'Finalizing' : 'Processing';
+    }
+    if (entry.status === 'completed') return 'Completed';
+    if (entry.status === 'failed') return 'Failed';
+    return entry.status;
+}
+
+function QueuePanel({ activeQueue, maxSlots = 1 }) {
     const [now, setNow] = useState(Date.now());
-    const processingEntry = activeQueue.find(e => e.status === 'processing' || e.status === 'resolving');
+
+    const anyActive = activeQueue.some(e => e.status === 'processing' || e.status === 'resolving');
 
     useEffect(() => {
-        if (!processingEntry) return;
+        if (!anyActive) return;
         const id = setInterval(() => setNow(Date.now()), 500);
         return () => clearInterval(id);
-    }, [!!processingEntry]);
+    }, [anyActive]);
+
+    const slots = Array.from({ length: maxSlots }, (_, i) => ({
+        index: i,
+        entry: findSlotEntry(activeQueue, i)
+    }));
 
     return (
         <div className="panel-card queue-panel">
             <div className="panel-title">Reactor Queue</div>
-            {!processingEntry ? (
-                <div className="queue-idle">Reactor idle</div>
-            ) : (
-                <div className="queue-entry">
-                    <div className="queue-entry-name">
-                        {processingEntry.reactionName || 'Unknown Synthesis'}
-                    </div>
-                    <div className="queue-progress-track">
+            <div className="queue-slot-list">
+                {slots.map(({ index, entry }) => {
+                    const status = getStatusLabel(entry, now);
+                    const isActive = entry && (entry.status === 'processing' || entry.status === 'resolving');
+                    const displayName = entry
+                        ? (entry.revealOnCompletion && entry.status !== 'completed'
+                            ? 'Unknown Synthesis'
+                            : (entry.reactionName || entry.snapshot?.reactionName || 'Unknown Synthesis'))
+                        : null;
+
+                    return (
                         <div
-                            className="queue-progress-fill"
-                            style={{ width: `${getProgress(processingEntry, now)}%` }}
-                        />
-                    </div>
-                    <div className="queue-entry-countdown">
-                        {formatCountdown(processingEntry.expectedCompletion, now)}
-                    </div>
-                </div>
-            )}
+                            key={index}
+                            className={`queue-slot queue-slot-${entry ? entry.status : 'empty'}`}
+                        >
+                            <div className="queue-slot-header">
+                                <span className="queue-slot-label">Reactor Slot {index + 1}</span>
+                                <span className={`queue-slot-status queue-slot-status-${entry ? entry.status : 'empty'}`}>
+                                    {status}
+                                </span>
+                            </div>
+                            {!entry ? (
+                                <div className="queue-slot-empty">— idle —</div>
+                            ) : (
+                                <div className="queue-slot-body">
+                                    <div className="queue-entry-name">{displayName}</div>
+                                    {isActive && (
+                                        <>
+                                            <div className="queue-progress-track">
+                                                <div
+                                                    className="queue-progress-fill"
+                                                    style={{ width: `${getProgress(entry, now)}%` }}
+                                                />
+                                            </div>
+                                            <div className="queue-entry-countdown">
+                                                {formatCountdown(entry.expectedCompletion, now)}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
