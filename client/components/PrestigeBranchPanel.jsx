@@ -51,13 +51,13 @@ const QUEUE_BUFFER = [
         key: 'queue_buffer',
         name: 'Queue Buffer',
         description: '+1 buffer slot — queue one reaction while slots are occupied',
-        cost: 20
+        cost: 60
     },
     {
         key: 'extended_buffer',
         name: 'Extended Buffer',
         description: '+2 buffer slots (total 3). Requires Queue Buffer.',
-        cost: 60,
+        cost: 200,
         requires: 'queue_buffer'
     }
 ];

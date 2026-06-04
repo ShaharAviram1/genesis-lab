@@ -23,7 +23,7 @@ const PRESTIGE_CONFIG = {
             category: 'queue_buffer',
             description: 'Adds 1 buffer slot. Queue one reaction while slots are occupied.',
             grantsBuffer: 1,
-            blueprintCost: 20
+            blueprintCost: 60
         },
         extended_buffer: {
             name: 'Extended Buffer',
@@ -31,7 +31,7 @@ const PRESTIGE_CONFIG = {
             description: 'Adds 2 more buffer slots (total 3). Requires Queue Buffer.',
             grantsBuffer: 2,
             requires: 'queue_buffer',
-            blueprintCost: 60
+            blueprintCost: 200
         },
 
         // ── R1 — Reaction Acceleration (per-generation time multiplier) ─────
