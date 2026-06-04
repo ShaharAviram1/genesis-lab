@@ -3,7 +3,7 @@ const User = require('./../models/User');
 const Substance = require('./../models/Substance');
 const calculateGenesisShards = require('./../utils/calculateGenesisShards');
 const { calculateEnergyGain, getEnergyMultiplier} = require('./../utils/gameEconomy');
-const { updateSessionEnergyMultiplierForUser, flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser, zeroSessionEnergyForUser, emitQueueCompletions, isUserConnected } = require('./../realtime/reactorRuntime');
+const { updateSessionEnergyMultiplierForUser, flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser, zeroSessionEnergyForUser, emitQueueCompletions, emitQueuePromotions, isUserConnected } = require('./../realtime/reactorRuntime');
 const { resolveAndPruneUserQueue, addPendingNotifications } = require('./../utils/resolveQueue');
 const PRESTIGE_CONFIG = require('./../config/prestigeConfig');
 
@@ -26,10 +26,13 @@ router.get("/users/:username", async (req, res) => {
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         try {
-            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            const { user: fresh, completions, promotions } = await resolveAndPruneUserQueue(user);
             if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) {
                 emitQueueCompletions(user.username, completions);
+            }
+            if (promotions.length > 0 && isUserConnected(user.username)) {
+                emitQueuePromotions(user.username, promotions);
             }
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);

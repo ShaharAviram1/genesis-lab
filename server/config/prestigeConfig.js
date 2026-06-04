@@ -17,6 +17,23 @@ const PRESTIGE_CONFIG = {
             blueprintCost: 150
         },
 
+        // ── R1 — Queue Buffer (buffered-slot expansion) ────────────────────
+        queue_buffer: {
+            name: 'Queue Buffer',
+            category: 'queue_buffer',
+            description: 'Adds 1 buffer slot. Queue one reaction while slots are occupied.',
+            grantsBuffer: 1,
+            blueprintCost: 20
+        },
+        extended_buffer: {
+            name: 'Extended Buffer',
+            category: 'queue_buffer',
+            description: 'Adds 2 more buffer slots (total 3). Requires Queue Buffer.',
+            grantsBuffer: 2,
+            requires: 'queue_buffer',
+            blueprintCost: 60
+        },
+
         // ── R1 — Reaction Acceleration (per-generation time multiplier) ─────
         // Cost values below are balancing placeholders and may change after
         // playtesting. Multiplier is multiplicative compounding per level:
@@ -115,6 +132,21 @@ function getReactionTimeMultiplier(user, generationTier) {
     return multiplier;
 }
 
+// Returns the maximum number of entries that can sit in the queue buffer
+// (status 'queued', awaiting a free processing slot).
+// Base = 0. Each owned blueprint with category 'queue_buffer' contributes its grantsBuffer value.
+function getMaxBufferSlots(user) {
+    const owned = new Set((user.blueprints || []).map(b => b.blueprintKey));
+    let buffer = 0;
+    for (const [key, cfg] of Object.entries(PRESTIGE_CONFIG.modules)) {
+        if (cfg.category === 'queue_buffer' && owned.has(key)) {
+            buffer += cfg.grantsBuffer || 0;
+        }
+    }
+    return buffer;
+}
+
 module.exports = PRESTIGE_CONFIG;
 module.exports.getMaxSlots = getMaxSlots;
+module.exports.getMaxBufferSlots = getMaxBufferSlots;
 module.exports.getReactionTimeMultiplier = getReactionTimeMultiplier;

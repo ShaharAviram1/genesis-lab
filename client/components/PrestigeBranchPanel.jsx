@@ -46,6 +46,22 @@ const REACTION_ACCELERATION = [
     }
 ];
 
+const QUEUE_BUFFER = [
+    {
+        key: 'queue_buffer',
+        name: 'Queue Buffer',
+        description: '+1 buffer slot — queue one reaction while slots are occupied',
+        cost: 20
+    },
+    {
+        key: 'extended_buffer',
+        name: 'Extended Buffer',
+        description: '+2 buffer slots (total 3). Requires Queue Buffer.',
+        cost: 60,
+        requires: 'queue_buffer'
+    }
+];
+
 const ATOM_MODULES = [
     { key: 'atmospheric_separator', name: 'Atmospheric Separator', produces: ['hydrogen', 'oxygen'], cost: 1 },
     { key: 'carbon_scrubber',       name: 'Carbon Scrubber',       produces: ['carbon'],             cost: 1 },
@@ -155,6 +171,49 @@ export default function PrestigeBranchPanel({
                                             onClick={() => purchaseBlueprint(bp.key)}
                                         >
                                             {level > 0 ? 'Upgrade' : 'Purchase Blueprint'}
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div>
+                <div className="prestige-section-title">Queue Buffer</div>
+                {QUEUE_BUFFER.map(bp => {
+                    const owned = ownedKeys.has(bp.key);
+                    const prereqOk = !bp.requires || ownedKeys.has(bp.requires);
+                    const canAfford = (genesisShards ?? 0) >= bp.cost;
+                    const prereqName = bp.requires
+                        ? QUEUE_BUFFER.find(r => r.key === bp.requires)?.name
+                        : null;
+                    return (
+                        <div key={bp.key} className={`blueprint-card${owned ? ' owned' : ''}`}>
+                            <div className="blueprint-info">
+                                <div className="blueprint-name">{bp.name}</div>
+                                <div className="blueprint-produces">
+                                    {bp.description}
+                                    {!prereqOk && (
+                                        <span> · Requires {prereqName}</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="blueprint-controls">
+                                {owned ? (
+                                    <span className="blueprint-owned-chip">OWNED</span>
+                                ) : (
+                                    <>
+                                        <span className="blueprint-cost">
+                                            Cost: {bp.cost} shard{bp.cost !== 1 ? 's' : ''}
+                                        </span>
+                                        <button
+                                            className={`btn blueprint-btn${(!canAfford || !prereqOk) ? ' unaffordable' : ''}`}
+                                            disabled={isBusy || !canAfford || !prereqOk}
+                                            onClick={() => purchaseBlueprint(bp.key)}
+                                        >
+                                            Purchase Blueprint
                                         </button>
                                     </>
                                 )}

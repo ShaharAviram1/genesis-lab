@@ -4,11 +4,11 @@ const User = require('../models/User');
 const checkReactionEligibility = require('../utils/checkReactionEligibility');
 const Substance = require('../models/Substance');
 const { calculateReactionCost } = require('./../utils/gameEconomy');
-const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser, emitToUser, emitQueueCompletions, isUserConnected } = require('./../realtime/reactorRuntime');
+const { flushPendingMongoEnergyForUser, updateSessionPersistedEnergyBaseForUser, emitToUser, emitQueueCompletions, emitQueuePromotions, isUserConnected } = require('./../realtime/reactorRuntime');
 const completeReaction = require('../utils/completeReaction');
 const { resolveQueue, resolveAndPruneUserQueue, addPendingNotifications } = require('../utils/resolveQueue');
 const validateConditions = require('../utils/validateConditions');
-const { getMaxSlots, getReactionTimeMultiplier } = require('./../config/prestigeConfig');
+const { getMaxSlots, getMaxBufferSlots, getReactionTimeMultiplier } = require('./../config/prestigeConfig');
 
 const router = express.Router();
 
@@ -219,16 +219,29 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
     const maxSlots = getMaxSlots(user);
     const occupiedEntries = user.activeQueue.filter(e => e.status === 'processing' || e.status === 'resolving');
     const ownedBlueprintKeys = (user.blueprints || []).map(b => b.blueprintKey);
-    if (occupiedEntries.length >= maxSlots) {
-        console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} → REJECT (reactor occupied)`);
-        return { ok: false, status: 400, error: 'Reactor is occupied' };
-    }
-    // Assign the lowest unused slot index in [0, maxSlots)
-    const usedSlots = new Set(occupiedEntries.map(e => e.slot));
-    let assignedSlot = 0;
-    while (usedSlots.has(assignedSlot)) assignedSlot++;
     const diagMultiplier = getReactionTimeMultiplier(user, reaction.generationTier).toFixed(4);
-    console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} gen=${reaction.generationTier} timeMultiplier=${diagMultiplier} → ACCEPT slot=${assignedSlot}`);
+
+    const allSlotsFull = occupiedEntries.length >= maxSlots;
+    let assignedSlot = null;
+    let entryStatus = 'processing';
+
+    if (!allSlotsFull) {
+        // Slot available — assign the lowest unused index in [0, maxSlots)
+        const usedSlots = new Set(occupiedEntries.map(e => e.slot));
+        assignedSlot = 0;
+        while (usedSlots.has(assignedSlot)) assignedSlot++;
+        console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} gen=${reaction.generationTier} timeMultiplier=${diagMultiplier} → ACCEPT slot=${assignedSlot}`);
+    } else {
+        // All slots occupied — try the buffer
+        const maxBuffer = getMaxBufferSlots(user);
+        const queuedCount = user.activeQueue.filter(e => e.status === 'queued').length;
+        if (queuedCount >= maxBuffer) {
+            console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} queued=${queuedCount} maxBuffer=${maxBuffer} → REJECT (queue full)`);
+            return { ok: false, status: 400, error: 'Reactor queue is full' };
+        }
+        entryStatus = 'queued';
+        console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} queued=${queuedCount}/${maxBuffer} gen=${reaction.generationTier} timeMultiplier=${diagMultiplier} → BUFFER`);
+    }
 
     // Discovery state must be read from the populated mongoose doc before toObject()
     const revealOnCompletion = !isReactionDiscovered(user, reaction);
@@ -256,12 +269,17 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
     // configurations; current optimizer config can only reduce times, not invert them).
     const timeMultiplier = getReactionTimeMultiplier(user, reactionObj.generationTier);
     const effectiveTime  = Math.max(0, reactionObj.reactionTime * timeMultiplier);
+
+    // For 'processing' entries slot/timing are assigned now.
+    // For 'queued' (buffered) entries slot/timing are null — set at promotion time.
     const queueEntry = {
         reactionKey:        reactionObj.reactionKey,
-        slot:               assignedSlot,
-        startTime:          now,
-        expectedCompletion: new Date(now.getTime() + effectiveTime * 1000),
-        status:             'processing',
+        slot:               assignedSlot,                 // null when queued
+        startTime:          entryStatus === 'processing' ? now : null,
+        expectedCompletion: entryStatus === 'processing'
+            ? new Date(now.getTime() + effectiveTime * 1000)
+            : null,
+        status:             entryStatus,
         reactantsConsumed:  true,
         revealOnCompletion,
         wasDiscovery:       false,
@@ -272,6 +290,7 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
             productName:            product.name,
             productQuantity:        reactionObj.product.quantity,
             productUnlocksUserTier: product.unlocksUserTier || null,
+            effectiveReactionTime:  effectiveTime,
             reactants: reactionObj.reactants.map(r => ({
                 substanceKey: r.substance.substanceKey,
                 name:         r.substance.name,
@@ -291,6 +310,7 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
     emitToUser(user.username, 'synthesis_queued', {
         queueEntryId,
         reactionKey:        reactionObj.reactionKey,
+        status:             entryStatus,
         slot:               assignedSlot,
         startTime:          queueEntry.startTime,
         expectedCompletion: queueEntry.expectedCompletion,
@@ -298,14 +318,16 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
         ...(revealOnCompletion ? {} : { reactionName: reactionObj.name })
     });
 
-    // Zero-duration synthesis: complete within the same request via the full queue lifecycle
-    if (reactionObj.reactionTime === 0) {
-        const completions = await resolveQueue(user);
+    // Zero-duration immediate synthesis: complete within the same request via the full queue lifecycle.
+    // Only applies to 'processing' entries (queued entries are promoted later).
+    if (entryStatus === 'processing' && reactionObj.reactionTime === 0) {
+        const { completions, promotions } = await resolveQueue(user);
         const connected = isUserConnected(user.username);
         if (completions.length > 0 && !connected) addPendingNotifications(user, completions);
         await user.save();
         updateSessionPersistedEnergyBaseForUser(user.username, user.energy);
         if (completions.length > 0 && connected) emitQueueCompletions(user.username, completions);
+        if (promotions.length > 0 && connected) emitQueuePromotions(user.username, promotions);
         const completion = completions[0] || {};
         return {
             ok:             true,
@@ -318,12 +340,13 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
         };
     }
 
-    // Timed synthesis: entry persists; client shows countdown
+    // Timed or buffered synthesis: entry persists; client shows countdown or queued state
     return {
         ok:                 true,
         queued:             true,
         completed:          false,
         reactionKey:        reactionObj.reactionKey,
+        status:             entryStatus,
         expectedCompletion: queueEntry.expectedCompletion,
         revealOnCompletion,
         entry:              sanitizeQueueEntry({ ...queueEntry })
@@ -352,9 +375,10 @@ router.get("/reactions/available", async (req, res) => {
         if (!user) { return res.status(404).json({ error: "user not found" }); }
 
         try {
-            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            const { user: fresh, completions, promotions } = await resolveAndPruneUserQueue(user);
             if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+            if (promotions.length > 0 && isUserConnected(user.username)) emitQueuePromotions(user.username, promotions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
         }
@@ -402,9 +426,10 @@ router.get("/reactions/:reactionKey", async (req, res) => {
         }
 
         try {
-            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            const { user: fresh, completions, promotions } = await resolveAndPruneUserQueue(user);
             if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+            if (promotions.length > 0 && isUserConnected(user.username)) emitQueuePromotions(user.username, promotions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
         }
@@ -440,9 +465,10 @@ router.post("/perform/:reactionKey", async (req, res) => {
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         try {
-            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            const { user: fresh, completions, promotions } = await resolveAndPruneUserQueue(user);
             if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+            if (promotions.length > 0 && isUserConnected(user.username)) emitQueuePromotions(user.username, promotions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
         }
@@ -479,9 +505,10 @@ router.post("/reactions/experiment", async (req, res) => {
         if (!user) { return res.status(404).json({ error: "User not found" }); }
 
         try {
-            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            const { user: fresh, completions, promotions } = await resolveAndPruneUserQueue(user);
             if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+            if (promotions.length > 0 && isUserConnected(user.username)) emitQueuePromotions(user.username, promotions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
         }
@@ -578,7 +605,7 @@ router.post("/reactions/experiment", async (req, res) => {
             if (!result.ok) {
                 // Insufficient quantity for this candidate — try the next one
                 if (result.error === 'Missing required reactants') continue;
-                // Any other error (reactor occupied, energy, missing capabilities) is a hard stop
+                // Any other error (queue full, energy, missing capabilities) is a hard stop
                 const errBody = { error: result.error };
                 if (result.missingConditions) errBody.missingConditions = result.missingConditions;
                 return res.status(result.status).json(errBody);
@@ -645,9 +672,10 @@ router.post("/reactions/queue/:reactionKey", async (req, res) => {
 
         // Resolve due entries before slot check — a just-finished reaction frees the slot
         try {
-            const { user: fresh, completions } = await resolveAndPruneUserQueue(user);
+            const { user: fresh, completions, promotions } = await resolveAndPruneUserQueue(user);
             if (fresh) user = fresh;
             if (completions.length > 0 && isUserConnected(user.username)) emitQueueCompletions(user.username, completions);
+            if (promotions.length > 0 && isUserConnected(user.username)) emitQueuePromotions(user.username, promotions);
         } catch (queueErr) {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
         }

@@ -34,6 +34,7 @@ function findSlotEntry(activeQueue, slotIndex) {
 function getStatusLabel(entry, now) {
     if (!entry) return 'Available';
     if (entry.status === 'resolving') return 'Finalizing';
+    if (entry.status === 'queued') return 'Queued';
     if (entry.status === 'processing') {
         const remaining = new Date(entry.expectedCompletion) - now;
         return remaining <= 0 ? 'Finalizing' : 'Processing';
@@ -43,7 +44,7 @@ function getStatusLabel(entry, now) {
     return entry.status;
 }
 
-function QueuePanel({ activeQueue, maxSlots = 1 }) {
+function QueuePanel({ activeQueue, maxSlots = 1, maxBufferSlots = 0 }) {
     const [now, setNow] = useState(Date.now());
 
     const anyActive = activeQueue.some(e => e.status === 'processing' || e.status === 'resolving');
@@ -58,6 +59,8 @@ function QueuePanel({ activeQueue, maxSlots = 1 }) {
         index: i,
         entry: findSlotEntry(activeQueue, i)
     }));
+
+    const bufferedEntries = activeQueue.filter(e => e.status === 'queued');
 
     return (
         <div className="panel-card queue-panel">
@@ -107,6 +110,32 @@ function QueuePanel({ activeQueue, maxSlots = 1 }) {
                     );
                 })}
             </div>
+            {(maxBufferSlots > 0 || bufferedEntries.length > 0) && (
+                <div className="queue-buffer-section">
+                    <div className="queue-buffer-label">
+                        Buffered ({bufferedEntries.length}/{maxBufferSlots})
+                    </div>
+                    {bufferedEntries.length === 0 && (
+                        <div className="queue-slot-empty">— buffer empty —</div>
+                    )}
+                    {bufferedEntries.map((entry, i) => {
+                        const displayName = entry.revealOnCompletion
+                            ? 'Unknown Synthesis'
+                            : (entry.reactionName || entry.snapshot?.reactionName || 'Unknown Synthesis');
+                        return (
+                            <div key={entry.queueEntryId || i} className="queue-slot queue-slot-queued">
+                                <div className="queue-slot-header">
+                                    <span className="queue-slot-label">#{i + 1}</span>
+                                    <span className="queue-slot-status queue-slot-status-queued">Queued</span>
+                                </div>
+                                <div className="queue-slot-body">
+                                    <div className="queue-entry-name">{displayName}</div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

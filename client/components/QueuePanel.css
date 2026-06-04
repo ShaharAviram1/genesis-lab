@@ -140,3 +140,30 @@
   color: var(--orange);
   text-align: right;
 }
+
+.queue-buffer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.queue-buffer-label {
+  font-family: var(--font-display);
+  font-size: 0.54rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.queue-slot-queued {
+  border-color: rgba(120, 160, 255, 0.25);
+  background: rgba(100, 140, 255, 0.04);
+}
+
+.queue-slot-status-queued {
+  color: #8ab4ff;
+  background: rgba(100, 140, 255, 0.12);
+}

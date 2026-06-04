@@ -94,20 +94,20 @@ const userSchema = mongoose.Schema({
             type: String,
             required: true
         },
-        // 0-indexed slot; reserved for future multi-slot architecture
+        // 0-indexed slot; null until promoted from 'queued' to 'processing'
         slot: {
             type: Number,
-            default: 0
+            default: null
         },
 
-        // Timing
+        // Timing — null on 'queued' entries; populated at queue-write or promotion time
         startTime: {
             type: Date,
-            required: true
+            default: null
         },
         expectedCompletion: {
             type: Date,
-            required: true
+            default: null
         },
         completedAt: {
             type: Date,
@@ -119,14 +119,15 @@ const userSchema = mongoose.Schema({
             default: null
         },
 
-        // Status
-        // 'resolving' is a transient claim state written atomically before side effects run.
-        // It prevents concurrent requests from double-completing the same entry.
-        // Entries stuck in 'resolving' beyond CLAIM_TIMEOUT_MS are recovered to 'processing'
-        // on the next resolveQueue call (safe: completeReaction only adds, never deducts).
+        // Status lifecycle:
+        //   'queued'    — buffer position; reactants/energy already deducted; awaiting a free slot
+        //   'processing'— occupies a numbered slot; timer is running
+        //   'resolving' — transient atomic claim state; prevents concurrent double-completion
+        //   'completed' — reward delivered; pruned after 24h
+        //   'failed'    — side-effect error; pruned after 24h
         status: {
             type: String,
-            enum: ['processing', 'resolving', 'completed', 'failed'],
+            enum: ['queued', 'processing', 'resolving', 'completed', 'failed'],
             default: 'processing'
         },
         // Set when status transitions to 'resolving'. Used to detect stale claims after
@@ -162,6 +163,8 @@ const userSchema = mongoose.Schema({
             productName:            { type: String },
             productQuantity:        { type: Number },
             productUnlocksUserTier: { type: Number, default: null },
+            // Stored at write time so promotion can compute expectedCompletion without a DB lookup
+            effectiveReactionTime:  { type: Number, default: null },
             reactants: [{
                 substanceKey: { type: String },
                 name:         { type: String },

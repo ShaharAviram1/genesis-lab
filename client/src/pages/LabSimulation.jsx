@@ -23,6 +23,10 @@ import LabNotebookPanel from "../../components/LabNotebookPanel";
 // replay/debug; the client trims to a short flash so the slot returns to idle.
 const COMPLETED_VISIBLE_MS = 2500;
 
+// Mirrors server/config/prestigeConfig.js getMaxBufferSlots().
+// Maps blueprintKey → grantsBuffer value.
+const BUFFER_GRANTING_BLUEPRINTS = { queue_buffer: 1, extended_buffer: 2 };
+
 function queueEntryIdentity(entry) {
     return entry.queueEntryId || entry._id || `${entry.reactionKey}-${entry.startTime || ''}`;
 }
@@ -96,8 +100,13 @@ const LabSimulation = ({ username, onLogout }) => {
     const SLOT_GRANTING_BLUEPRINTS = ['expanded_reactor_bay', 'triple_reactor_array'];
     const ownedBlueprintKeys = new Set((blueprints || []).map(b => b.blueprintKey));
     const maxSlots = 1 + SLOT_GRANTING_BLUEPRINTS.filter(k => ownedBlueprintKeys.has(k)).length;
+    const maxBufferSlots = Object.entries(BUFFER_GRANTING_BLUEPRINTS)
+        .reduce((sum, [key, grants]) => ownedBlueprintKeys.has(key) ? sum + grants : sum, 0);
     const occupiedSlots = activeQueue.filter(e => e.status === 'processing' || e.status === 'resolving').length;
-    const reactorOccupied = occupiedSlots >= maxSlots;
+    const queuedCount = activeQueue.filter(e => e.status === 'queued').length;
+    const isProcessing = occupiedSlots > 0;
+    // reactorOccupied: all slots busy AND buffer full — nothing more can be queued
+    const reactorOccupied = occupiedSlots >= maxSlots && queuedCount >= maxBufferSlots;
 
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -475,7 +484,7 @@ const LabSimulation = ({ username, onLogout }) => {
                 const visible = [];
                 const pendingTimeouts = [];
                 for (const e of incoming) {
-                    if (e.status === 'processing' || e.status === 'resolving') {
+                    if (e.status === 'processing' || e.status === 'resolving' || e.status === 'queued') {
                         visible.push(e);
                         continue;
                     }
@@ -500,17 +509,24 @@ const LabSimulation = ({ username, onLogout }) => {
                     // Dedupe against literal event re-broadcast (multi-tab, server resend) by entry id —
                     // NOT by reactionKey, which would block legitimate parallel queues of the same reaction.
                     if (data.queueEntryId && prev.some(e => e.queueEntryId === data.queueEntryId)) return prev;
+                    const entryStatus = data.status || 'processing';
                     return [...prev, {
                         queueEntryId:       data.queueEntryId,
                         reactionKey:        data.reactionKey,
-                        slot:               data.slot,
-                        status:             'processing',
-                        startTime:          data.startTime || new Date().toISOString(),
-                        expectedCompletion: data.expectedCompletion,
+                        slot:               data.slot ?? null,
+                        status:             entryStatus,
+                        startTime:          data.startTime ?? null,
+                        expectedCompletion: data.expectedCompletion ?? null,
                         revealOnCompletion: data.revealOnCompletion,
                         reactionName:       data.reactionName || (data.revealOnCompletion ? 'Unknown Synthesis' : null)
                     }];
                 });
+            } else if (data.type === 'synthesis_promoted') {
+                setActiveQueue(prev => prev.map(e =>
+                    (data.queueEntryId && e.queueEntryId === data.queueEntryId)
+                        ? { ...e, status: 'processing', slot: data.slot, startTime: data.startTime, expectedCompletion: data.expectedCompletion }
+                        : e
+                ));
             } else if (data.type === 'offline_summary') {
                 const products = Array.isArray(data.products) ? data.products : [];
                 const sample = products.slice(0, 3).join(', ');
@@ -670,13 +686,13 @@ const LabSimulation = ({ username, onLogout }) => {
 
                     <div className="center-scene">
                         <div className="scene-canvas">
-                            <GenesisScene onCoreClick={handleCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} reactionEvent={reactionEvent} bigBangPhase={bigBangPhase} queueEvent={queueEvent} isProcessing={reactorOccupied} />
+                            <GenesisScene onCoreClick={handleCoreClick} activityLevel={activityLevel} creationEvent={creationEvent} reactionEvent={reactionEvent} bigBangPhase={bigBangPhase} queueEvent={queueEvent} isProcessing={isProcessing} />
                         </div>
                     </div>
 
                     <div className="right-panel">
                         <EnergyPanel energy={energy} energyRate={energyRate} />
-                        <QueuePanel activeQueue={activeQueue} maxSlots={maxSlots} />
+                        <QueuePanel activeQueue={activeQueue} maxSlots={maxSlots} maxBufferSlots={maxBufferSlots} />
                         {reactorCapabilities.length > 0 && (
                             <div className="panel-card reactor-caps-panel">
                                 <button className="reactor-caps-header" onClick={() => setCapsExpanded(e => !e)}>

@@ -67,6 +67,21 @@ function emitToUser(username, eventType, payload) {
     return sent;
 }
 
+// Emits synthesis_promoted for each entry that was promoted from 'queued' → 'processing'.
+// Client uses this to update the entry's slot/startTime/expectedCompletion in place.
+function emitQueuePromotions(username, promotions) {
+    for (const { entry } of promotions) {
+        const queueEntryId = entry._id != null ? entry._id.toString() : undefined;
+        emitToUser(username, 'synthesis_promoted', {
+            queueEntryId,
+            reactionKey:        entry.reactionKey,
+            slot:               entry.slot,
+            startTime:          entry.startTime,
+            expectedCompletion: entry.expectedCompletion
+        });
+    }
+}
+
 // Emits synthesis_completed, synthesis_discovered, or synthesis_failed for each
 // entry in the completions array returned by resolveQueue / resolveAndPruneUserQueue.
 function emitQueueCompletions(username, completions) {
@@ -145,10 +160,12 @@ function reactorRuntime(server) {
         // (Promise.all([fetchUserData, fetchReactions, fetchAtoms])). We pass bufferIfOffline=false
         // because the user is now WS-connected; live emit handles delivery for these completions.
         let resolvedCompletions = [];
+        let resolvedPromotions = [];
         try {
-            const { user: fresh, completions } = await resolveAndPruneUserQueue(user, { bufferIfOffline: false });
+            const { user: fresh, completions, promotions } = await resolveAndPruneUserQueue(user, { bufferIfOffline: false });
             if (fresh) user = fresh;
             resolvedCompletions = completions;
+            resolvedPromotions = promotions;
         } catch (queueErr) {
             console.error('Queue resolution error on WS connect for user', ws.id, ':', queueErr);
         }
@@ -190,8 +207,9 @@ function reactorRuntime(server) {
             });
         }
 
-        // Step 4: Emit step-1 individual completion events.
+        // Step 4: Emit step-1 individual completion and promotion events.
         if (resolvedCompletions.length > 0) emitQueueCompletions(ws.id, resolvedCompletions);
+        if (resolvedPromotions.length > 0) emitQueuePromotions(ws.id, resolvedPromotions);
 
         // Step 5: Drain undelivered pending notifications. Each is delivered exactly once.
         // Use an atomic per-entry $set instead of full-document user.save() — that way
@@ -440,5 +458,6 @@ module.exports = {
     zeroSessionEnergyForUser,
     emitToUser,
     emitQueueCompletions,
+    emitQueuePromotions,
     isUserConnected
 };

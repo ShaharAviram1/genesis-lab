@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const completeReaction = require('./completeReaction');
+const { getMaxSlots } = require('./../config/prestigeConfig');
 
 // Stage 12 — Atomic double-completion guard.
 //
@@ -101,18 +102,69 @@ async function resolveQueue(user) {
         }
     }
 
-    return results;
+    // ── Promotion pass ────────────────────────────────────────────────────────────
+    // After completions free their slots, promote the oldest 'queued' entries into
+    // those slots. Each promotion is claimed atomically so concurrent requests
+    // cannot double-promote the same entry.
+    const maxSlots = getMaxSlots(user);
+    const occupiedSlotSet = new Set(
+        user.activeQueue
+            .filter(e => e.status === 'processing' || e.status === 'resolving')
+            .map(e => e.slot)
+    );
+    const freeSlots = [];
+    for (let i = 0; i < maxSlots; i++) {
+        if (!occupiedSlotSet.has(i)) freeSlots.push(i);
+    }
+
+    const queuedEntries = user.activeQueue
+        .filter(e => e.status === 'queued')
+        .sort((a, b) => (a._id.toString() < b._id.toString() ? -1 : 1));
+
+    const promotions = [];
+    for (let i = 0; i < Math.min(freeSlots.length, queuedEntries.length); i++) {
+        const slot = freeSlots[i];
+        const entry = queuedEntries[i];
+        const promoteNow = new Date();
+        const effectiveTime = entry.snapshot?.effectiveReactionTime ?? 0;
+        const expectedCompletion = new Date(promoteNow.getTime() + effectiveTime * 1000);
+
+        const claimed = await User.findOneAndUpdate(
+            { _id: user._id, activeQueue: { $elemMatch: { _id: entry._id, status: 'queued' } } },
+            { $set: {
+                'activeQueue.$.status':             'processing',
+                'activeQueue.$.slot':               slot,
+                'activeQueue.$.startTime':          promoteNow,
+                'activeQueue.$.expectedCompletion': expectedCompletion
+            }}
+        );
+
+        if (!claimed) {
+            entry.status = 'processing';
+            console.log(`resolveQueue: queued entry '${entry.reactionKey}' was claimed concurrently for user '${user.username}'`);
+            continue;
+        }
+
+        entry.status             = 'processing';
+        entry.slot               = slot;
+        entry.startTime          = promoteNow;
+        entry.expectedCompletion = expectedCompletion;
+        promotions.push({ entry });
+        console.log(`resolveQueue: promoted '${entry.reactionKey}' from queue → slot ${slot} for user '${user.username}'`);
+    }
+
+    return { completions: results, promotions };
 }
 
-// Removes non-processing entries whose pruneAfter window has expired.
-// 'resolving' entries are never pruned: pruneAfter is null until completion.
-// Safe to call on every request — never touches 'processing' or 'resolving' entries.
+// Removes non-processing/non-queued entries whose pruneAfter window has expired.
+// 'resolving' and 'queued' entries are never pruned.
+// Safe to call on every request.
 function pruneCompletedEntries(user) {
     const now = new Date();
     const before = user.activeQueue.length;
 
     user.activeQueue = user.activeQueue.filter(entry => {
-        if (entry.status === 'processing' || entry.status === 'resolving') return true;
+        if (entry.status === 'processing' || entry.status === 'resolving' || entry.status === 'queued') return true;
         if (!entry.pruneAfter) return true; // keep legacy entries missing pruneAfter
         return entry.pruneAfter > now;
     });
@@ -168,11 +220,12 @@ function isUserConnectedLazy(username) {
 // Resolves due entries, prunes expired ones, optionally buffers offline
 // notifications, and saves — all atomically inside a per-user mutex.
 //
-// Returns { user, completions, userModified }:
+// Returns { user, completions, promotions, userModified }:
 //   - `user` is a freshly-loaded copy with all populates applied.
 //     Callers MUST use this for any subsequent reads/writes to avoid
 //     overwriting our in-lock save with a stale snapshot.
 //   - `completions` mirrors the prior contract.
+//   - `promotions` is the list of entries promoted from 'queued' → 'processing'.
 //   - `userModified` is informational; the save has already happened.
 //
 // Options:
@@ -191,7 +244,7 @@ async function resolveAndPruneUserQueue(originalUser, options = {}) {
             return { user: null, completions: [], userModified: false };
         }
 
-        const completions = await resolveQueue(user);
+        const { completions, promotions } = await resolveQueue(user);
         const beforeQueuePrune = user.activeQueue.length;
         pruneCompletedEntries(user);
         const queuePruned = beforeQueuePrune - user.activeQueue.length;
@@ -203,10 +256,10 @@ async function resolveAndPruneUserQueue(originalUser, options = {}) {
             pendingAdded = true;
         }
 
-        const userModified = completions.length > 0 || queuePruned > 0 || notificationsPruned > 0 || pendingAdded;
+        const userModified = completions.length > 0 || promotions.length > 0 || queuePruned > 0 || notificationsPruned > 0 || pendingAdded;
         if (userModified) await user.save();
 
-        return { user, completions, userModified };
+        return { user, completions, promotions, userModified };
     });
 }
 
