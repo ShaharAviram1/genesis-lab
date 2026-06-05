@@ -169,7 +169,13 @@ const LabSimulation = ({ username, onLogout }) => {
             9:  "Carbon nanoscience begins",
             10: "Gen 1–3 complete",
             11: "Plasma synthesis achieved",
-            12: "Nuclear fuel synthesized"
+            12: "Nuclear fuel synthesized",
+            13: "Gen 5 begins",
+            14: "Quantum coherence established",
+            15: "Chromodynamic matter achieved",
+            16: "Convergence tracks complete",
+            17: "Both tracks unified",
+            18: "Gen 5 complete"
         };
         const message = tierMessages[newTier] || "New tier unlocked";
         showToast("milestone", `✦ Tier ${newTier}: ${message}`);
@@ -605,6 +611,12 @@ const LabSimulation = ({ username, onLogout }) => {
                         showToast('milestone', `Reactor capability unlocked: ${label}`);
                     });
                 }
+                if (data.newUnlockTier && data.newUnlockTier !== data.prevUnlockTier) {
+                    handleTierUnlock(data.newUnlockTier);
+                    setNewlyRevealedTier(data.newUnlockTier);
+                    setTimeout(() => setNewlyRevealedTier(null), 30000);
+                    setPreviousUnlockTier(data.newUnlockTier);
+                }
                 if (wasDiscovery) {
                     setJustDiscoveredReactionKey(completedKey);
                     setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
@@ -649,13 +661,7 @@ const LabSimulation = ({ username, onLogout }) => {
     }, [user]);
 
     useEffect(() => {
-        if (previousUnlockTier < unlockTier && previousUnlockTier !== 0) {
-            handleTierUnlock(unlockTier);
-            setNewlyRevealedTier(unlockTier);
-            const t = setTimeout(() => setNewlyRevealedTier(null), 30000);
-            return () => clearTimeout(t);
-        }
-        previousUnlockTier !== unlockTier && setPreviousUnlockTier(unlockTier);
+        if (previousUnlockTier !== unlockTier) setPreviousUnlockTier(unlockTier);
     }, [unlockTier]);
 
     useEffect(() => {

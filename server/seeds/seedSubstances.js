@@ -851,6 +851,7 @@ const substances = [
         category: 'exotic_material',
         generationTier: 4,
         unlockTier: 4,
+        unlocksUserTier: 13,
         baseEnergy: 450,
         shardValue: 5,
         stabilityFactor: 0.85,
@@ -859,18 +860,192 @@ const substances = [
         color: '#6366F1',
         hintText: 'Metallic hydrogen and ceramic superconductor, merged under simultaneous extreme pressure and cold. A lattice at the boundary between classical and quantum material behavior.',
         isActive: true
+    },
+
+    // ── Gen 5 — Quantum Frontier (9) ─────────────────────────────────────────
+    // Track A: topological_insulator → superfluid_condensate → bose_nova_remnant → quantum_vacuum_lattice
+    // Track B: photonic_crystal → chromodynamic_fiber → magnetar_filament → strangeon_matter
+    // Capstone: axionic_condensate (consumes both T16 outputs)
+    {
+        substanceKey: 'topological_insulator',
+        type: 'material',
+        name: 'Topological Insulator',
+        symbol: 'TopI',
+        formula: 'QSub·MH (topo)',
+        category: 'exotic_material',
+        generationTier: 5,
+        unlockTier: 5,
+        unlocksUserTier: 14,
+        shardValue: 20,
+        baseEnergy: 700,
+        stabilityFactor: 0.82,
+        reactivity: 0.12,
+        fantasyWeight: 5,
+        color: '#4F46E5',
+        hintText: 'Conducts on its surface while insulating through its bulk — a paradox maintained by quantum topology.',
+        isActive: true
+    },
+    {
+        substanceKey: 'photonic_crystal',
+        type: 'material',
+        name: 'Photonic Crystal',
+        symbol: 'PhC',
+        formula: 'RPC·C (phot)',
+        category: 'advanced_material',
+        generationTier: 5,
+        unlockTier: 5,
+        shardValue: 18,
+        baseEnergy: 750,
+        stabilityFactor: 0.88,
+        reactivity: 0.35,
+        fantasyWeight: 5,
+        color: '#0EA5E9',
+        hintText: 'A lattice of light-scale structure that controls photon behavior the way a semiconductor controls electron flow.',
+        isActive: true
+    },
+    {
+        substanceKey: 'superfluid_condensate',
+        type: 'material',
+        name: 'Superfluid Condensate',
+        symbol: 'SFC',
+        formula: 'TopI·CryM (sf)',
+        category: 'exotic_material',
+        generationTier: 5,
+        unlockTier: 5,
+        shardValue: 22,
+        baseEnergy: 850,
+        stabilityFactor: 0.70,
+        reactivity: 0.08,
+        fantasyWeight: 5,
+        color: '#A5F3FC',
+        hintText: 'A quantum state where viscosity drops to zero and every atom in the substance behaves as a single coherent entity.',
+        isActive: true
+    },
+    {
+        substanceKey: 'chromodynamic_fiber',
+        type: 'material',
+        name: 'Chromodynamic Fiber',
+        symbol: 'CDF',
+        formula: 'PhC·NFP·S',
+        category: 'exotic_material',
+        generationTier: 5,
+        unlockTier: 5,
+        unlocksUserTier: 15,
+        shardValue: 25,
+        baseEnergy: 950,
+        stabilityFactor: 0.79,
+        reactivity: 0.55,
+        fantasyWeight: 5,
+        color: '#DC2626',
+        hintText: 'Quark-gluon interactions locked into a solid filament. The strong nuclear force, threaded into a material.',
+        isActive: true
+    },
+    {
+        substanceKey: 'bose_nova_remnant',
+        type: 'material',
+        name: 'Bose-Nova Remnant',
+        symbol: 'BNR',
+        formula: 'SFC·PhC·QSub',
+        category: 'exotic_material',
+        generationTier: 5,
+        unlockTier: 5,
+        unlocksUserTier: 16,
+        shardValue: 28,
+        baseEnergy: 1100,
+        stabilityFactor: 0.68,
+        reactivity: 0.42,
+        fantasyWeight: 6,
+        color: '#1D4ED8',
+        hintText: 'What is left when a Bose-Einstein condensate reaches the threshold of collapse and rebounds. Structured quantum chaos.',
+        isActive: true
+    },
+    {
+        substanceKey: 'magnetar_filament',
+        type: 'material',
+        name: 'Magnetar Filament',
+        symbol: 'MgtF',
+        formula: 'CDF·NFP·Fe',
+        category: 'exotic_material',
+        generationTier: 5,
+        unlockTier: 5,
+        shardValue: 30,
+        baseEnergy: 1200,
+        stabilityFactor: 0.73,
+        reactivity: 0.38,
+        fantasyWeight: 5,
+        color: '#A855F7',
+        hintText: 'A thread of magnetar-grade magnetic field, captured before it unravels. The highest field density achievable in a containable form.',
+        isActive: true
+    },
+    {
+        substanceKey: 'quantum_vacuum_lattice',
+        type: 'material',
+        name: 'Quantum Vacuum Lattice',
+        symbol: 'QVL',
+        formula: 'BNR·SFC·QSub',
+        category: 'exotic_material',
+        generationTier: 5,
+        unlockTier: 5,
+        unlocksUserTier: 17,
+        shardValue: 40,
+        baseEnergy: 1500,
+        stabilityFactor: 0.58,
+        reactivity: 0.25,
+        fantasyWeight: 6,
+        color: '#818CF8',
+        hintText: 'A lattice stabilized by the vacuum itself — using zero-point fluctuations as a structural medium rather than avoiding them.',
+        isActive: true
+    },
+    {
+        substanceKey: 'strangeon_matter',
+        type: 'material',
+        name: 'Strangeon Matter',
+        symbol: 'StrM',
+        formula: 'MgtF·RPC·N',
+        category: 'exotic_material',
+        generationTier: 5,
+        unlockTier: 5,
+        shardValue: 38,
+        baseEnergy: 1400,
+        stabilityFactor: 0.51,
+        reactivity: 0.72,
+        fantasyWeight: 6,
+        color: '#65A30D',
+        hintText: 'Protons and neutrons dissolved into a soup of up, down, and strange quarks. Stable only under extreme compression.',
+        isActive: true
+    },
+    {
+        substanceKey: 'axionic_condensate',
+        type: 'material',
+        name: 'Axionic Condensate',
+        symbol: 'AxC',
+        formula: 'QVL·StrM·RPC·QSub',
+        category: 'exotic_material',
+        generationTier: 5,
+        unlockTier: 5,
+        unlocksUserTier: 18,
+        shardValue: 55,
+        baseEnergy: 2000,
+        stabilityFactor: 0.45,
+        reactivity: 0.15,
+        fantasyWeight: 7,
+        color: '#F59E0B',
+        hintText: 'Axions crystallized into a macroscopic quantum state. The reactor synthesizes a piece of what the universe is mostly made of.',
+        isActive: true
     }
 ];
 
-// Expected: 18 Gen 1 + 13 Gen 2 + 9 Gen 3 + 8 Gen 4 = 48 total
+// Expected: 18 Gen 1 + 13 Gen 2 + 9 Gen 3 + 8 Gen 4 + 9 Gen 5 = 57 total
 const gen1 = substances.filter(s => s.generationTier === 1).length;
 const gen2 = substances.filter(s => s.generationTier === 2).length;
 const gen3 = substances.filter(s => s.generationTier === 3).length;
 const gen4 = substances.filter(s => s.generationTier === 4).length;
+const gen5 = substances.filter(s => s.generationTier === 5).length;
 console.assert(gen1 === 18, `Gen 1 count wrong: ${gen1}`);
 console.assert(gen2 === 13, `Gen 2 count wrong: ${gen2}`);
 console.assert(gen3 === 9,  `Gen 3 count wrong: ${gen3}`);
 console.assert(gen4 === 8,  `Gen 4 count wrong: ${gen4}`);
+console.assert(gen5 === 9,  `Gen 5 count wrong: ${gen5}`);
 
 (async () => {
     try {

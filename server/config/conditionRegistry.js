@@ -70,6 +70,29 @@ const CONDITION_REGISTRY = [
         shortDescription: 'Enables cryogenic synthesis and low-temperature phase reactions.',
         unlock:           { type: 'unlockTier', tier: 9 },
         generationHint:   4
+    },
+
+    // ── Gen 5 ─────────────────────────────────────────────────────────────────
+    {
+        key:              'quantum_coherence',
+        displayName:      'Quantum Coherence',
+        shortDescription: 'Enables reactions requiring macroscopic quantum phase alignment across the reactor field.',
+        unlock:           { type: 'substance', substanceKey: 'topological_insulator' },
+        generationHint:   5
+    },
+    {
+        key:              'zero_point_field',
+        displayName:      'Zero-Point Field',
+        shortDescription: 'Enables reactions that harness vacuum energy fluctuations as a stabilizing medium.',
+        unlock:           { type: 'substance', substanceKey: 'superfluid_condensate' },
+        generationHint:   5
+    },
+    {
+        key:              'nucleon_compression',
+        displayName:      'Nucleon Compression',
+        shortDescription: 'Enables reactions that operate at sub-nuclear densities, compressing matter beyond atomic structure.',
+        unlock:           { type: 'substance', substanceKey: 'chromodynamic_fiber' },
+        generationHint:   5
     }
 ];
 

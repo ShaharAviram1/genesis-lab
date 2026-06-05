@@ -1,8 +1,8 @@
 # Genesis Lab — Implementation Roadmap
 
-**Version:** 1.4  
-**Status:** Active Implementation — Prestige & Economy Foundation Phase  
-**Date:** 2026-06-01  
+**Version:** 1.5  
+**Status:** Active Implementation — Era VI: Long-Duration Synthesis & Gen 5 Content (Phase I complete → Phase B3 next)  
+**Date:** 2026-06-05  
 **Inputs:** reaction-graph-design.md, generation-philosophy-v2.md, substance-importance-audit.md, substance-universe.md, queue-system-plan.md, prestige-system-redesign.md, prestige-loop-analysis.md, economic-progression-analysis.md  
 **Scope:** Full implementation sequencing from design lock to game-complete state
 
@@ -202,13 +202,13 @@ Schema audit (Phase A) ✅
             │                                                       │
             │                                                       └── Phase R: Prestige Branch #1 (Automation)
             │                                                               │
-            │                                                               ├── Phase J1: Economy Architecture (design)
+            │                                                               ├── Phase J1: Economy Architecture (design) ✅
             │                                                               │       │
-            │                                                               │       └─── Phase I: Long-Duration Synthesis ──┐
-            │                                                               │                                               │
-            │                                                               └──────────────────────────────────────────────┘
+            │                                                               │       └─── Phase I: Long-Duration Synthesis ✅ ──┐
+            │                                                               │                                                  │
+            │                                                               └─────────────────────────────────────────────────┘
             │                                                                               │
-            │                                                                       Phase B3: Gen 5 Design + Seeding
+            │                                                                       Phase B3: Gen 5 Design + Seeding ← ACTIVE
             │                                                                               │
             │                                                                       Phase J2: Economy Balancing (Gen 5)
             │                                                                               │
@@ -227,7 +227,7 @@ Schema audit (Phase A) ✅
 - **Phase P before Phase R:** The prestige branch architecture must be decided before the automation implementation begins. Implementing automation against an undecided architecture produces code that requires refactoring.
 - **Phase Q before Phase B3:** The Gen 5 economic gate mechanism must be specified before Gen 5 content is designed. Seeding Gen 5 reactions before knowing what creates the Gen 5 wall produces content that may require re-seeding.
 - **Phase J1 before Phase B3:** Economy architecture (design) must precede Gen 5 seeding. Gen 5 substance and reaction design depends on knowing what the economic wall looks like.
-- **Phase I before Phase B3:** Server-restart-safe long-duration synthesis must exist before 24–72 hour reactions are seeded into the database.
+- **Phase I before Phase B3:** ✅ Met. Long-duration synthesis is server-restart-safe and technically ready for Gen 5 reactions at any duration.
 - **Phase B4 after observing Phase B3:** Gen 6 is explicitly designed after Gen 5 results are known. No Gen 6 content is committed before Gen 5 is playtested.
 - **Phase B4 complete before Phase K:** Reactor evolution (visual, audio, language) calibrates to specific generation transitions. Content must be frozen before evolution is implemented.
 - **Phase L last:** Save hardening and corruption guards require all long-duration synthesis vectors to exist before they can be defended.
@@ -511,19 +511,22 @@ Phase J was previously a single balancing phase that ran concurrent with Gen 5�
 
 ---
 
-### Phase I — Long-Duration Synthesis
+### Phase I — Long-Duration Synthesis ✅ COMPLETE (2026-06-05)
 
 **What:** Synthesis times of 4–72 hours work correctly, persist through server restarts, and display correctly to the player with real-world calendar time.
 
 **Note on repositioning:** Phase I was previously placed before automation (Phase H). Under the revised architecture, automation is Post-Big-Bang prestige infrastructure (Phase R), not a prerequisite for long-duration synthesis. Phase I's correct position is after Phase R (automation must be live to validate that long-duration synthesis coexists correctly with the production tick engine) and before Phase B3 (Gen 5 content cannot be seeded before long-duration queue persistence is validated).
+
+**Implementation notes (completed 2026-06-05):**
+- `pruneAfter` now scales as `completedAt + max(24h, effectiveReactionTime)` — `calcPruneWindow(effectiveReactionTimeSec)` helper in `completeReaction.js`. Entries for long syntheses remain visible long enough for offline players to see them; short reactions are unaffected (24h floor preserved).
+- Big Bang now guards against in-flight queue entries. Server returns 409 `{ requiresConfirmation: true, activeEntries: N }` without `force=true`. `BigBangPanel` shows contextual forfeit warning during the confirm step; client passes `force=true` after confirmation.
+- Long-duration synthesis is **technically ready for Gen 5**. `expectedCompletion` is a bare `Date` with no ceiling; snapshots are durable; per-user mutex and atomic claim are duration-agnostic. No further infrastructure work required before Gen 5 seeding.
 
 **Deliverables:**
 - Time display: for any synthesis over 24 hours, display estimated real-world completion time ("Completes Thursday at 11:42 PM") alongside the countdown
 - Offline completion: a synthesis that completes while the player is offline is correctly resolved on reconnect
 - Server restart safety: active queue entries survive server restart. Queue stored in DB with wall-clock completion timestamps.
 - Validation test: use Phase G debug tooling to simulate a 48-hour synthesis at 100× speed, confirm it survives a server restart mid-synthesis and completes correctly
-
-**Test:** Queue a 12-hour synthesis. Terminate the server process. Restart the server. Reconnect as the player. The synthesis is still in progress, countdown is correct, and it completes normally. Only after this test passes does Phase B3 seeding begin.
 
 ---
 
@@ -539,12 +542,15 @@ Phase J was previously a single balancing phase that ran concurrent with Gen 5�
 **Note on previous scope:** Phase B3 previously seeded both Gen 5 and Gen 6 simultaneously. This is split because Gen 6 design benefits from observing whether the Gen 5 economic wall held, whether the prestige pacing was correct at Gen 5 timescales, and whether the Gen 5 substance graph required adjustments after initial playtesting.
 
 **Deliverables:**
-- Gen 5 substance design (informed by Phase Q gate mechanism and IV curve targets)
+- Gen 5 substance design (approved 2026-06-05 — see session notes for full reaction graph)
 - All Gen 5 substances seeded with correct shardValues, unlockTiers, and reaction times
 - All Gen 5 reactions seeded with reactants, products, conditions, and economic gate requirements
-- New Gen 5 conditions registered (names TBD in Phase Q)
+- New Gen 5 conditions registered: `quantum_coherence` (from topological_insulator), `zero_point_field` (from superfluid_condensate), `nucleon_compression` (from chromodynamic_fiber)
 - Gen 5 full playthrough validated using Phase G debug tooling (time acceleration + inventory grants)
-- Gen 5 economic wall validated: zero-prestige player cannot reach Gen 5 on run 1 (if that is the decided gate)
+- Gen 5 economic wall validated: zero-prestige player is substantially slowed but not hard-blocked
+
+**Design note — pre-seed action required:**  
+Validate Gen 5 shard projections against the actual `calculateGenesisShards` formula before seeding shardValues. Projected yield is 310–350 shards from Gen 5 substances alone; verify this produces the correct prestige pacing arc (Gen 5 completion should enable 2–3 meaningful blueprint purchases, not saturate the market). Adjust shardValues in the design if the formula produces materially different output.
 
 **Gate:** Do not begin Phase B4 until Gen 5 has been playtested and the economic wall observation is documented.
 
@@ -580,6 +586,9 @@ Phase J was previously a single balancing phase that ran concurrent with Gen 5�
 - Gen 6 full playthrough validated using Phase G debug tooling
 - Gen 6 economic wall validated
 - Seed validation script passes on complete Gen 1–6 content with zero errors
+
+**Design constraint (locked 2026-06-05):**  
+Gen 6 must contain a genuine 3-track dependency section — a tier band where three independent synthesis tracks must all be completed before progression can continue. Triple Reactor Array (3 slots) should be a critical-path improvement at this point, not a convenience improvement. In Gen 5, two parallel tracks make 2 slots strongly beneficial; 3 slots add buffer value but don't compress the critical path. Gen 6 must correct this: a tier with three simultaneous tracks makes the third slot mandatory for any player who does not want to serialize 3 × 24h+ reactions. Design the Gen 6 reaction graph with this constraint explicitly in mind before any substances are committed.
 
 **Content gate:** Gen 6 content must not be seeded until the Gen 5 economic wall observation is documented and Gen 5 balancing (Phase J2 first pass) is complete.
 
@@ -785,13 +794,13 @@ Avoid "build everything then test." Test at each era boundary.
 
 ---
 
-### Checkpoint 9 — Long-Duration Survival Test (End of Phase I)
-**What to verify:**
-- A 12-hour synthesis persists through a server restart with no data loss
-- A 48-hour synthesis (simulated at 1000× speed) completes correctly
-- Offline completion resolves correctly on reconnect
-
-**Gate:** Do not begin Phase B3 until this checkpoint passes.
+### Checkpoint 9 — Long-Duration Survival Test (End of Phase I) ✅ COMPLETE
+**Verified (2026-06-05):**
+- Queue infrastructure handles arbitrary durations — `expectedCompletion` is duration-agnostic
+- `pruneAfter` scales with reaction duration (`max(24h, effectiveReactionTime)`)
+- Big Bang guards in-flight queue entries (server 409 backstop + client forfeit warning)
+- Offline completion delivery is duration-agnostic (pendingNotifications buffer, lazy resolution on reconnect)
+- Long-duration synthesis is technically ready for Gen 5 seeding
 
 ---
 

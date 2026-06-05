@@ -14,9 +14,15 @@ function formatCountdown(expectedCompletion, now) {
     if (ms <= 0) return 'Finalizing...';
     const s = Math.ceil(ms / 1000);
     if (s < 60) return `${s}s`;
-    const m = Math.floor(s / 60);
+    if (s < 3600) {
+        const m = Math.floor(s / 60);
+        const rem = s % 60;
+        return `${m}m ${rem < 10 ? '0' : ''}${rem}s`;
+    }
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
     const rem = s % 60;
-    return `${m}m ${rem < 10 ? '0' : ''}${rem}s`;
+    return `${h}h ${m < 10 ? '0' : ''}${m}m ${rem < 10 ? '0' : ''}${rem}s`;
 }
 
 // Pure lookup: prefer an active occupant; fall back to any terminal entry

@@ -683,6 +683,193 @@ const reactions = [
         hintText: 'Two extreme-state materials subjected simultaneously to their opposing conditions.',
         description: 'Metallic hydrogen and ceramic superconductor merged under simultaneous extreme pressure and extreme cold. The resulting lattice operates at the boundary between classical and quantum material behavior: electrons in the superconducting state, protons in the metallic lattice, the whole structure held in a phase with no stable analog at normal conditions. The quantum substrate is where Gen 5 physics begins to be legible.',
         isActive: true
+    },
+
+    // ── Gen 5 Track A — T13 ───────────────────────────────────────────────────
+    {
+        reactionKey: 'gen5_topological_insulator',
+        name: 'Topological Insulator Formation',
+        generationTier: 5,
+        unlockTier: 13,
+        reactants: [
+            { key: 'quantum_substrate', quantity: 1 },
+            { key: 'metallic_hydrogen', quantity: 1 }
+        ],
+        product: { key: 'topological_insulator', quantity: 1 },
+        energyCost: 600,
+        reactionTime: 28800,
+        conditions: ['extreme_pressure', 'extreme_cold'],
+        discoveredByDefault: false,
+        hintText: 'Two quantum materials pressed into simultaneous contradiction — insulating everywhere except its own skin.',
+        description: 'Quantum substrate and metallic hydrogen forced into mutual phase tension under extreme pressure and cold. The result is not a compound but a topological phase: bulk electrons freeze while surface electrons remain free. Conducting on every exterior face, insulating through every interior path. The topological insulator is the first Gen 5 substance and the first material whose behavior is defined by its geometry rather than its chemistry. Producing it unlocks quantum coherence.',
+        isActive: true
+    },
+
+    // ── Gen 5 Track B — T13 ───────────────────────────────────────────────────
+    {
+        reactionKey: 'gen5_photonic_crystal',
+        name: 'Photonic Crystal Growth',
+        generationTier: 5,
+        unlockTier: 13,
+        reactants: [
+            { key: 'reactive_plasma_core', quantity: 1 },
+            { key: 'carbon', quantity: 3 }
+        ],
+        product: { key: 'photonic_crystal', quantity: 1 },
+        energyCost: 650,
+        reactionTime: 28800,
+        conditions: ['plasma_state', 'vacuum'],
+        discoveredByDefault: false,
+        hintText: 'Carbon ordered by plasma into a lattice that controls light the way silicon controls current.',
+        description: 'A reactive plasma core used as a deposition field drives three units of carbon into a periodic lattice at light-wavelength spacing — under vacuum, so no contamination interrupts the pattern. The resulting photonic crystal does not absorb or emit light: it controls which photon frequencies can propagate through it. A semiconductor for photons. Photonic crystal is consumed in two separate Gen 5 reactions, so the infrastructure that produces it will be worked hard.',
+        isActive: true
+    },
+
+    // ── Gen 5 Track A — T14 ───────────────────────────────────────────────────
+    {
+        reactionKey: 'gen5_superfluid_condensate',
+        name: 'Superfluid Condensate Formation',
+        generationTier: 5,
+        unlockTier: 14,
+        reactants: [
+            { key: 'topological_insulator', quantity: 1 },
+            { key: 'cryogenic_matrix', quantity: 2 }
+        ],
+        product: { key: 'superfluid_condensate', quantity: 1 },
+        energyCost: 900,
+        reactionTime: 43200,
+        conditions: ['extreme_cold', 'quantum_coherence'],
+        discoveredByDefault: false,
+        hintText: 'Topological surface states cooled past the point where individual atoms give up their identities.',
+        description: 'A topological insulator held inside a double cryogenic matrix under sustained quantum coherence. At the required temperature, the surface conduction states collapse into a single macroscopic quantum state — a superfluid. The condensate has no viscosity. It flows without losing energy. Every atom in the substance obeys the same quantum equation. The superfluid condensate is consumed twice in Gen 5 and grants the zero-point field condition.',
+        isActive: true
+    },
+
+    // ── Gen 5 Track B — T14 ───────────────────────────────────────────────────
+    {
+        reactionKey: 'gen5_chromodynamic_fiber',
+        name: 'Chromodynamic Fiber Weaving',
+        generationTier: 5,
+        unlockTier: 14,
+        reactants: [
+            { key: 'photonic_crystal', quantity: 1 },
+            { key: 'nuclear_fuel_pellet', quantity: 2 },
+            { key: 'sulfur', quantity: 4 }
+        ],
+        product: { key: 'chromodynamic_fiber', quantity: 1 },
+        energyCost: 950,
+        reactionTime: 43200,
+        conditions: ['plasma_state', 'extreme_pressure'],
+        discoveredByDefault: false,
+        hintText: 'Nuclear fuel forced into quark-density compression. What comes out is not a molecule — it is a thread of strong force.',
+        description: 'Two nuclear fuel pellets driven to quark-gluon densities by extreme pressure, with sulfur acting as a binding medium and the photonic crystal providing a resonance scaffold. At sufficient compression, the proton-neutron structure dissolves. What threads out is a chromodynamic fiber: a filament where the strong nuclear force is the structural element, not merely a consequence of atomic proximity. Producing chromodynamic fiber unlocks nucleon compression and gates T15 synthesis.',
+        isActive: true
+    },
+
+    // ── Gen 5 Track A — T15 ───────────────────────────────────────────────────
+    {
+        reactionKey: 'gen5_bose_nova_remnant',
+        name: 'Bose-Nova Remnant Crystallization',
+        generationTier: 5,
+        unlockTier: 15,
+        reactants: [
+            { key: 'superfluid_condensate', quantity: 1 },
+            { key: 'photonic_crystal', quantity: 1 },
+            { key: 'quantum_substrate', quantity: 1 }
+        ],
+        product: { key: 'bose_nova_remnant', quantity: 1 },
+        energyCost: 1100,
+        reactionTime: 86400,
+        conditions: ['extreme_cold', 'zero_point_field'],
+        discoveredByDefault: false,
+        hintText: 'A superfluid driven past its stability limit. The collapse is the product.',
+        description: 'A superfluid condensate destabilized by a photonic crystal resonance field and a quantum substrate lattice under zero-point field conditions. The condensate collapses inward in a Bose-nova — not a destruction but a phase transition through instability. What crystallizes from the collapse is the remnant: a material with the coherence of the superfluid compressed into the density of the substrate. The Bose-nova remnant gates T16 synthesis.',
+        isActive: true
+    },
+
+    // ── Gen 5 Track B — T15 ───────────────────────────────────────────────────
+    {
+        reactionKey: 'gen5_magnetar_filament',
+        name: 'Magnetar Filament Braiding',
+        generationTier: 5,
+        unlockTier: 15,
+        reactants: [
+            { key: 'chromodynamic_fiber', quantity: 1 },
+            { key: 'nuclear_fuel_pellet', quantity: 1 },
+            { key: 'iron', quantity: 8 }
+        ],
+        product: { key: 'magnetar_filament', quantity: 1 },
+        energyCost: 1200,
+        reactionTime: 86400,
+        conditions: ['extreme_pressure', 'nucleon_compression'],
+        discoveredByDefault: false,
+        hintText: 'Iron compressed past neutron density around a chromodynamic core. The result is a thread of magnetar-grade field.',
+        description: 'Eight units of iron driven to neutron-star densities around a chromodynamic fiber core under nucleon compression and extreme pressure — with one nuclear fuel pellet providing the ignition energy required to sustain the compression. The iron does not melt: it is compressed past nuclear density, and in that state, the magnetic moment of every nucleon aligns. The resulting filament carries a field density that would be lethal at macro scales. Contained inside the reactor, it is a structural element.',
+        isActive: true
+    },
+
+    // ── Gen 5 Track A — T16 (Convergence A) ──────────────────────────────────
+    {
+        reactionKey: 'gen5_quantum_vacuum_lattice',
+        name: 'Quantum Vacuum Lattice Stabilization',
+        generationTier: 5,
+        unlockTier: 16,
+        reactants: [
+            { key: 'bose_nova_remnant', quantity: 1 },
+            { key: 'superfluid_condensate', quantity: 1 },
+            { key: 'quantum_substrate', quantity: 1 }
+        ],
+        product: { key: 'quantum_vacuum_lattice', quantity: 1 },
+        energyCost: 1500,
+        reactionTime: 172800,
+        conditions: ['quantum_coherence', 'zero_point_field'],
+        discoveredByDefault: false,
+        hintText: 'Three quantum materials forced into coherence with the vacuum itself.',
+        description: 'A Bose-nova remnant, a superfluid condensate, and a quantum substrate converged under simultaneous quantum coherence and zero-point field conditions. The vacuum between the three materials is not empty — it fluctuates at zero-point energy. Under these conditions, those fluctuations become the bonding medium. The resulting lattice is not held together by chemical bonds or electromagnetic force — it is held together by the geometry of spacetime at small scales. The quantum vacuum lattice is the capstone of Track A and gates the final synthesis.',
+        isActive: true
+    },
+
+    // ── Gen 5 Track B — T16 (Convergence B) ──────────────────────────────────
+    {
+        reactionKey: 'gen5_strangeon_matter',
+        name: 'Strangeon Matter Compression',
+        generationTier: 5,
+        unlockTier: 16,
+        reactants: [
+            { key: 'magnetar_filament', quantity: 1 },
+            { key: 'reactive_plasma_core', quantity: 1 },
+            { key: 'nitrogen', quantity: 6 }
+        ],
+        product: { key: 'strangeon_matter', quantity: 1 },
+        energyCost: 1400,
+        reactionTime: 172800,
+        conditions: ['plasma_state', 'nucleon_compression'],
+        discoveredByDefault: false,
+        hintText: 'A reactive plasma core collapsed into a magnetar filament until the quarks rearrange.',
+        description: 'A magnetar filament used as a compression scaffold, a reactive plasma core providing the energy density required, and six units of nitrogen as a quark-flavour mediator — driven under nucleon compression and plasma conditions. At sufficient density, the distinction between protons and neutrons ceases to hold. Up, down, and strange quarks reach equilibrium. The result is strangeon matter: bulk strange quark matter compressed into a stable form. The capstone of Track B.',
+        isActive: true
+    },
+
+    // ── Gen 5 — T17 Capstone ──────────────────────────────────────────────────
+    {
+        reactionKey: 'gen5_axionic_condensate',
+        name: 'Axionic Condensate Emergence',
+        generationTier: 5,
+        unlockTier: 17,
+        reactants: [
+            { key: 'quantum_vacuum_lattice', quantity: 1 },
+            { key: 'strangeon_matter', quantity: 1 },
+            { key: 'reactive_plasma_core', quantity: 1 },
+            { key: 'quantum_substrate', quantity: 1 }
+        ],
+        product: { key: 'axionic_condensate', quantity: 1 },
+        energyCost: 2000,
+        reactionTime: 172800,
+        conditions: ['quantum_coherence', 'zero_point_field', 'nucleon_compression'],
+        discoveredByDefault: false,
+        hintText: 'All three Gen 5 conditions active simultaneously. Both convergence tracks unified. What emerges is not matter as understood — it is dark matter, crystallized.',
+        description: 'The two convergence outputs of Gen 5 — quantum vacuum lattice from Track A and strangeon matter from Track B — combined with a reactive plasma core for ignition energy and a quantum substrate as a phase anchor. All three Gen 5 conditions active simultaneously. The quantum vacuum lattice provides the geometric scaffold. The strangeon matter provides the quark-density medium. The reactive plasma core drives the phase transition. What condenses is an axionic state — a macroscopic coherent crystal of axions, dark matter candidates made momentarily tangible. The reactor has synthesized a piece of what the universe is mostly made of. Gen 5 is complete.',
+        isActive: true
     }
 ];
 

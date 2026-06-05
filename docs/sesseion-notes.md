@@ -1008,4 +1008,105 @@ Uranium, Yttrium, Synthetic Diamond, and Hydrazine are retired from Gen 4. They 
 | 9 | graphene production (Gen 3) | gen4_hydrogen_plasma, gen4_ballistic_composite |
 | 10 | lithium_ion_cell production (Gen 3) | gen4_ceramic_superconductor, gen4_metallic_hydrogen |
 | 11 | hydrogen_plasma production (Gen 4) | gen4_cryogenic_matrix, gen4_nuclear_fuel_pellet |
+
+---
+
+# Genesis Lab — Phase I: Long-Duration Synthesis ✅ COMPLETE (2026-06-05)
+
+Phase I confirmed technically ready. No new infrastructure was required — the queue system already handled arbitrary durations structurally. Two correctness fixes were applied and the system is cleared for Gen 5 long-duration reactions.
+
+---
+
+## What Was Completed
+
+### pruneAfter scaling fix (`server/utils/completeReaction.js`)
+`pruneAfter` was hard-coded to `completedAt + 24h`. For a 72h reaction that completes while the player is offline, the completed queue entry would prune before the player returned — the reward (inventory) was safe, but the synthesis history and discovery feedback were lost.
+
+Fixed: `pruneAfter = completedAt + max(24h, effectiveReactionTime)`. The window is now driven by the reaction's own duration. A 72h synthesis stays visible for 72h after completion. Short reactions are unaffected (24h floor preserved). A `calcPruneWindow(effectiveReactionTimeSec)` helper centralizes the formula; applied in both the success path and the failed-substance path.
+
+### Big Bang in-flight guard (`server/routes/users.js`, `client/components/BigBangPanel.jsx`, `client/src/pages/LabSimulation.jsx`)
+`POST /bigbang` previously cleared `user.activeQueue = []` with no warning. Reactants consumed at enqueue time were silently forfeited. For short Gen 1–3 reactions this was a minor cost; for 72h Gen 5 reactions it is a significant loss.
+
+Fixed as two layers:
+
+**Server backstop:** `POST /bigbang` returns 409 `{ requiresConfirmation: true, activeEntries: N }` if in-flight entries (`processing | resolving | queued`) exist and `req.query.force !== 'true'`.
+
+**Client gate:** `BigBangPanel` now accepts `activeQueueCount`. The existing 2-step confirm now shows contextual text: *"X active syntheses will be forfeited. Continue?"* when the queue is non-empty, replacing the generic *"This resets your run."* The client always passes `force=true` on the confirmed call — BigBangPanel is the confirmation gate; the server guard is defense-in-depth only.
+
+---
+
+## Architecture Findings (from Phase I Readiness Audit)
+
+All findings from the audit are resolved or accepted:
+
+| Finding | Disposition |
+|---|---|
+| `expectedCompletion` is duration-agnostic (bare `Date`, no ceiling) | No change needed — already correct |
+| Snapshot pattern immune to config edits during synthesis | No change needed — already correct |
+| Per-user mutex + atomic claim are duration-agnostic | No change needed — already correct |
+| `pruneAfter` too short for long reactions | **Fixed** |
+| Big Bang drops in-flight queue with no warning | **Fixed** |
+| Energy generation is session-dependent (no passive offline energy) | Accepted — design tension for Gen 5, addressed via automation |
+| `maxOfflineHours: 24` generator cap | Accepted — intentional anti-AFK design |
+
+---
+
+## Long-Duration Support Status
+
+Long-duration synthesis is **technically ready for Gen 5**. The following properties hold at any reaction duration:
+
+- `expectedCompletion` accepts any future timestamp
+- Snapshots are durable and authoritative regardless of duration
+- Lazy completion on `GET /users/:username` and WS connect works at any duration
+- Server restart recovery is duration-agnostic (stale `resolving` → `processing` reset)
+- `pendingNotifications` buffer delivers offline completions regardless of duration
+- `pruneAfter` now scales with reaction duration
+
+---
+
+## Next Active Phase
+
+**Phase B3 — Gen 5 Design + Seeding + Validation**
+
+All Phase B3 dependencies are now met:
+- Phase Q (Gen 5 gate mechanism): `quantum_substrate.unlocksUserTier = 13` (J1 gate, organic economic pressure via Gen 5 reaction profile requiring parallel slots and high atom consumption)
+- Phase J1 (Economy architecture): approved
+- Phase I (Long-duration synthesis): ✅ COMPLETE (this checkpoint)
+
+Gen 5 substance and reaction content design begins now.
+
+---
+
+# Genesis Lab — Gen 5 Design Approved (2026-06-05)
+
+Gen 5 design proposal approved directionally. Full reaction graph is recorded in the design proposal above. Two implementation constraints recorded for seeding and Gen 6 design.
+
+---
+
+## Design Notes
+
+### Note 1 — Validate Gen 5 shard projections before seeding
+
+**Action required before Phase B3 seeding begins.**
+
+Projected Gen 5 shard yield: 310–350 shards from Gen 5 substance shardValues alone (sum of 276 from shardValues + log2 bonuses). This projection is based on the formula structure in `calculateGenesisShards.js` but has not been verified against the actual formula with real inputs.
+
+Before committing shardValues to seed data, run the formula against a simulated Gen 5 completion run (Gen 5 substance totals, unlockTier 18) and confirm the output is consistent with the prestige pacing arc:
+- Gen 5 completion run should yield enough shards for 2–3 meaningful blueprint purchases on top of the carry-over from Gen 1–4.
+- It should not saturate the prestige economy in a single run.
+- The gap between a Tier-13 run (reached Gen 5 entry, no capstone) and a full Gen 5 completion run should be large enough to motivate capstone completion.
+
+If the formula produces materially different output from the projection, adjust shardValues in the Gen 5 design before seeding — do not adjust the formula.
+
+---
+
+### Note 2 — Gen 6 must make Triple Reactor Array a critical-path improvement
+
+**Constraint for Phase B4 design. Locked.**
+
+In Gen 5, the dual-track structure (two parallel reactions per tier) makes 2 reactor slots strongly beneficial: it halves synthesis time on the critical path. The third slot (Triple Reactor Array) adds buffer utility and allows Gen 4 restocking to run alongside Gen 5 synthesis, but does not compress the Gen 5 critical path further.
+
+Gen 6 must correct this. The reaction graph for Gen 6 must include a tier band with three genuinely independent synthesis tracks — three reactions that can all run simultaneously and that must all complete before progression continues. At that tier, the difference between 2 slots and 3 slots must be a critical-path difference (not just reduced dead time). Triple Reactor Array is a 150-shard blueprint; it should feel like a mandatory investment for serious Gen 6 play, not a comfort upgrade.
+
+This constraint must be applied at the start of Gen 6 substance design, not retrofitted after the graph is drafted. Any Gen 6 design that does not include a genuine 3-track tier should be revised before approval.
 | 12 | nuclear_fuel_pellet production (Gen 4) | gen4_reactive_plasma_core, gen4_quantum_substrate |
