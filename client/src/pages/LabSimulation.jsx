@@ -47,6 +47,7 @@ const LabSimulation = ({ username, onLogout }) => {
     const [genesisShards, setGenesisShards] = useState(0);
     const [prestigeUpgrades, setPrestigeUpgrades] = useState({ energy: 0, matter: 0, chemistry: 0 });
     const [blueprints, setBlueprints] = useState([]);
+    const [generators, setGenerators] = useState([]);
     const [bigBangPhase, setBigBangPhase] = useState(null); // null | 'collapse' | 'singularity' | 'flash' | 'expansion' | 'rebirth'
     const [expectedShards, setExpectedShards] = useState(0);
     const [previousUnlockTier, setPreviousUnlockTier] = useState(0);
@@ -257,6 +258,48 @@ const LabSimulation = ({ username, onLogout }) => {
     };
 
 
+    const constructGenerator = async (moduleKey) => {
+        try {
+            const res = await fetchWithTimeout(
+                `http://localhost:3000/api/users/${user}/generators/${moduleKey}`,
+                { method: 'POST' }
+            );
+            const data = await res.json();
+            if (!res.ok) {
+                showToast('error', data.error || 'Construction failed');
+                return;
+            }
+            setGenerators(data.generators);
+            if (!wsEnergyActiveRef.current) setEnergy(data.energy);
+            if (data.inventory) setInventory(data.inventory);
+            showToast('success', 'Module constructed');
+        }
+        catch (err) {
+            showToast('error', err instanceof FetchTimeoutError ? 'Construction timed out' : 'Construction failed');
+        }
+    };
+
+    const upgradeGenerator = async (moduleKey) => {
+        try {
+            const res = await fetchWithTimeout(
+                `http://localhost:3000/api/users/${user}/generators/${moduleKey}/upgrade`,
+                { method: 'POST' }
+            );
+            const data = await res.json();
+            if (!res.ok) {
+                showToast('error', data.error || 'Upgrade failed');
+                return;
+            }
+            setGenerators(data.generators);
+            if (!wsEnergyActiveRef.current) setEnergy(data.energy);
+            if (data.inventory) setInventory(data.inventory);
+            showToast('success', 'Module upgraded');
+        }
+        catch (err) {
+            showToast('error', err instanceof FetchTimeoutError ? 'Upgrade timed out' : 'Upgrade failed');
+        }
+    };
+
     const experiment = async (substances) => {
         try {
             const response = await fetchWithTimeout(`http://localhost:3000/api/reactions/experiment?user=${user}`, {
@@ -419,6 +462,7 @@ const LabSimulation = ({ username, onLogout }) => {
             setGenesisShards(data.genesisShards);
             setPrestigeUpgrades(data.prestigeUpgrades);
             setBlueprints(data.blueprints || []);
+            setGenerators(data.generators || []);
             setReactionLog(data.reactionLog || []);
             setReactorCapabilities(data.reactorCapabilities || []);
         }
@@ -728,6 +772,11 @@ const LabSimulation = ({ username, onLogout }) => {
                                     prestigeUpgrades={prestigeUpgrades}
                                     purchaseBlueprint={purchaseBlueprint}
                                     isBusy={isBusy}
+                                    generators={generators}
+                                    constructModule={constructGenerator}
+                                    upgradeModule={upgradeGenerator}
+                                    userEnergy={energy}
+                                    inventory={inventory}
                                 />
                             )}
                         </div>

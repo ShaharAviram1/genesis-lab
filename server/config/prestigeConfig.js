@@ -1,3 +1,15 @@
+// Global constants for atom automation (R2).
+// maxOfflineHours caps catch-up ticks so offline players don't receive
+// unbounded stockpiles. minTickIntervalSec prevents micro-ticks on rapid
+// request bursts (e.g. page load + WS connect firing within milliseconds).
+const AUTOMATION_CONFIG = {
+    maxOfflineHours:       24,
+    minTickIntervalSec:    30,
+    maxGeneratorLevel:     5,
+    upgradeRateMultiplier: 1.5,
+    upgradeCapMultiplier:  1.5,
+};
+
 const PRESTIGE_CONFIG = {
     modules: {
         // ── R1 — Reactor Capacity (queue slot expansion) ────────────────────
@@ -67,36 +79,113 @@ const PRESTIGE_CONFIG = {
             levelCosts: [15, 30, 60, 120, 240]
         },
 
-        // ── R2 — Atom Automation (placeholder; production engine not yet built) ──
+        // ── R2 — Atom Automation ──────────────────────────────────────────────────
+        // Blueprint is permanent (survives Big Bang).
+        // Constructed module (user.generators[]) is per-run — reset on Big Bang.
+        // constructionMaterialCost: inventory substances consumed at build time.
+        // productionRatePerHour: units produced per listed substance per hour.
+        // productionCap: stops producing once inventory for that substance reaches
+        //   this level (from any source). Incentivises using materials.
         atmospheric_separator: {
             name: 'Atmospheric Separator',
             category: 'atom_automation',
             produces: ['hydrogen', 'oxygen'],
-            blueprintCost: 1
+            blueprintCost: 80,
+            constructionEnergyCost: 400,
+            constructionMaterialCost: [
+                { substanceKey: 'hydrogen_gas', quantity: 6 },
+                { substanceKey: 'oxygen_gas',   quantity: 4 },
+                { substanceKey: 'ammonia',       quantity: 2 },
+            ],
+            productionRatePerHour: 20,
+            productionCap: 200,
+            // upgradeCosts[i] = cost to go from level i+1 → i+2 (4 entries → max level 5)
+            upgradeCosts: [
+                { energyCost: 600,  materialCost: [{ substanceKey: 'hydrogen_gas', quantity: 6  }, { substanceKey: 'oxygen_gas',    quantity: 4  }] },
+                { energyCost: 1000, materialCost: [{ substanceKey: 'hydrogen_gas', quantity: 10 }, { substanceKey: 'ammonia',        quantity: 4  }] },
+                { energyCost: 1600, materialCost: [{ substanceKey: 'ammonia',      quantity: 8  }, { substanceKey: 'hydrogen_gas',   quantity: 15 }] },
+                { energyCost: 2500, materialCost: [{ substanceKey: 'ammonia',      quantity: 15 }, { substanceKey: 'oxygen_gas',     quantity: 12 }] },
+            ],
         },
         carbon_scrubber: {
             name: 'Carbon Scrubber',
             category: 'atom_automation',
             produces: ['carbon'],
-            blueprintCost: 1
+            blueprintCost: 150,
+            constructionEnergyCost: 800,
+            constructionMaterialCost: [
+                { substanceKey: 'carbon',         quantity: 15 },
+                { substanceKey: 'graphene',        quantity: 4 },
+                { substanceKey: 'carbon_nanotube', quantity: 1 },
+            ],
+            productionRatePerHour: 20,
+            productionCap: 250,
+            upgradeCosts: [
+                { energyCost: 1200, materialCost: [{ substanceKey: 'carbon',         quantity: 15 }, { substanceKey: 'graphene',        quantity: 3  }] },
+                { energyCost: 2000, materialCost: [{ substanceKey: 'graphene',        quantity: 6  }, { substanceKey: 'carbon_nanotube', quantity: 1  }] },
+                { energyCost: 3200, materialCost: [{ substanceKey: 'carbon_nanotube', quantity: 2  }, { substanceKey: 'graphene',        quantity: 8  }] },
+                { energyCost: 5000, materialCost: [{ substanceKey: 'carbon_nanotube', quantity: 4  }, { substanceKey: 'graphene',        quantity: 12 }] },
+            ],
         },
         nitrogen_condenser: {
             name: 'Nitrogen Condenser',
             category: 'atom_automation',
             produces: ['nitrogen'],
-            blueprintCost: 1
+            blueprintCost: 100,
+            constructionEnergyCost: 500,
+            constructionMaterialCost: [
+                { substanceKey: 'nitrogen_gas', quantity: 5 },
+                { substanceKey: 'ammonia',      quantity: 4 },
+                { substanceKey: 'aramid_fiber', quantity: 2 },
+            ],
+            productionRatePerHour: 12,
+            productionCap: 120,
+            upgradeCosts: [
+                { energyCost: 750,  materialCost: [{ substanceKey: 'nitrogen_gas', quantity: 6  }, { substanceKey: 'ammonia',      quantity: 3  }] },
+                { energyCost: 1200, materialCost: [{ substanceKey: 'ammonia',      quantity: 8  }, { substanceKey: 'nitrogen_gas', quantity: 10 }] },
+                { energyCost: 2000, materialCost: [{ substanceKey: 'aramid_fiber', quantity: 2  }, { substanceKey: 'ammonia',      quantity: 12 }] },
+                { energyCost: 3000, materialCost: [{ substanceKey: 'aramid_fiber', quantity: 4  }, { substanceKey: 'ammonia',      quantity: 16 }] },
+            ],
         },
         iron_smelter: {
             name: 'Iron Smelter',
             category: 'atom_automation',
             produces: ['iron'],
-            blueprintCost: 1
+            blueprintCost: 150,
+            constructionEnergyCost: 700,
+            constructionMaterialCost: [
+                { substanceKey: 'iron_oxide',      quantity: 6 },
+                { substanceKey: 'steel',           quantity: 2 },
+                { substanceKey: 'stainless_steel', quantity: 1 },
+            ],
+            productionRatePerHour: 12,
+            productionCap: 120,
+            upgradeCosts: [
+                { energyCost: 1000, materialCost: [{ substanceKey: 'iron_oxide',      quantity: 8  }, { substanceKey: 'steel',           quantity: 2  }] },
+                { energyCost: 1600, materialCost: [{ substanceKey: 'steel',           quantity: 4  }, { substanceKey: 'stainless_steel', quantity: 1  }] },
+                { energyCost: 2600, materialCost: [{ substanceKey: 'stainless_steel', quantity: 2  }, { substanceKey: 'steel',           quantity: 6  }] },
+                { energyCost: 4000, materialCost: [{ substanceKey: 'stainless_steel', quantity: 4  }, { substanceKey: 'steel',           quantity: 10 }] },
+            ],
         },
         sulfur_extractor: {
             name: 'Sulfur Extractor',
             category: 'atom_automation',
             produces: ['sulfur'],
-            blueprintCost: 1
+            blueprintCost: 80,
+            constructionEnergyCost: 350,
+            constructionMaterialCost: [
+                { substanceKey: 'sulfur',        quantity: 5 },
+                { substanceKey: 'sulfuric_acid', quantity: 2 },
+                { substanceKey: 'chrome',        quantity: 1 },
+            ],
+            productionRatePerHour: 6,
+            productionCap: 30,
+            upgradeCosts: [
+                { energyCost: 500,  materialCost: [{ substanceKey: 'sulfur',        quantity: 8  }, { substanceKey: 'sulfuric_acid', quantity: 3  }] },
+                { energyCost: 800,  materialCost: [{ substanceKey: 'sulfuric_acid', quantity: 5  }, { substanceKey: 'chrome',        quantity: 1  }] },
+                { energyCost: 1300, materialCost: [{ substanceKey: 'chrome',        quantity: 2  }, { substanceKey: 'sulfuric_acid', quantity: 8  }] },
+                { energyCost: 2000, materialCost: [{ substanceKey: 'chrome',        quantity: 4  }, { substanceKey: 'sulfuric_acid', quantity: 12 }] },
+            ],
         }
     }
 };
@@ -146,7 +235,24 @@ function getMaxBufferSlots(user) {
     return buffer;
 }
 
+// Returns the effective rate and cap for a generator at the given level.
+// Rate and cap scale multiplicatively per level using AUTOMATION_CONFIG multipliers.
+function getGeneratorStats(moduleKey, level) {
+    const cfg = PRESTIGE_CONFIG.modules[moduleKey];
+    if (!cfg) return { productionRatePerHour: 0, productionCap: 0 };
+    const maxLevel = (cfg.upgradeCosts?.length ?? 0) + 1;
+    const l = Math.max(1, Math.min(level || 1, maxLevel));
+    const rMult = Math.pow(AUTOMATION_CONFIG.upgradeRateMultiplier, l - 1);
+    const cMult = Math.pow(AUTOMATION_CONFIG.upgradeCapMultiplier,  l - 1);
+    return {
+        productionRatePerHour: Math.floor(cfg.productionRatePerHour * rMult),
+        productionCap:         Math.floor(cfg.productionCap         * cMult),
+    };
+}
+
 module.exports = PRESTIGE_CONFIG;
+module.exports.AUTOMATION_CONFIG = AUTOMATION_CONFIG;
+module.exports.getGeneratorStats = getGeneratorStats;
 module.exports.getMaxSlots = getMaxSlots;
 module.exports.getMaxBufferSlots = getMaxBufferSlots;
 module.exports.getReactionTimeMultiplier = getReactionTimeMultiplier;

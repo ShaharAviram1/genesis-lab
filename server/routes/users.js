@@ -183,4 +183,142 @@ router.post("/users/:username/blueprints/:blueprintKey", async (req, res) => {
 });
 
 
+// Construct an automation module during a run.
+// Requires owning the blueprint (permanent), spending construction energy, and
+// consuming the specified substances from inventory (per-run cost).
+// One module per blueprintKey per run; resets on Big Bang alongside user.generators.
+router.post("/users/:username/generators/:moduleKey", async (req, res) => {
+    try {
+        const { username, moduleKey } = req.params;
+        const moduleCfg = PRESTIGE_CONFIG.modules[moduleKey];
+        if (!moduleCfg || moduleCfg.category !== 'atom_automation') {
+            return res.status(400).json({ error: 'Unknown automation module' });
+        }
+
+        await flushPendingMongoEnergyForUser(username);
+        const user = await User.findOne({ username }).populate('inventory.substance');
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const hasBlueprint = user.blueprints.some(b => b.blueprintKey === moduleKey);
+        if (!hasBlueprint) {
+            return res.status(400).json({ error: 'Blueprint not owned' });
+        }
+
+        const alreadyBuilt = user.generators.some(g => g.moduleKey === moduleKey);
+        if (alreadyBuilt) {
+            return res.status(400).json({ error: 'Module already constructed this run' });
+        }
+
+        const energyCost = moduleCfg.constructionEnergyCost ?? 0;
+        if (user.energy < energyCost) {
+            return res.status(400).json({ error: `Insufficient energy (need ${energyCost})` });
+        }
+
+        const materialCosts = moduleCfg.constructionMaterialCost ?? [];
+        for (const { substanceKey, quantity } of materialCosts) {
+            const slot = user.inventory.find(i => i.substance?.substanceKey === substanceKey);
+            const have = slot?.quantity ?? 0;
+            if (have < quantity) {
+                return res.status(400).json({ error: `Insufficient ${substanceKey} (have ${have}, need ${quantity})` });
+            }
+        }
+
+        // Deduct materials
+        for (const { substanceKey, quantity } of materialCosts) {
+            const slot = user.inventory.find(i => i.substance?.substanceKey === substanceKey);
+            slot.quantity -= quantity;
+        }
+        user.inventory = user.inventory.filter(i => i.quantity > 0);
+
+        const now = new Date();
+        user.energy -= energyCost;
+        user.generators.push({ moduleKey, constructedAt: now, lastTickAt: now });
+        await user.save();
+        updateSessionPersistedEnergyBaseForUser(username, user.energy);
+
+        // Re-populate so response includes hydrated substance objects
+        await user.populate('inventory.substance');
+
+        return res.status(200).json({
+            success: true,
+            generators: user.generators,
+            energy: user.energy,
+            inventory: user.inventory,
+        });
+    }
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Failed to construct module' });
+    }
+});
+
+// Upgrade a constructed automation module to the next level during a run.
+// Costs energy + substances; no Genesis Shards. Level resets on Big Bang.
+router.post("/users/:username/generators/:moduleKey/upgrade", async (req, res) => {
+    try {
+        const { username, moduleKey } = req.params;
+        const moduleCfg = PRESTIGE_CONFIG.modules[moduleKey];
+        if (!moduleCfg || moduleCfg.category !== 'atom_automation') {
+            return res.status(400).json({ error: 'Unknown automation module' });
+        }
+
+        await flushPendingMongoEnergyForUser(username);
+        const user = await User.findOne({ username }).populate('inventory.substance');
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const gen = user.generators.find(g => g.moduleKey === moduleKey);
+        if (!gen) {
+            return res.status(400).json({ error: 'Module not constructed' });
+        }
+
+        const maxLevel = (moduleCfg.upgradeCosts?.length ?? 0) + 1;
+        if (gen.level >= maxLevel) {
+            return res.status(400).json({ error: 'Module already at max level' });
+        }
+
+        // upgradeCosts[i] = cost to go from level i+1 → i+2
+        const upgradeCost = moduleCfg.upgradeCosts[gen.level - 1];
+        if (!upgradeCost) {
+            return res.status(500).json({ error: 'Upgrade cost not configured' });
+        }
+
+        const energyCost = upgradeCost.energyCost ?? 0;
+        if (user.energy < energyCost) {
+            return res.status(400).json({ error: `Insufficient energy (need ${energyCost})` });
+        }
+
+        for (const { substanceKey, quantity } of (upgradeCost.materialCost ?? [])) {
+            const slot = user.inventory.find(i => i.substance?.substanceKey === substanceKey);
+            const have = slot?.quantity ?? 0;
+            if (have < quantity) {
+                return res.status(400).json({ error: `Insufficient ${substanceKey} (have ${have}, need ${quantity})` });
+            }
+        }
+
+        for (const { substanceKey, quantity } of (upgradeCost.materialCost ?? [])) {
+            const slot = user.inventory.find(i => i.substance?.substanceKey === substanceKey);
+            slot.quantity -= quantity;
+        }
+        user.inventory = user.inventory.filter(i => i.quantity > 0);
+
+        user.energy -= energyCost;
+        gen.level += 1;
+        await user.save();
+        updateSessionPersistedEnergyBaseForUser(username, user.energy);
+
+        await user.populate('inventory.substance');
+
+        return res.status(200).json({
+            success: true,
+            generators: user.generators,
+            energy: user.energy,
+            inventory: user.inventory,
+        });
+    }
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Failed to upgrade module' });
+    }
+});
+
 module.exports = router;

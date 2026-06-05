@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const completeReaction = require('./completeReaction');
+const resolveGenerators = require('./resolveGenerators');
 const { getMaxSlots } = require('./../config/prestigeConfig');
 
 // Stage 12 — Atomic double-completion guard.
@@ -256,8 +257,18 @@ async function resolveAndPruneUserQueue(originalUser, options = {}) {
             pendingAdded = true;
         }
 
-        const userModified = completions.length > 0 || promotions.length > 0 || queuePruned > 0 || notificationsPruned > 0 || pendingAdded;
-        if (userModified) await user.save();
+        const generatorProduced = await resolveGenerators(user);
+        const generatorsModified = generatorProduced.length > 0;
+
+        const userModified = completions.length > 0 || promotions.length > 0 || queuePruned > 0 || notificationsPruned > 0 || pendingAdded || generatorsModified;
+        if (userModified) {
+            await user.save();
+            // Re-populate inventory so newly added generator entries are fully
+            // hydrated before the caller serialises the response.
+            if (generatorsModified) {
+                await user.populate('inventory.substance');
+            }
+        }
 
         return { user, completions, promotions, userModified };
     });
