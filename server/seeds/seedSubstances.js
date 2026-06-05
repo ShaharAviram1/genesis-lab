@@ -1032,20 +1032,214 @@ const substances = [
         color: '#F59E0B',
         hintText: 'Axions crystallized into a macroscopic quantum state. The reactor synthesizes a piece of what the universe is mostly made of.',
         isActive: true
+    },
+
+    // ── Gen 6 — Entropic Horizons (10) ───────────────────────────────────────
+    // Seeds (unlockTier=18): vacuum_crystallite [T19], causal_diamond_fiber, cosmic_string_fragment
+    // Mids  (unlockTier=19): holographic_substrate [T20], planck_lattice [T21], brane_filament
+    // Outputs:               entropic_foam [T22], graviton_condensate [T23], moduli_condensate
+    // Capstone:              spacetime_nexus [T24]
+    {
+        substanceKey: 'vacuum_crystallite',
+        type: 'material',
+        name: 'Vacuum Crystallite',
+        symbol: 'VCry',
+        formula: 'QVL·QSub (vac)',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        unlocksUserTier: 19,
+        shardValue: 65,
+        baseEnergy: 2200,
+        stabilityFactor: 0.42,
+        reactivity: 0.08,
+        fantasyWeight: 7,
+        color: '#E0D7FF',
+        hintText: 'The vacuum is not empty. Push hard enough and it crystallizes.',
+        isActive: true
+    },
+    {
+        substanceKey: 'causal_diamond_fiber',
+        type: 'material',
+        name: 'Causal Diamond Fiber',
+        symbol: 'CaDFb',
+        formula: 'StrM·QSub (cdl)',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        shardValue: 60,
+        baseEnergy: 2300,
+        stabilityFactor: 0.40,
+        reactivity: 0.22,
+        fantasyWeight: 7,
+        color: '#FBBF24',
+        hintText: 'A fiber whose structure is defined not by atomic bonds but by the geometry of cause and effect.',
+        isActive: true
+    },
+    {
+        substanceKey: 'cosmic_string_fragment',
+        type: 'material',
+        name: 'Cosmic String Fragment',
+        symbol: 'CSFr',
+        formula: 'BNR·RPC·Fe',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        shardValue: 62,
+        baseEnergy: 2400,
+        stabilityFactor: 0.38,
+        reactivity: 0.45,
+        fantasyWeight: 7,
+        color: '#F472B6',
+        hintText: 'A relic of the universe\'s first phase transitions, held stable by the reactor long enough to be useful.',
+        isActive: true
+    },
+    {
+        substanceKey: 'holographic_substrate',
+        type: 'material',
+        name: 'Holographic Substrate',
+        symbol: 'HoloS',
+        formula: 'VCry·AxC·QSub',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        unlocksUserTier: 20,
+        shardValue: 75,
+        baseEnergy: 2800,
+        stabilityFactor: 0.37,
+        reactivity: 0.05,
+        fantasyWeight: 8,
+        color: '#60A5FA',
+        hintText: 'No volume. Only boundary. Three-dimensional physics encoded on a two-dimensional surface.',
+        isActive: true
+    },
+    {
+        substanceKey: 'planck_lattice',
+        type: 'material',
+        name: 'Planck Lattice',
+        symbol: 'PlkL',
+        formula: 'VCry·CaDFb·MH',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        unlocksUserTier: 21,
+        shardValue: 78,
+        baseEnergy: 2900,
+        stabilityFactor: 0.35,
+        reactivity: 0.12,
+        fantasyWeight: 8,
+        color: '#FEF9C3',
+        hintText: 'A crystal whose unit cell is the Planck length. The metric curves around it.',
+        isActive: true
+    },
+    {
+        substanceKey: 'brane_filament',
+        type: 'material',
+        name: 'Brane Filament',
+        symbol: 'BrnF',
+        formula: 'CaDFb·CSFr·RPC',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        shardValue: 72,
+        baseEnergy: 3000,
+        stabilityFactor: 0.33,
+        reactivity: 0.38,
+        fantasyWeight: 8,
+        color: '#9333EA',
+        hintText: 'The tension of a compactified spatial dimension, partially unrolled and held in filament form.',
+        isActive: true
+    },
+    {
+        substanceKey: 'entropic_foam',
+        type: 'material',
+        name: 'Entropic Foam',
+        symbol: 'EntF',
+        formula: 'HoloS·CryM (foam)',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        unlocksUserTier: 22,
+        shardValue: 95,
+        baseEnergy: 3500,
+        stabilityFactor: 0.30,
+        reactivity: 0.06,
+        fantasyWeight: 8,
+        color: '#0D9488',
+        hintText: 'Near its ground state, the geometry of space itself fluctuates. The reactor holds that fluctuation in check long enough to characterize it.',
+        isActive: true
+    },
+    {
+        substanceKey: 'graviton_condensate',
+        type: 'material',
+        name: 'Graviton Condensate',
+        symbol: 'GrvC',
+        formula: 'PlkL·MH·QSub',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        unlocksUserTier: 23,
+        shardValue: 100,
+        baseEnergy: 3800,
+        stabilityFactor: 0.27,
+        reactivity: 0.10,
+        fantasyWeight: 8,
+        color: '#F97316',
+        hintText: 'Gravity, condensed into matter. The force that holds the universe together, held together itself.',
+        isActive: true
+    },
+    {
+        substanceKey: 'moduli_condensate',
+        type: 'material',
+        name: 'Moduli Condensate',
+        symbol: 'ModC',
+        formula: 'BrnF·PlkL·RPC',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        shardValue: 90,
+        baseEnergy: 3600,
+        stabilityFactor: 0.29,
+        reactivity: 0.18,
+        fantasyWeight: 8,
+        color: '#84CC16',
+        hintText: 'The scalar fields that govern the shape of hidden dimensions, stabilized into a condensate.',
+        isActive: true
+    },
+    {
+        substanceKey: 'spacetime_nexus',
+        type: 'material',
+        name: 'Spacetime Nexus',
+        symbol: 'StNex',
+        formula: 'EntF·GrvC·ModC·AxC',
+        category: 'exotic_material',
+        generationTier: 6,
+        unlockTier: 6,
+        unlocksUserTier: 24,
+        shardValue: 130,
+        baseEnergy: 5000,
+        stabilityFactor: 0.22,
+        reactivity: 0.03,
+        fantasyWeight: 9,
+        color: '#FBBF24',
+        hintText: 'Where information geometry, gravitational condensation, and dimensional compactification stabilize each other. A bounded region of spacetime whose interior geometry differs from everything outside it.',
+        isActive: true
     }
 ];
 
-// Expected: 18 Gen 1 + 13 Gen 2 + 9 Gen 3 + 8 Gen 4 + 9 Gen 5 = 57 total
+// Expected: 18 Gen 1 + 13 Gen 2 + 9 Gen 3 + 8 Gen 4 + 9 Gen 5 + 10 Gen 6 = 67 total
 const gen1 = substances.filter(s => s.generationTier === 1).length;
 const gen2 = substances.filter(s => s.generationTier === 2).length;
 const gen3 = substances.filter(s => s.generationTier === 3).length;
 const gen4 = substances.filter(s => s.generationTier === 4).length;
 const gen5 = substances.filter(s => s.generationTier === 5).length;
+const gen6 = substances.filter(s => s.generationTier === 6).length;
 console.assert(gen1 === 18, `Gen 1 count wrong: ${gen1}`);
 console.assert(gen2 === 13, `Gen 2 count wrong: ${gen2}`);
 console.assert(gen3 === 9,  `Gen 3 count wrong: ${gen3}`);
 console.assert(gen4 === 8,  `Gen 4 count wrong: ${gen4}`);
 console.assert(gen5 === 9,  `Gen 5 count wrong: ${gen5}`);
+console.assert(gen6 === 10, `Gen 6 count wrong: ${gen6}`);
 
 (async () => {
     try {

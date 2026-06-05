@@ -55,7 +55,15 @@ async function resolveQueue(user) {
     // ── Main resolution pass ───────────────────────────────────────────────────
     const dueEntries = user.activeQueue
         .filter(e => e.status === 'processing' && e.expectedCompletion <= now)
-        .sort((a, b) => a.expectedCompletion - b.expectedCompletion);
+        .sort((a, b) => {
+            // Process lower-tier unlocks first so each tier gate fires in order.
+            // Without this, a higher-tier substance processed first advances user.unlockTier
+            // past an intermediate tier, causing the lower-tier substance's check to fail.
+            const tierA = a.snapshot?.productUnlocksUserTier ?? Infinity;
+            const tierB = b.snapshot?.productUnlocksUserTier ?? Infinity;
+            if (tierA !== tierB) return tierA - tierB;
+            return a.expectedCompletion - b.expectedCompletion;
+        });
 
     const results = [];
 

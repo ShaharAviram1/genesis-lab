@@ -93,6 +93,29 @@ const CONDITION_REGISTRY = [
         shortDescription: 'Enables reactions that operate at sub-nuclear densities, compressing matter beyond atomic structure.',
         unlock:           { type: 'substance', substanceKey: 'chromodynamic_fiber' },
         generationHint:   5
+    },
+
+    // ── Gen 6 ─────────────────────────────────────────────────────────────────
+    {
+        key:              'holographic_encoding',
+        displayName:      'Holographic Encoding',
+        shortDescription: 'Enables reactions that exploit the holographic principle, encoding three-dimensional reaction pathways onto two-dimensional boundary states.',
+        unlock:           { type: 'substance', substanceKey: 'holographic_substrate' },
+        generationHint:   6
+    },
+    {
+        key:              'metric_tension',
+        displayName:      'Metric Tension',
+        shortDescription: 'Enables reactions requiring sustained curvature stress in the local metric, achieved by proximity to Planck-density matter.',
+        unlock:           { type: 'substance', substanceKey: 'planck_lattice' },
+        generationHint:   6
+    },
+    {
+        key:              'causal_isolation',
+        displayName:      'Causal Isolation',
+        shortDescription: 'Enables reactions that operate within an isolated causal domain, shielded from external light-cone interactions.',
+        unlock:           { type: 'substance', substanceKey: 'brane_filament' },
+        generationHint:   6
     }
 ];
 

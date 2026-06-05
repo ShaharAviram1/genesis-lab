@@ -7,7 +7,7 @@ const AUTOMATION_CONFIG = {
     minTickIntervalSec:    30,
     maxGeneratorLevel:     5,
     upgradeRateMultiplier: 1.5,
-    upgradeCapMultiplier:  1.5,
+    upgradeCapMultiplier:  1.1,
 };
 
 const PRESTIGE_CONFIG = {

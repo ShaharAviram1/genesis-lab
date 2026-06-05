@@ -1110,3 +1110,80 @@ Gen 6 must correct this. The reaction graph for Gen 6 must include a tier band w
 
 This constraint must be applied at the start of Gen 6 substance design, not retrofitted after the graph is drafted. Any Gen 6 design that does not include a genuine 3-track tier should be revised before approval.
 | 12 | nuclear_fuel_pellet production (Gen 4) | gen4_reactive_plasma_core, gen4_quantum_substrate |
+
+---
+
+# Genesis Lab — Phase B3: Gen 5 Complete (2026-06-05)
+
+Phase B3 (Gen 5 Design + Seeding) is complete. All 9 substances, 9 reactions, and 3 conditions are seeded and active.
+
+---
+
+## What Was Seeded
+
+### Substances (`server/seeds/seedSubstances.js`) — 9 inserted
+
+| Substance | Track | Tier | unlocksUserTier | shardValue | Reaction Time |
+|---|---|---|---|---|---|
+| topological_insulator | A | T13 | 14 | 20 | 8h |
+| photonic_crystal | B | T13 | — | 18 | 8h |
+| superfluid_condensate | A | T14 | — | 22 | 12h |
+| chromodynamic_fiber | B | T14 | 15 | 25 | 12h |
+| bose_nova_remnant | A | T15 | 16 | 28 | 24h |
+| magnetar_filament | B | T15 | — | 30 | 24h |
+| quantum_vacuum_lattice | A | T16 | 17 | 40 | 48h |
+| strangeon_matter | B | T16 | — | 38 | 48h |
+| axionic_condensate | capstone | T17 | 18 | 55 | 48h |
+
+### Conditions (`server/config/conditionRegistry.js`) — 3 added
+
+| Key | Granted by | Used in |
+|---|---|---|
+| `quantum_coherence` | topological_insulator (T13) | superfluid_condensate (T14), quantum_vacuum_lattice (T16), axionic_condensate (T17) |
+| `zero_point_field` | superfluid_condensate (T14) | bose_nova_remnant (T15), quantum_vacuum_lattice (T16), axionic_condensate (T17) |
+| `nucleon_compression` | chromodynamic_fiber (T14) | magnetar_filament (T15), strangeon_matter (T16), axionic_condensate (T17) |
+
+### Tier Gate Chain
+
+```
+T13 (quantum_substrate grants) → both track entries available
+topological_insulator produced → T14 unlocked
+chromodynamic_fiber produced → T15 unlocked
+bose_nova_remnant produced → T16 unlocked
+quantum_vacuum_lattice produced → T17 unlocked
+axionic_condensate produced → T18 (Gen 5 complete)
+```
+
+---
+
+## Shard Projection (validated)
+
+Formula: `max(0, floor(unlockTier * 1.3) - 1) + Σ(shardValue + log2(produced + 1))` per substance with shardValue > 0
+
+Full Gen 5 completion run yields approximately **450 shards total** (~300 above a Gen 4 baseline run). Consistent with 2–3 meaningful blueprint purchases per run (triple_reactor_array: 150, extended_buffer: 200, Gen 4 accelerator levels: 15–240 each).
+
+---
+
+## Bugs Fixed During B3
+
+### Tier upgrade toast missing on offline reconnect / fast-forward
+
+**Root cause:** Tier toast was detected via `useEffect([unlockTier])` comparing `previousUnlockTier < unlockTier`. On offline reconnect, `resolveAndPruneUserQueue` advances the DB tier before WS events arrive. The initial `fetchUserData()` call sets `unlockTier` directly to the new value, bypassing the `previousUnlockTier !== 0` guard. By the time `synthesis_completed` events arrive and call `fetchUserData()` again, `unlockTier` hasn't changed → effect doesn't fire → no toast.
+
+**Fix:** Tier toast now fires from the `synthesis_completed`/`synthesis_discovered` WS handler, using `data.prevUnlockTier !== data.newUnlockTier` (server-authoritative diff). `useEffect([unlockTier])` reduced to a pure `previousUnlockTier` sync. File: `client/src/pages/LabSimulation.jsx`.
+
+### Countdown format missing hours
+
+Reactions ≥1h now display as `Xh XXm XXs`. File: `client/components/QueuePanel.jsx`, `formatCountdown()`.
+
+### Tier messages missing for Gen 5
+
+`handleTierUnlock` tier map extended to cover tiers 13–18. File: `client/src/pages/LabSimulation.jsx`.
+
+---
+
+## Next Active Phase
+
+**Phase J2 — Economy Balancing (Gen 5 pass)**
+
+Requires Phase G `time-acceleration` endpoint to be implemented before a meaningful Gen 5 playthrough can validate the economic wall. Until then, J2 Gen 5 pass is blocked on Phase G completion.

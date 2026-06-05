@@ -850,7 +850,7 @@ const reactions = [
         isActive: true
     },
 
-    // ── Gen 5 — T17 Capstone ──────────────────────────────────────────────────
+    // ── Gen 5 — T17 Capstone ─────────────────────────────────────────────────
     {
         reactionKey: 'gen5_axionic_condensate',
         name: 'Axionic Condensate Emergence',
@@ -869,6 +869,213 @@ const reactions = [
         discoveredByDefault: false,
         hintText: 'All three Gen 5 conditions active simultaneously. Both convergence tracks unified. What emerges is not matter as understood — it is dark matter, crystallized.',
         description: 'The two convergence outputs of Gen 5 — quantum vacuum lattice from Track A and strangeon matter from Track B — combined with a reactive plasma core for ignition energy and a quantum substrate as a phase anchor. All three Gen 5 conditions active simultaneously. The quantum vacuum lattice provides the geometric scaffold. The strangeon matter provides the quark-density medium. The reactive plasma core drives the phase transition. What condenses is an axionic state — a macroscopic coherent crystal of axions, dark matter candidates made momentarily tangible. The reactor has synthesized a piece of what the universe is mostly made of. Gen 5 is complete.',
+        isActive: true
+    },
+
+    // ── Gen 6 — Entropic Horizons ─────────────────────────────────────────────
+    // Three seeds (unlockTier=18), three mids (unlockTier=19), three outputs,
+    // one capstone. All three tracks must complete before the capstone can start.
+
+    // ── Gen 6 Seeds — T18 ────────────────────────────────────────────────────
+    {
+        reactionKey: 'gen6_vacuum_crystallite',
+        name: 'Vacuum Crystallite Formation',
+        generationTier: 6,
+        unlockTier: 18,
+        reactants: [
+            { key: 'quantum_vacuum_lattice', quantity: 1 },
+            { key: 'quantum_substrate',      quantity: 2 },
+            { key: 'sulfur',                 quantity: 8 }
+        ],
+        product: { key: 'vacuum_crystallite', quantity: 1 },
+        energyCost: 2200,
+        reactionTime: 172800,
+        conditions: ['quantum_coherence', 'zero_point_field'],
+        discoveredByDefault: false,
+        hintText: 'The quantum vacuum lattice, pressed against its own substrate until the space between them takes on structure.',
+        description: 'A quantum vacuum lattice and two quantum substrate units brought into precise resonance under quantum coherence and zero-point field conditions, with sulfur acting as a phase-binding medium. The zero-point fluctuations between the two lattices lock into a periodic pattern — a crystal whose unit cell is a geometry of vacuum fluctuation rather than atomic position. The vacuum crystallite is the entry point of Gen 6: a material defined not by what it contains but by the structure of the vacuum around it. Producing it unlocks T19 and gates all three mid-tier Gen 6 reactions.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen6_causal_diamond_fiber',
+        name: 'Causal Diamond Fiber Threading',
+        generationTier: 6,
+        unlockTier: 18,
+        reactants: [
+            { key: 'strangeon_matter',   quantity: 1 },
+            { key: 'quantum_substrate',  quantity: 1 },
+            { key: 'carbon',             quantity: 8 }
+        ],
+        product: { key: 'causal_diamond_fiber', quantity: 1 },
+        energyCost: 2300,
+        reactionTime: 172800,
+        conditions: ['quantum_coherence', 'nucleon_compression'],
+        discoveredByDefault: false,
+        hintText: 'Quark-density matter forced into a one-dimensional configuration aligned with local light-cone geometry.',
+        description: 'Strangeon matter and quantum substrate converged under quantum coherence and nucleon compression, with carbon providing topological anchoring for the fiber geometry. At quark densities, the reaction forces matter into a one-dimensional configuration aligned with the causal structure of the local spacetime — the boundary between regions that can and cannot influence each other. The result is a filament whose mechanical properties are determined not by atomic bonding but by the causal geometry of spacetime itself. Required for both mid-tier Track B and Track C reactions.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen6_cosmic_string_fragment',
+        name: 'Cosmic String Stabilization',
+        generationTier: 6,
+        unlockTier: 18,
+        reactants: [
+            { key: 'bose_nova_remnant',    quantity: 1 },
+            { key: 'reactive_plasma_core', quantity: 1 },
+            { key: 'iron',                 quantity: 12 }
+        ],
+        product: { key: 'cosmic_string_fragment', quantity: 1 },
+        energyCost: 2400,
+        reactionTime: 172800,
+        conditions: ['zero_point_field', 'nucleon_compression'],
+        discoveredByDefault: false,
+        hintText: 'A topological defect seeded from Bose-nova geometry. The reactor holds a fragment of a structure that should be millions of lightyears long.',
+        description: 'Bose-nova remnant provides the topological seed geometry; reactive plasma core supplies the energy density required to sustain the defect; twelve units of iron provide the nuclear density needed to anchor the string against quantum decoherence. Under zero-point field and nucleon compression, the topological defect geometry of the Bose-nova remnant is extended into a one-dimensional cosmic string configuration. At cosmological scales, such strings span astronomical distances. The reactor holds a fragment smaller than a wavelength of light — but the physics are identical. Required for Track C mid-tier synthesis.',
+        isActive: true
+    },
+
+    // ── Gen 6 Mids — T19 ─────────────────────────────────────────────────────
+    {
+        reactionKey: 'gen6_holographic_substrate',
+        name: 'Holographic Substrate Encoding',
+        generationTier: 6,
+        unlockTier: 19,
+        reactants: [
+            { key: 'vacuum_crystallite',  quantity: 1 },
+            { key: 'axionic_condensate',  quantity: 1 },
+            { key: 'quantum_substrate',   quantity: 2 }
+        ],
+        product: { key: 'holographic_substrate', quantity: 1 },
+        energyCost: 2800,
+        reactionTime: 259200,
+        conditions: ['quantum_coherence', 'zero_point_field'],
+        discoveredByDefault: false,
+        hintText: 'Three-dimensional physics encoded on a two-dimensional boundary. The bulk is a derived consequence of the surface.',
+        description: 'Vacuum crystallite brought into resonance with an axionic condensate and two quantum substrate units under quantum coherence and zero-point field conditions. The axionic condensate provides the dark-matter scalar field that enforces the holographic correspondence; the vacuum crystallite provides the boundary geometry; the quantum substrates anchor the bulk-to-boundary mapping. What forms is a matter state that encodes three-dimensional physical information on a two-dimensional surface in accordance with the holographic principle. The holographic substrate has no volume in the conventional sense: its bulk properties are entirely derived from its boundary. Producing it grants the holographic encoding condition. Gates T20.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen6_planck_lattice',
+        name: 'Planck Lattice Crystallization',
+        generationTier: 6,
+        unlockTier: 19,
+        reactants: [
+            { key: 'vacuum_crystallite',   quantity: 1 },
+            { key: 'causal_diamond_fiber', quantity: 1 },
+            { key: 'metallic_hydrogen',    quantity: 3 },
+            { key: 'quantum_substrate',    quantity: 1 }
+        ],
+        product: { key: 'planck_lattice', quantity: 1 },
+        energyCost: 2900,
+        reactionTime: 259200,
+        conditions: ['zero_point_field', 'nucleon_compression'],
+        discoveredByDefault: false,
+        hintText: 'A crystal whose unit cell is the Planck length. The spacetime metric curves around the lattice rather than through it.',
+        description: 'Vacuum crystallite and causal diamond fiber converged under zero-point field and nucleon compression, with metallic hydrogen providing mass-energy density and quantum substrate as a phase anchor. The causal diamond fiber provides the geometric frame; the vacuum crystallite provides the minimum-length spacing mechanism. At the resulting density, the lattice unit cell reaches Planck scale — the length below which space itself ceases to be continuous. The local spacetime metric curves around the lattice mass-energy. Proximity to planck lattice sustains this curvature stress in the local metric, granting the metric tension condition. Gates T21.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen6_brane_filament',
+        name: 'Brane Filament Extrusion',
+        generationTier: 6,
+        unlockTier: 19,
+        reactants: [
+            { key: 'causal_diamond_fiber', quantity: 1 },
+            { key: 'cosmic_string_fragment', quantity: 1 },
+            { key: 'reactive_plasma_core', quantity: 1 },
+            { key: 'nitrogen',             quantity: 10 }
+        ],
+        product: { key: 'brane_filament', quantity: 1 },
+        energyCost: 3000,
+        reactionTime: 259200,
+        conditions: ['quantum_coherence', 'nucleon_compression'],
+        discoveredByDefault: false,
+        hintText: 'A compactified spatial dimension, partially unrolled. The filament is under tension that is not electromagnetic.',
+        description: 'Causal diamond fiber and cosmic string fragment driven under quantum coherence and nucleon compression, with reactive plasma core providing dimensional decompactification energy and nitrogen as a field mediator. The cosmic string geometry provides the dimensional defect seed; the causal diamond fiber provides the directionality; the plasma energy partially unrolls a compactified extra dimension along the fiber axis. The resulting filament is under tension that is not electromagnetic but dimensional — the tension of a spatial dimension resisting extension. Within its vicinity, reactions can be shielded from external light-cone interactions: the brane filament grants the causal isolation condition.',
+        isActive: true
+    },
+
+    // ── Gen 6 Outputs ─────────────────────────────────────────────────────────
+    {
+        reactionKey: 'gen6_entropic_foam',
+        name: 'Entropic Foam Condensation',
+        generationTier: 6,
+        unlockTier: 20,
+        reactants: [
+            { key: 'holographic_substrate', quantity: 1 },
+            { key: 'cryogenic_matrix',      quantity: 2 },
+            { key: 'quantum_substrate',     quantity: 1 }
+        ],
+        product: { key: 'entropic_foam', quantity: 1 },
+        energyCost: 3500,
+        reactionTime: 345600,
+        conditions: ['quantum_coherence', 'zero_point_field', 'holographic_encoding'],
+        discoveredByDefault: false,
+        hintText: 'Near absolute zero, the geometry of spacetime begins to fluctuate. The holographic substrate encodes those fluctuations into something stable enough to examine.',
+        description: 'Holographic substrate under double cryogenic matrix damping and quantum substrate anchoring, driven by quantum coherence, zero-point field, and holographic encoding. The cryogenic matrix suppresses thermal noise to the point where quantum geometry fluctuations become the dominant source of disorder. The holographic substrate allows the resulting microstate superposition to be specified as a boundary condition rather than a volumetric chaos. What condenses is a controlled pocket of spacetime near its ground state: a region where the distinction between geometry and matter begins to dissolve. The entropic foam is not a material in the conventional sense — it is a bounded spacetime fluctuation, stable while contained. Gates T22.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen6_graviton_condensate',
+        name: 'Graviton Condensate Assembly',
+        generationTier: 6,
+        unlockTier: 21,
+        reactants: [
+            { key: 'planck_lattice',    quantity: 1 },
+            { key: 'metallic_hydrogen', quantity: 4 },
+            { key: 'quantum_substrate', quantity: 1 }
+        ],
+        product: { key: 'graviton_condensate', quantity: 1 },
+        energyCost: 3800,
+        reactionTime: 345600,
+        conditions: ['nucleon_compression', 'metric_tension'],
+        discoveredByDefault: false,
+        hintText: 'At Planck-density curvature, gravitons scatter often enough to reach thermal equilibrium. The metric tension condition holds the curvature. What condenses is gravity itself.',
+        description: 'Planck lattice under metallic hydrogen mass-energy loading and quantum substrate phase stabilization, driven by nucleon compression and metric tension. The planck lattice sustains the curvature stress required; metallic hydrogen provides the mass-energy density that drives graviton scattering to thermal equilibrium rates; quantum substrate anchors the condensate against decoherence. At sufficient curvature, gravitons — the quanta of the gravitational field — scatter frequently enough to reach a condensed state: gravity behaving as bulk matter. The reactor has synthesized a piece of what holds the universe together. Gates T23.',
+        isActive: true
+    },
+    {
+        reactionKey: 'gen6_moduli_condensate',
+        name: 'Moduli Condensate Stabilization',
+        generationTier: 6,
+        unlockTier: 21,
+        reactants: [
+            { key: 'brane_filament',       quantity: 1 },
+            { key: 'planck_lattice',       quantity: 1 },
+            { key: 'reactive_plasma_core', quantity: 2 },
+            { key: 'nitrogen',             quantity: 8 }
+        ],
+        product: { key: 'moduli_condensate', quantity: 1 },
+        energyCost: 3600,
+        reactionTime: 345600,
+        conditions: ['zero_point_field', 'causal_isolation'],
+        discoveredByDefault: false,
+        hintText: 'The scalar fields that govern the shape of hidden dimensions, driven into condensation by the causal isolation the brane filament provides.',
+        description: 'Brane filament and planck lattice combined under reactive plasma excitation and nitrogen as a field mediator, driven by zero-point field and causal isolation. The brane filament\'s causal isolation prevents the moduli field from coupling to the external metric and dissipating; the planck lattice provides the density required for moduli field condensation; the two reactive plasma cores drive the field excitation. Without causal isolation, the moduli field would immediately couple to macroscopic gravity and detach from the reactor. Contained, it is a scalar condensate encoding the geometry of dimensions that normal matter never encounters. The moduli condensate is the capstone of Track C.',
+        isActive: true
+    },
+
+    // ── Gen 6 — T22 Capstone ──────────────────────────────────────────────────
+    {
+        reactionKey: 'gen6_spacetime_nexus',
+        name: 'Spacetime Nexus Convergence',
+        generationTier: 6,
+        unlockTier: 22,
+        reactants: [
+            { key: 'entropic_foam',        quantity: 1 },
+            { key: 'graviton_condensate',  quantity: 1 },
+            { key: 'moduli_condensate',    quantity: 1 },
+            { key: 'axionic_condensate',   quantity: 1 },
+            { key: 'reactive_plasma_core', quantity: 2 }
+        ],
+        product: { key: 'spacetime_nexus', quantity: 1 },
+        energyCost: 5000,
+        reactionTime: 432000,
+        conditions: ['holographic_encoding', 'metric_tension', 'causal_isolation'],
+        discoveredByDefault: false,
+        hintText: 'Three Gen 6 conditions. Three track outputs. The axionic condensate as foundation. What forms is not composed of matter — it is a region of spacetime whose interior geometry differs from everything outside it.',
+        description: 'The three Gen 6 track outputs converge: entropic foam from Track A, graviton condensate from Track B, moduli condensate from Track C. Anchored by axionic condensate as the Gen 5 foundation and driven by two reactive plasma cores as ignition energy. All three Gen 6 conditions active simultaneously — holographic encoding specifies the boundary geometry, metric tension maintains the curvature scaffold, causal isolation prevents the structure from coupling to the external spacetime and unraveling. The three matter types provide mutual support for each other\'s stability conditions: the entropic foam\'s fluctuation is structured by the graviton condensate\'s curvature; the graviton condensate is shielded from decoherence by the moduli condensate\'s causal boundary; the moduli condensate\'s extra-dimensional geometry is anchored by the entropic foam\'s vacuum structure. What forms is a spacetime nexus: a bounded region whose interior geometry differs from its surroundings, self-sustaining against collapse. The reactor has synthesized a piece of the fabric of the universe itself. Gen 6 is complete.',
         isActive: true
     }
 ];

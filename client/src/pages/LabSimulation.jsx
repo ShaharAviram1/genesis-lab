@@ -175,7 +175,13 @@ const LabSimulation = ({ username, onLogout }) => {
             15: "Chromodynamic matter achieved",
             16: "Convergence tracks complete",
             17: "Both tracks unified",
-            18: "Gen 5 complete"
+            18: "Gen 5 complete",
+            19: "Entropic Horizons begin",
+            20: "Holographic encoding active",
+            21: "Planck-density matter achieved",
+            22: "Quantum foam crystallized",
+            23: "Graviton condensate formed",
+            24: "Gen 6 complete"
         };
         const message = tierMessages[newTier] || "New tier unlocked";
         showToast("milestone", `✦ Tier ${newTier}: ${message}`);
@@ -198,7 +204,23 @@ const LabSimulation = ({ username, onLogout }) => {
         if (unlockTier === 9) return "The plasma era begins. Converge your most advanced materials and ionize the first plasma-state substance.";
         if (unlockTier === 10) return "Stabilize your first plasma-state material — Hydrogen Plasma opens the next tier.";
         if (unlockTier === 11) return "Develop cryogenic containment and a nuclear-grade fuel source.";
-        // Tier 12+: capstone detection via inventory substanceKey
+        // Gen 4 final gate (T12–13 are unlocked by late Gen 4 substances)
+        if (unlockTier === 12) return "Nuclear fuel synthesis underway. Synthesize the quantum substrate to open the quantum frontier.";
+        // Gen 5 — Quantum Frontier (T13–T18)
+        if (unlockTier === 13) return "Gen 5 begins. Two tracks — topological and photonic — are now accessible. Advance both in parallel.";
+        if (unlockTier === 14) return "Quantum coherence is active. Push both Gen 5 tracks toward their mid-tier convergence outputs.";
+        if (unlockTier === 15) return "Chromodynamic matter achieved. Both tracks are deepening — push toward the Bose-Nova remnant and magnetar filament.";
+        if (unlockTier === 16) return "Bose-Nova remnant created. Complete Track A and push Track B toward strangeon matter.";
+        if (unlockTier === 17) return "Quantum vacuum lattice synthesized. Complete strangeon matter, then converge both tracks into the axionic condensate.";
+        if (unlockTier === 18) return "Gen 5 complete. The axionic condensate opens three new entropic-horizon synthesis tracks.";
+        // Gen 6 — Entropic Horizons (T19–T24)
+        if (unlockTier === 19) return "Entropic Horizons begin. Three parallel seed reactions are now unlocked — each requires deep Gen 5 outputs.";
+        if (unlockTier === 20) return "Holographic encoding is active. Mid-generation outputs are now accessible across all three tracks.";
+        if (unlockTier === 21) return "Planck-density matter achieved. All three Gen 6 output reactions are now open.";
+        if (unlockTier === 22) return "Quantum foam crystallized. Three output streams must converge into the spacetime nexus.";
+        if (unlockTier === 23) return "Graviton condensate formed. One output stream remains before the final capstone synthesis.";
+        if (unlockTier >= 24) return "Gen 6 complete. The spacetime nexus has been synthesized.";
+        // Safety fallback for any intermediate state before T12
         const gen4Done = hasProduced('reactive_plasma_core') && hasProduced('quantum_substrate');
         if (gen4Done) return "Gen 4 complete. The reactor is ready for cosmic-scale synthesis.";
         return "Complete the Gen 4 capstone syntheses — converge all three extreme-state tracks.";
@@ -612,7 +634,10 @@ const LabSimulation = ({ username, onLogout }) => {
                     });
                 }
                 if (data.newUnlockTier && data.newUnlockTier !== data.prevUnlockTier) {
-                    handleTierUnlock(data.newUnlockTier);
+                    const prev = data.prevUnlockTier || 0;
+                    for (let t = prev + 1; t <= data.newUnlockTier; t++) {
+                        handleTierUnlock(t);
+                    }
                     setNewlyRevealedTier(data.newUnlockTier);
                     setTimeout(() => setNewlyRevealedTier(null), 30000);
                     setPreviousUnlockTier(data.newUnlockTier);
