@@ -62,6 +62,15 @@ router.post("/bigbang", async (req, res) => {
     try {
         const user = await User.findOne({ username: req.query.user }).populate('inventory.substance').populate('runTotals.substance');
         if (!user) { return res.status(404).json({ error: "User not found" }); }
+
+        const inFlight = (user.activeQueue || []).filter(e => e.status === 'processing' || e.status === 'resolving' || e.status === 'queued');
+        if (inFlight.length > 0 && req.query.force !== 'true') {
+            return res.status(409).json({
+                requiresConfirmation: true,
+                activeEntries: inFlight.length,
+            });
+        }
+
         await flushPendingMongoEnergyForUser(user.username);
         user.genesisShards += calculateGenesisShards(user.runTotals, user.unlockTier);
         user.inventory           = [];

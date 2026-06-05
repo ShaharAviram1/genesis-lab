@@ -84,7 +84,7 @@ const ATOM_MODULES = [
             { energyCost: 600,  materialCost: [{ substanceKey: 'hydrogen_gas', name: 'Hydrogen Gas', quantity: 6  }, { substanceKey: 'oxygen_gas',    name: 'Oxygen Gas',    quantity: 4  }] },
             { energyCost: 1000, materialCost: [{ substanceKey: 'hydrogen_gas', name: 'Hydrogen Gas', quantity: 10 }, { substanceKey: 'ammonia',        name: 'Ammonia',       quantity: 4  }] },
             { energyCost: 1600, materialCost: [{ substanceKey: 'ammonia',      name: 'Ammonia',      quantity: 8  }, { substanceKey: 'hydrogen_gas',   name: 'Hydrogen Gas',  quantity: 15 }] },
-            { energyCost: 2500, materialCost: [{ substanceKey: 'ammonia',      name: 'Ammonia',      quantity: 15 }, { substanceKey: 'oxygen_gas',     name: 'Oxygen Gas',    quantity: 12 }] },
+            { energyCost: 2500, materialCost: [{ substanceKey: 'ammonia',      name: 'Ammonia',      quantity: 15 }, { substanceKey: 'oxygen_gas',     name: 'Oxygen Gas',    quantity: 12 }, { substanceKey: 'water', name: 'Water', quantity: 2 }] },
         ],
     },
     {
@@ -123,7 +123,7 @@ const ATOM_MODULES = [
         cap: 120,
         maxLevel: 5,
         upgradeCosts: [
-            { energyCost: 750,  materialCost: [{ substanceKey: 'nitrogen_gas', name: 'Nitrogen Gas', quantity: 6  }, { substanceKey: 'ammonia',      name: 'Ammonia',      quantity: 3  }] },
+            { energyCost: 750,  materialCost: [{ substanceKey: 'nitrogen_gas', name: 'Nitrogen Gas', quantity: 6  }, { substanceKey: 'ammonia',      name: 'Ammonia',      quantity: 3  }, { substanceKey: 'nitric_acid', name: 'Nitric Acid', quantity: 1 }] },
             { energyCost: 1200, materialCost: [{ substanceKey: 'ammonia',      name: 'Ammonia',      quantity: 8  }, { substanceKey: 'nitrogen_gas', name: 'Nitrogen Gas', quantity: 10 }] },
             { energyCost: 2000, materialCost: [{ substanceKey: 'aramid_fiber', name: 'Aramid Fiber', quantity: 2  }, { substanceKey: 'ammonia',      name: 'Ammonia',      quantity: 12 }] },
             { energyCost: 3000, materialCost: [{ substanceKey: 'aramid_fiber', name: 'Aramid Fiber', quantity: 4  }, { substanceKey: 'ammonia',      name: 'Ammonia',      quantity: 16 }] },
@@ -161,8 +161,8 @@ const ATOM_MODULES = [
             { substanceKey: 'sulfuric_acid', name: 'Sulfuric Acid', quantity: 2 },
             { substanceKey: 'chrome',        name: 'Chrome',        quantity: 1 },
         ],
-        ratePerHour: 6,
-        cap: 30,
+        ratePerHour: 10,
+        cap: 80,
         maxLevel: 5,
         upgradeCosts: [
             { energyCost: 500,  materialCost: [{ substanceKey: 'sulfur',        name: 'Sulfur',        quantity: 8  }, { substanceKey: 'sulfuric_acid', name: 'Sulfuric Acid', quantity: 3  }] },

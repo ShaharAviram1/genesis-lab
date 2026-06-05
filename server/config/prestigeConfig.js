@@ -104,7 +104,7 @@ const PRESTIGE_CONFIG = {
                 { energyCost: 600,  materialCost: [{ substanceKey: 'hydrogen_gas', quantity: 6  }, { substanceKey: 'oxygen_gas',    quantity: 4  }] },
                 { energyCost: 1000, materialCost: [{ substanceKey: 'hydrogen_gas', quantity: 10 }, { substanceKey: 'ammonia',        quantity: 4  }] },
                 { energyCost: 1600, materialCost: [{ substanceKey: 'ammonia',      quantity: 8  }, { substanceKey: 'hydrogen_gas',   quantity: 15 }] },
-                { energyCost: 2500, materialCost: [{ substanceKey: 'ammonia',      quantity: 15 }, { substanceKey: 'oxygen_gas',     quantity: 12 }] },
+                { energyCost: 2500, materialCost: [{ substanceKey: 'ammonia',      quantity: 15 }, { substanceKey: 'oxygen_gas',     quantity: 12 }, { substanceKey: 'water', quantity: 2 }] },
             ],
         },
         carbon_scrubber: {
@@ -141,7 +141,7 @@ const PRESTIGE_CONFIG = {
             productionRatePerHour: 12,
             productionCap: 120,
             upgradeCosts: [
-                { energyCost: 750,  materialCost: [{ substanceKey: 'nitrogen_gas', quantity: 6  }, { substanceKey: 'ammonia',      quantity: 3  }] },
+                { energyCost: 750,  materialCost: [{ substanceKey: 'nitrogen_gas', quantity: 6  }, { substanceKey: 'ammonia',      quantity: 3  }, { substanceKey: 'nitric_acid', quantity: 1 }] },
                 { energyCost: 1200, materialCost: [{ substanceKey: 'ammonia',      quantity: 8  }, { substanceKey: 'nitrogen_gas', quantity: 10 }] },
                 { energyCost: 2000, materialCost: [{ substanceKey: 'aramid_fiber', quantity: 2  }, { substanceKey: 'ammonia',      quantity: 12 }] },
                 { energyCost: 3000, materialCost: [{ substanceKey: 'aramid_fiber', quantity: 4  }, { substanceKey: 'ammonia',      quantity: 16 }] },
@@ -178,8 +178,8 @@ const PRESTIGE_CONFIG = {
                 { substanceKey: 'sulfuric_acid', quantity: 2 },
                 { substanceKey: 'chrome',        quantity: 1 },
             ],
-            productionRatePerHour: 6,
-            productionCap: 30,
+            productionRatePerHour: 10,
+            productionCap: 80,
             upgradeCosts: [
                 { energyCost: 500,  materialCost: [{ substanceKey: 'sulfur',        quantity: 8  }, { substanceKey: 'sulfuric_acid', quantity: 3  }] },
                 { energyCost: 800,  materialCost: [{ substanceKey: 'sulfuric_acid', quantity: 5  }, { substanceKey: 'chrome',        quantity: 1  }] },

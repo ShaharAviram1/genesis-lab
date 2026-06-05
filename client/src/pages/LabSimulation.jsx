@@ -112,10 +112,12 @@ const LabSimulation = ({ username, onLogout }) => {
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
     const runBigBangSequence = async (skipApi = false) => {
-        // Fire API immediately so it runs in parallel with the animation
+        // Fire API immediately so it runs in parallel with the animation.
+        // Always pass force=true — BigBangPanel gates this call with a 2-step confirm
+        // that already warns the user about forfeited syntheses.
         const apiPromise = skipApi
             ? Promise.resolve({ success: true })
-            : fetchWithTimeout(`http://localhost:3000/api/bigbang?user=${user}`, { method: "POST" })
+            : fetchWithTimeout(`http://localhost:3000/api/bigbang?user=${user}&force=true`, { method: "POST" })
                 .then(r => r.json())
                 .catch(err => ({ success: false, error: err }));
 
@@ -781,7 +783,7 @@ const LabSimulation = ({ username, onLogout }) => {
                             )}
                         </div>
                         <div className="bigbang-zone">
-                            <BigBangPanel bigBang={bigBang} bigBangActive={bigBangActive} expectedShards={expectedShards} />
+                            <BigBangPanel bigBang={bigBang} bigBangActive={bigBangActive} expectedShards={expectedShards} activeQueueCount={activeQueue.filter(e => e.status === 'processing' || e.status === 'resolving' || e.status === 'queued').length} />
                         </div>
                     </div>
                 </div>

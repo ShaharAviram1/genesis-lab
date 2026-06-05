@@ -1,6 +1,13 @@
 const Substance = require('../models/Substance');
 const evaluateCapabilityUnlocks = require('./evaluateCapabilityUnlocks');
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+// pruneAfter = completedAt + max(24h, effectiveReactionTime)
+// Keeps long-duration entries visible long enough for offline players to see them.
+function calcPruneWindow(effectiveReactionTimeSec) {
+    return Math.max(ONE_DAY_MS, (effectiveReactionTimeSec || 0) * 1000);
+}
+
 function addReactionLogEntry(user, entry) {
     user.reactionLog.unshift(entry);
     if (user.reactionLog.length > 20) user.reactionLog.length = 20;
@@ -38,7 +45,7 @@ async function completeReaction(user, entry) {
             const now = new Date();
             entry.status = 'failed';
             entry.completedAt = now;
-            entry.pruneAfter = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            entry.pruneAfter = new Date(now.getTime() + calcPruneWindow(snapshot.effectiveReactionTime));
         }
         console.error(`completeReaction: substance not found for key '${snapshot.productKey}'`);
         return { wasDiscovery: false, prevUnlockTier: user.unlockTier, newUnlockTier: user.unlockTier, newCapabilities: [] };
@@ -97,7 +104,7 @@ async function completeReaction(user, entry) {
         entry.wasDiscovery = wasDiscovery;
         entry.status = 'completed';
         entry.completedAt = now;
-        entry.pruneAfter = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        entry.pruneAfter = new Date(now.getTime() + calcPruneWindow(snapshot.effectiveReactionTime));
     }
 
     return { wasDiscovery, prevUnlockTier, newUnlockTier: user.unlockTier, newCapabilities };

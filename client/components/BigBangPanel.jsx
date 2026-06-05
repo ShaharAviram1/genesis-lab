@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './BigBangPanel.css';
 
-function BigBangPanel({ bigBang, expectedShards, bigBangActive }) {
+function BigBangPanel({ bigBang, expectedShards, bigBangActive, activeQueueCount = 0 }) {
     const [confirming, setConfirming] = useState(false);
 
     const handleClick = () => {
@@ -18,11 +18,15 @@ function BigBangPanel({ bigBang, expectedShards, bigBangActive }) {
         setConfirming(false);
     };
 
+    const confirmText = activeQueueCount > 0
+        ? `${activeQueueCount} active synthesis${activeQueueCount === 1 ? '' : 'es'} will be forfeited. Continue?`
+        : 'This resets your run. Continue?';
+
     return (
         <div className="bigbang-panel">
             {confirming && !bigBangActive && (
                 <div className="bigbang-confirm">
-                    <span className="bigbang-confirm-text">This resets your run. Continue?</span>
+                    <span className="bigbang-confirm-text">{confirmText}</span>
                     <button className="bigbang-cancel-btn" onClick={handleCancel}>Cancel</button>
                 </div>
             )}
