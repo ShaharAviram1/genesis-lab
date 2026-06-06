@@ -4,6 +4,41 @@
   gap: 8px;
 }
 
+/* ── Generation filter ── */
+.experiment-gen-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.gen-filter-btn {
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.gen-filter-btn:hover:not(.active) {
+  border-color: var(--teal);
+  color: var(--teal);
+  background: rgba(0, 212, 255, 0.05);
+  box-shadow: none;
+}
+
+.gen-filter-btn.active {
+  border-color: rgba(0, 212, 255, 0.55);
+  background: rgba(0, 212, 255, 0.10);
+  color: var(--teal);
+}
+
 .experiment-section-label {
   font-family: var(--font-display);
   font-size: 0.48rem;
@@ -80,52 +115,47 @@
   color: rgba(74, 222, 128, 0.6);
 }
 
-/* ── Selected pills ── */
-.experiment-pills {
+/* ── Substance hint area ── */
+.experiment-hint-area {
+  min-height: 56px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 5px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border);
+  justify-content: center;
 }
 
-.experiment-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: rgba(74, 222, 128, 0.08);
-  border: 1px solid rgba(74, 222, 128, 0.35);
-  border-radius: 20px;
-  padding: 3px 8px 3px 10px;
+.eha-name {
+  font-family: var(--font-display);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+
+.eha-text {
   font-family: var(--font-body);
-  font-size: 0.72rem;
-  color: #4ade80;
+  font-size: 0.70rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
-.pill-remove {
-  all: unset;
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  color: rgba(74, 222, 128, 0.5);
-  transition: color 0.15s;
+.eha-text--none {
+  opacity: 0.5;
+  font-style: italic;
 }
 
-.pill-remove:hover {
-  color: #4ade80;
+.eha-placeholder {
+  font-family: var(--font-display);
+  font-size: 0.50rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  opacity: 0.55;
+  text-align: center;
 }
 
-/* ── Run button ── */
-.experiment-run-btn {
-  margin-top: auto;
-  width: 100%;
-  padding: 0.6em 1em;
-  font-size: 0.75rem;
-}
-
-.experiment-run-btn:hover:not(:disabled) {
-  border-color: var(--orange);
-  box-shadow: 0 0 12px var(--orange-glow), inset 0 0 8px rgba(255, 107, 0, 0.06);
-  color: var(--orange);
-  background: var(--surface-hover);
-}

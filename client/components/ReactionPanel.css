@@ -77,67 +77,201 @@
   padding: 4px 0;
 }
 
-.reaction-card--unknown {
-  border-style: dashed;
-  border-color: rgba(167, 139, 250, 0.35);
-  background: rgba(167, 139, 250, 0.04);
+/* ── Discovery card shared base ── */
+
+.reaction-card--anomaly,
+.reaction-card--partial,
+.reaction-card--near-complete {
   flex-direction: column;
   align-items: flex-start;
+  gap: 6px;
+  cursor: default;
+}
+
+.discovery-detail {
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
-.reaction-card--unknown:hover {
-  border-color: rgba(167, 139, 250, 0.65);
-  box-shadow: 0 0 10px rgba(167, 139, 250, 0.12);
-  background: rgba(167, 139, 250, 0.08);
-}
-
-.reaction-card--unknown.selected {
-  border-color: rgba(167, 139, 250, 0.85);
-  box-shadow: 0 0 12px rgba(167, 139, 250, 0.22);
-  background: rgba(167, 139, 250, 0.10);
-}
-
-.reaction-unknown-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.reaction-unknown-name {
-  font-family: var(--font-display);
-  font-size: 0.65rem;
-  color: rgba(167, 139, 250, 0.75);
-  letter-spacing: 0.06em;
-}
-
-.reaction-unknown-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  gap: 8px;
-}
-
-.reaction-unknown-hint {
+.discovery-detail-row {
   font-family: var(--font-body);
   font-size: 0.62rem;
   color: var(--text-muted);
-  font-style: italic;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
-.reaction-unknown-count {
+.discovery-detail-action {
   font-family: var(--font-display);
-  font-size: 0.48rem;
-  color: rgba(167, 139, 250, 0.4);
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-  flex-shrink: 0;
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  color: var(--teal);
+  opacity: 0.80;
+}
+
+.discovery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.discovery-gen-tag {
+  font-family: var(--font-display);
+  font-size: 0.50rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.discovery-state-label {
+  font-family: var(--font-display);
+  font-size: 0.50rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+.discovery-input-count {
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.discovery-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  width: 100%;
+}
+
+.discovery-slot {
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.discovery-slot--known {
+  color: var(--teal);
+  border-color: rgba(0, 212, 255, 0.35);
+  background: rgba(0, 212, 255, 0.06);
+}
+
+.discovery-slot--unknown {
+  color: var(--text-dim);
+  border-color: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
+  letter-spacing: 0.05em;
+  opacity: 0.55;
+}
+
+.discovery-slot--hinted {
+  font-size: 0.58rem;
+}
+
+.discovery-slot--hinted-substance {
+  color: rgba(251, 191, 36, 0.85);
+  border-color: rgba(251, 191, 36, 0.30);
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.discovery-slot--hinted-condition {
+  color: rgba(192, 132, 252, 0.85);
+  border-color: rgba(192, 132, 252, 0.30);
+  background: rgba(192, 132, 252, 0.06);
+}
+
+/* ── Anomaly card ── */
+
+@keyframes anomaly-pulse {
+  0%, 100% { opacity: 0.38; }
+  50%       { opacity: 0.55; }
+}
+
+.reaction-card--anomaly {
+  border-style: dashed;
+  border-color: rgba(167, 139, 250, 0.22);
+  background: rgba(167, 139, 250, 0.03);
+  animation: anomaly-pulse 2.8s ease-in-out infinite;
+}
+
+.reaction-card--anomaly.hovered {
+  animation-play-state: paused;
+  opacity: 0.65;
+  border-color: rgba(167, 139, 250, 0.35);
+}
+
+.reaction-card--anomaly .discovery-gen-tag {
+  color: rgba(167, 139, 250, 0.60);
+  background: rgba(167, 139, 250, 0.08);
+}
+
+.reaction-card--anomaly .discovery-state-label {
+  color: rgba(167, 139, 250, 0.50);
+}
+
+/* ── Partial card ── */
+
+.reaction-card--partial {
+  border-color: rgba(0, 212, 255, 0.22);
+  background: rgba(0, 212, 255, 0.03);
+  opacity: 0.72;
+}
+
+.reaction-card--partial.hovered {
+  opacity: 0.90;
+  border-color: rgba(0, 212, 255, 0.35);
+}
+
+.reaction-card--partial .discovery-gen-tag {
+  color: rgba(0, 212, 255, 0.65);
+  background: rgba(0, 212, 255, 0.08);
+}
+
+.reaction-card--partial .discovery-state-label {
+  color: rgba(0, 212, 255, 0.50);
+}
+
+/* ── Near Complete card ── */
+
+.reaction-card--near-complete {
+  border-color: rgba(251, 191, 36, 0.30);
+  background: rgba(251, 191, 36, 0.03);
+  opacity: 0.90;
+}
+
+.reaction-card--near-complete.hovered {
+  opacity: 1;
+  border-color: rgba(251, 191, 36, 0.45);
+}
+
+.reaction-card--near-complete .discovery-gen-tag {
+  color: rgba(251, 191, 36, 0.80);
+  background: rgba(251, 191, 36, 0.09);
+}
+
+.reaction-card--near-complete .discovery-state-label {
+  color: rgba(251, 191, 36, 0.65);
+}
+
+.reaction-card--new {
+  border-color: rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.05);
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.12);
+}
+
+.reaction-card--new:hover:not(:disabled) {
+  border-color: rgba(167, 139, 250, 0.70);
+  box-shadow: 0 0 18px rgba(167, 139, 250, 0.22);
+  background: rgba(167, 139, 250, 0.08);
 }
 
 .reaction-badge-new {

@@ -63,7 +63,7 @@ const QUEUE_BUFFER = [
 ];
 
 // Mirrors server/config/prestigeConfig.js atom_automation entries.
-// ratePerHour / cap are base (level 1) values; actual values scale by 1.5× per level.
+// ratePerHour / cap are base (level 1) values; rate scales 1.5× per level, cap scales 1.1× per level.
 // upgradeCosts[i] = cost to go from level i+1 → i+2 (4 entries → max level 5).
 const ATOM_MODULES = [
     {
@@ -182,7 +182,7 @@ function generatorStats(mod, level) {
     const l = Math.max(1, level || 1);
     return {
         rate: Math.floor(mod.ratePerHour * Math.pow(1.5, l - 1)),
-        cap:  Math.floor(mod.cap         * Math.pow(1.5, l - 1)),
+        cap:  Math.floor(mod.cap         * Math.pow(1.1, l - 1)),
     };
 }
 

@@ -9,6 +9,18 @@ function getProgress(entry, now) {
     return Math.min(100, Math.max(0, ((now - start) / total) * 100));
 }
 
+function formatETA(expectedCompletion) {
+    const eta = new Date(expectedCompletion);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrowStart = new Date(todayStart.getTime() + 86400000);
+    const dayAfterStart = new Date(todayStart.getTime() + 2 * 86400000);
+    const timeStr = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (eta < tomorrowStart) return `Today ${timeStr}`;
+    if (eta < dayAfterStart) return `Tomorrow ${timeStr}`;
+    return eta.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + timeStr;
+}
+
 function formatCountdown(expectedCompletion, now) {
     const ms = new Date(expectedCompletion) - now;
     if (ms <= 0) return 'Finalizing...';
@@ -107,6 +119,9 @@ function QueuePanel({ activeQueue, maxSlots = 1, maxBufferSlots = 0 }) {
                                             </div>
                                             <div className="queue-entry-countdown">
                                                 {formatCountdown(entry.expectedCompletion, now)}
+                                            </div>
+                                            <div className="queue-entry-eta">
+                                                ETA {formatETA(entry.expectedCompletion)}
                                             </div>
                                         </>
                                     )}

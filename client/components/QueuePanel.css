@@ -141,6 +141,15 @@
   text-align: right;
 }
 
+.queue-entry-eta {
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-align: right;
+  opacity: 0.75;
+}
+
 .queue-buffer-section {
   display: flex;
   flex-direction: column;

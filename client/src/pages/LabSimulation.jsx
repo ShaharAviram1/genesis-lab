@@ -7,9 +7,9 @@ import InventoryPanel from "../../components/InventoryPanel";
 import AtomPanel from "../../components/AtomPanel";
 import ReactionPanel from "../../components/ReactionPanel";
 import SelectedReactionPanel from "../../components/SelectedReactionPanel";
-import EnergyPanel from "../../components/EnergyPanel";
 import PrestigeBranchPanel from "../../components/PrestigeBranchPanel";
 import HeaderPanel from "../../components/HeaderPanel";
+import ObjectiveStrip from "../../components/ObjectiveStrip";
 import BigBangPanel from "../../components/BigBangPanel";
 import QueuePanel from "../../components/QueuePanel";
 
@@ -647,6 +647,25 @@ const LabSimulation = ({ username, onLogout }) => {
                     setTimeout(() => setJustDiscoveredReactionKey(null), 3000);
                     fetchReactions();
                 }
+                if (data.discoveryTransitions && data.discoveryTransitions.length > 0) {
+                    let needsRefetch = false;
+                    for (const t of data.discoveryTransitions) {
+                        if (t.newState === 'understood') {
+                            showToast('milestone', `Pathway understood: ${t.reactionName}`);
+                            needsRefetch = true;
+                        } else if (t.newState === 'near_complete') {
+                            const count = t.totalSignals > 0 ? ` — ${t.completedSignals} of ${t.totalSignals} inputs known` : '';
+                            showToast('info', `Gen ${t.generationTier} synthesis pathway nearly complete${count}`);
+                            needsRefetch = true;
+                        } else if (t.newState === 'partial') {
+                            const count = t.totalSignals > 0 ? ` — ${t.completedSignals} of ${t.totalSignals} inputs known` : '';
+                            showToast('info', `Gen ${t.generationTier} synthesis pathway partially mapped${count}`);
+                            needsRefetch = true;
+                        }
+                        // anomaly transitions appear silently in the reaction panel
+                    }
+                    if (needsRefetch && !wasDiscovery) fetchReactions();
+                }
                 setReactionEvent({
                     type: wasDiscovery ? 'discovery' : 'reaction_success',
                     reactionKey: completedKey,
@@ -741,13 +760,16 @@ const LabSimulation = ({ username, onLogout }) => {
                 TEST BIGBANG
             </button>
             <div className="game-shell" data-bigbang={bigBangPhase || undefined}>
-                <div className="top-bar">
-                    <HeaderPanel unlockTier={unlockTier} bigBangs={bigBangs} genesisShards={genesisShards} getCurrentGoal={getCurrentGoal} />
-                    <div className="lab-account">
-                        <span className="lab-account-user">{user}</span>
-                        <button className="lab-logout-btn" onClick={handleLogout}>Logout</button>
-                    </div>
-                </div>
+                <HeaderPanel
+                    unlockTier={unlockTier}
+                    bigBangs={bigBangs}
+                    genesisShards={genesisShards}
+                    energy={energy}
+                    energyRate={energyRate}
+                    user={user}
+                    onLogout={handleLogout}
+                />
+                <ObjectiveStrip getCurrentGoal={getCurrentGoal} unlockTier={unlockTier} />
 
                 <div className="main-columns">
                     <div className="left-panel">
@@ -757,7 +779,7 @@ const LabSimulation = ({ username, onLogout }) => {
                         <div className="panel-card matter-lab-card">
                             <InventoryPanel inventory={inventory} />
                             <div className="matter-divider" />
-                            <ExperimentPanel inventory={inventory} experiment={experiment} reactorOccupied={reactorOccupied} />
+                            <ExperimentPanel inventory={inventory} />
                         </div>
                     </div>
 
@@ -768,7 +790,6 @@ const LabSimulation = ({ username, onLogout }) => {
                     </div>
 
                     <div className="right-panel">
-                        <EnergyPanel energy={energy} energyRate={energyRate} />
                         <QueuePanel activeQueue={activeQueue} maxSlots={maxSlots} maxBufferSlots={maxBufferSlots} />
                         {reactorCapabilities.length > 0 && (
                             <div className="panel-card reactor-caps-panel">

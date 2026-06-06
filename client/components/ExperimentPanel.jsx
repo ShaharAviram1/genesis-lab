@@ -1,68 +1,65 @@
 import { useState } from 'react';
 import './ExperimentPanel.css';
 
-function ExperimentPanel({ inventory, experiment, reactorOccupied }) {
-    const [selectedSubstances, setSelectedSubstances] = useState([]);
+function ExperimentPanel({ inventory }) {
+    const [genFilter, setGenFilter] = useState(null);
+    const [hoveredSubstance, setHoveredSubstance] = useState(null);
 
-    const toggleSubstance = (substance) => {
-        setSelectedSubstances(prev => {
-            const isSelected = prev.some(sub => sub._id === substance._id);
-            return isSelected
-                ? prev.filter(sub => sub._id !== substance._id)
-                : [...prev, substance];
-        });
-    };
-
-    const removePill = (id) => {
-        setSelectedSubstances(prev => prev.filter(sub => sub._id !== id));
-    };
-
-    const handleExperiment = async () => {
-        await experiment(selectedSubstances);
-        setSelectedSubstances([]);
-    };
+    const generations = [...new Set(inventory.map(i => i.substance.generationTier))].sort((a, b) => a - b);
+    const filteredInventory = genFilter === null
+        ? inventory
+        : inventory.filter(i => i.substance.generationTier === genFilter);
 
     return (
         <div className="panel-card experiment-panel">
-            <h2 className="panel-title">Experiment</h2>
+            <h2 className="panel-title">Substances</h2>
 
-            <span className="experiment-section-label">Select Substances</span>
-            <div className="experiment-substance-scroll">
-            <div className="experiment-substance-grid">
-                {inventory.map(item => {
-                    const isSelected = selectedSubstances.some(sub => sub._id === item.substance._id);
-                    return (
+            {generations.length > 1 && (
+                <div className="experiment-gen-filters">
+                    <button
+                        className={`gen-filter-btn${genFilter === null ? ' active' : ''}`}
+                        onClick={() => setGenFilter(null)}
+                    >All</button>
+                    {generations.map(gen => (
                         <button
-                            key={item.substance._id}
-                            className={`experiment-substance-btn${isSelected ? ' selected' : ''}`}
-                            onClick={() => toggleSubstance(item.substance)}
-                        >
-                            <span className="esb-name">{item.substance.name}</span>
-                            <span className="esb-qty">×{item.quantity}</span>
-                        </button>
-                    );
-                })}
-            </div>
-            </div>
-
-            {selectedSubstances.length > 0 && (
-                <div className="experiment-pills">
-                    {selectedSubstances.map(substance => (
-                        <span key={substance._id} className="experiment-pill">
-                            {substance.name}
-                            <button className="pill-remove" onClick={() => removePill(substance._id)}>×</button>
-                        </span>
+                            key={gen}
+                            className={`gen-filter-btn${genFilter === gen ? ' active' : ''}`}
+                            onClick={() => setGenFilter(gen)}
+                        >Gen {gen}</button>
                     ))}
                 </div>
             )}
 
-            <button
-                className="experiment-run-btn"
-                disabled={selectedSubstances.length < 1 || reactorOccupied}
-                onClick={handleExperiment}
-            >
-                {reactorOccupied ? 'Reactor Occupied' : 'Attempt Experiment'}
-            </button>
+            <span className="experiment-section-label">Inventory</span>
+            <div className="experiment-substance-scroll">
+                <div className="experiment-substance-grid">
+                    {filteredInventory.map(item => (
+                        <button
+                            key={item.substance._id}
+                            className="experiment-substance-btn"
+                            onMouseEnter={() => setHoveredSubstance(item.substance)}
+                            onMouseLeave={() => setHoveredSubstance(null)}
+                        >
+                            <span className="esb-name">{item.substance.name}</span>
+                            <span className="esb-qty">×{item.quantity}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="experiment-hint-area">
+                {hoveredSubstance ? (
+                    <>
+                        <span className="eha-name">{hoveredSubstance.name}</span>
+                        {hoveredSubstance.hintText
+                            ? <span className="eha-text">{hoveredSubstance.hintText}</span>
+                            : <span className="eha-text eha-text--none">No analysis available.</span>
+                        }
+                    </>
+                ) : (
+                    <span className="eha-placeholder">Hover a substance to inspect it.</span>
+                )}
+            </div>
         </div>
     );
 }

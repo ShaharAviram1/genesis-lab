@@ -1,5 +1,13 @@
 import './LabNotebookPanel.css';
 
+function formatNotebookTime(createdAt) {
+    const d = new Date(createdAt);
+    const now = new Date();
+    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === now.toDateString()) return timeStr;
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + timeStr;
+}
+
 function LabNotebookPanel({ reactionLog }) {
     return (
         <div className="panel-card lab-notebook-panel">
@@ -13,7 +21,7 @@ function LabNotebookPanel({ reactionLog }) {
                             <div className="notebook-entry-header">
                                 <span className="notebook-outcome">{entry.outcome === 'discovery' ? '✦ ' : ''}{entry.outcome}</span>
                                 <span className="notebook-time">
-                                    {new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {formatNotebookTime(entry.createdAt)}
                                 </span>
                             </div>
                             <div className="notebook-message">{entry.message}</div>

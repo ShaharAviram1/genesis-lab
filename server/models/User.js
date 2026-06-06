@@ -189,6 +189,23 @@ const userSchema = mongoose.Schema({
 
     lastActiveAt: { type: Date, default: Date.now },
 
+    // ── Discovery (persists across Big Bang — knowledge survives, inventory does not) ──
+    // Tracks which generationTiers the player has ever synthesized substances in.
+    // Used to determine Anomaly Detected visibility (gen proximity gate).
+    discoveredGenerations: {
+        type: [Number],
+        default: []
+    },
+    // Evidence record per undiscovered Gen 4-6 reaction.
+    // completedSubstanceKeys: direct reactants the player has ever synthesized.
+    // completedConditionKeys: substance-unlockable conditions the player has ever unlocked.
+    reactionDiscovery: [{
+        reactionKey: { type: String, required: true },
+        completedSubstanceKeys: { type: [String], default: [] },
+        completedConditionKeys:  { type: [String], default: [] },
+        _id: false
+    }],
+
     // Stores completion events for users who were offline at resolution time.
     // Drained and emitted exactly once on next WebSocket connect.
     // deliveredAt is set to the delivery timestamp; null means undelivered.

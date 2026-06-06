@@ -1,5 +1,6 @@
 const Substance = require('../models/Substance');
 const evaluateCapabilityUnlocks = require('./evaluateCapabilityUnlocks');
+const { applyDiscoveryUpdate } = require('./discoveryEngine');
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 // pruneAfter = completedAt + max(24h, effectiveReactionTime)
@@ -86,6 +87,14 @@ async function completeReaction(user, entry) {
     // Pass both tier values so tier-based unlocks fire only on the crossing, not on every completion.
     const newCapabilities = evaluateCapabilityUnlocks(user, snapshot.productKey, prevUnlockTier, user.unlockTier);
 
+    // Update discovery evidence — non-fatal; discovery state must not block synthesis delivery.
+    let discoveryTransitions = [];
+    try {
+        discoveryTransitions = await applyDiscoveryUpdate(user, substance);
+    } catch (discoveryErr) {
+        console.error(`completeReaction: discovery update failed for '${snapshot.productKey}':`, discoveryErr);
+    }
+
     // Write reactionLog entry
     const successMessage = entry.source === 'experiment'
         ? `Experiment created ${snapshot.productName}`
@@ -107,7 +116,7 @@ async function completeReaction(user, entry) {
         entry.pruneAfter = new Date(now.getTime() + calcPruneWindow(snapshot.effectiveReactionTime));
     }
 
-    return { wasDiscovery, prevUnlockTier, newUnlockTier: user.unlockTier, newCapabilities };
+    return { wasDiscovery, prevUnlockTier, newUnlockTier: user.unlockTier, newCapabilities, discoveryTransitions };
 }
 
 module.exports = completeReaction;

@@ -9,78 +9,77 @@ const completeReaction = require('../utils/completeReaction');
 const { resolveQueue, resolveAndPruneUserQueue, addPendingNotifications } = require('../utils/resolveQueue');
 const validateConditions = require('../utils/validateConditions');
 const { getMaxSlots, getMaxBufferSlots, getReactionTimeMultiplier } = require('./../config/prestigeConfig');
+const { computeDiscoveryState, applyGen1Discovery } = require('../utils/discoveryEngine');
 
 const router = express.Router();
 
 const BASE_EXPERIMENTAL_REACTION_COST = 20;
 
-function isReactionDiscovered(user, reaction) {
-    const productId = reaction.product.substance._id.toString();
-    return reaction.discoveredByDefault || user.runTotals.some(rt => {
-        const runTotalSubstanceId = (rt.substance._id || rt.substance).toString();
-        return runTotalSubstanceId === productId;
-    });
+// True if the reaction's product has been produced before (runTotals) or is default-discovered.
+// Used only for queue-entry revealOnCompletion — product identity in a running queue entry.
+function wasProductPreviouslyProduced(user, reaction) {
+    if (reaction.discoveredByDefault) return true;
+    const productId = (reaction.product?.substance?._id || reaction.product?.substance)?.toString();
+    return user.runTotals.some(rt => (rt.substance._id || rt.substance).toString() === productId);
 }
 
-function getReactionHint(reaction) {
-    const { reactants, product } = reaction;
-    const count = reactants.length;
-    const cats = reactants.map(r => r.substance.category);
-    const catSet = new Set(cats);
-    const types = reactants.map(r => r.substance.type);
-    const productCat = product.substance.category;
-
-    if (types.includes('material'))
-        return "Requires a material already produced.";
-    if (catSet.has('acid'))
-        return "A reactive chemical agent is required.";
-    if (productCat === 'alloy')
-        return "Two metals may combine into a stronger structure.";
-    if (catSet.has('alloy'))
-        return "One input is an alloy.";
-    if (catSet.has('metalloid'))
-        return "Involves a semiconductor-class substance.";
-    if (cats.filter(c => c === 'metal').length >= 2)
-        return "Multiple metals are involved.";
-    if (catSet.has('metal') && catSet.has('gas'))
-        return "A metal element reacts with a gas.";
-    if (catSet.has('metal'))
-        return "Involves a metal.";
-    if (count >= 3 && cats.every(c => c === 'mineral'))
-        return "Multiple mineral compounds fused together.";
-    if (catSet.has('mineral') && catSet.has('gas'))
-        return "A gas interacts with a mineral compound.";
-    if (catSet.has('mineral') && catSet.has('liquid'))
-        return "A mineral dissolved in a liquid medium.";
-    if (catSet.has('mineral'))
-        return "A mineral compound plays a role.";
-    if (cats.every(c => c === 'gas'))
-        return "All inputs are in gas form.";
-    if (catSet.has('gas') && catSet.has('liquid'))
-        return "Combines gaseous and liquid inputs.";
-    if (catSet.has('gas'))
-        return "Works with gas-state substances.";
-    if (catSet.has('liquid'))
-        return "Involves a liquid input.";
-    return "Direct elemental synthesis.";
+// True if this reaction is in 'understood' discovery state (can be queued and shows full recipe).
+function isReactionUnderstood(user, reaction) {
+    if (reaction.discoveredByDefault) return true;
+    return computeDiscoveryState(reaction, user).state === 'understood';
 }
 
-function buildMaskedReaction(reaction) {
-    return {
+// Builds a partial reaction payload shaped for the client based on discovery state.
+// reaction must have reactants.substance and product.substance populated.
+function buildDiscoveryReaction(reaction, discovery) {
+    const base = {
         _id: reaction._id,
         reactionKey: reaction.reactionKey,
-        name: "Unknown Synthesis",
         unknown: true,
-        unlockTier: reaction.unlockTier,
+        discoveryState: discovery.state,
         generationTier: reaction.generationTier,
-        reactantCount: reaction.reactants.length,
-        hint: reaction.hintText || getReactionHint(reaction),
-        reactants: [],
-        product: {
-            substance: { name: "???", symbol: "?" },
-            quantity: "?"
-        },
-        energyCost: null
+        unlockTier: reaction.unlockTier,
+    };
+
+    if (discovery.state === 'anomaly') {
+        return { ...base, totalInputCount: discovery.totalInputCount };
+    }
+
+    // Deduplicated list of revealed substance slots (name + key, no quantities)
+    const revealedInputs = [
+        ...new Map(
+            (reaction.reactants || [])
+                .filter(r => discovery.completedSubstances.includes(r.substance?.substanceKey))
+                .map(r => [r.substance.substanceKey, { name: r.substance.name, substanceKey: r.substance.substanceKey }])
+        ).values()
+    ];
+
+    if (discovery.state === 'partial') {
+        return {
+            ...base,
+            totalInputCount: discovery.substanceSignals.length,
+            revealedInputs,
+        };
+    }
+
+    // near_complete — one signal away; compute hints for remaining unknown slots
+    const unknownSubstanceKeys = discovery.substanceSignals.filter(k => !discovery.completedSubstances.includes(k));
+    const missingHints = unknownSubstanceKeys.map(unknownKey => {
+        const reactant = (reaction.reactants || []).find(r => r.substance?.substanceKey === unknownKey);
+        const sub = reactant?.substance;
+        return { type: 'substance', hint: sub ? `Gen ${sub.generationTier} ${sub.category || 'material'}` : 'Unknown material' };
+    });
+
+    const unknownConditions = (discovery.conditionSignals || []).filter(c => !(discovery.completedConditions || []).includes(c));
+    for (const _ of unknownConditions) {
+        missingHints.push({ type: 'condition', hint: 'Unlockable reactor condition' });
+    }
+
+    return {
+        ...base,
+        totalInputCount: discovery.substanceSignals.length,
+        revealedInputs,
+        missingHints,
     };
 }
 
@@ -210,6 +209,11 @@ function sanitizeQueueEntry(entry) {
 // Callers are responsible for populating user.inventory after calling this if
 // they need serializable inventory data in the HTTP response.
 async function startQueueSynthesis(user, reaction, { energyCost, source }) {
+    // Discovery guard — Gen 4-6 reactions must be in 'understood' state before queuing.
+    if (!reaction.discoveredByDefault && !isReactionUnderstood(user, reaction)) {
+        return { ok: false, status: 403, error: 'Reaction pathway not yet understood' };
+    }
+
     // Conditions are the hardest gate — check first before any deduction or slot validation.
     const { passed, missing } = validateConditions(reaction, user);
     if (!passed) {
@@ -243,8 +247,10 @@ async function startQueueSynthesis(user, reaction, { energyCost, source }) {
         console.log(`[slot-check] user=${user.username} owned=[${ownedBlueprintKeys.join(',')}] maxSlots=${maxSlots} occupied=${occupiedEntries.length} queued=${queuedCount}/${maxBuffer} gen=${reaction.generationTier} timeMultiplier=${diagMultiplier} → BUFFER`);
     }
 
-    // Discovery state must be read from the populated mongoose doc before toObject()
-    const revealOnCompletion = !isReactionDiscovered(user, reaction);
+    // Under the capability detection system, only 'understood' reactions reach the queue.
+    // The product is already visible on the reaction card at understood state, so there
+    // is nothing to withhold from the queue display. revealOnCompletion is always false.
+    const revealOnCompletion = false;
     const reactionObj = reaction.toObject ? reaction.toObject() : reaction;
 
     if (user.energy < energyCost) {
@@ -386,16 +392,43 @@ router.get("/reactions/available", async (req, res) => {
         const reactions = await Reaction.find({ unlockTier: { $lte: user.unlockTier } })
             .populate('reactants.substance')
             .populate('product.substance');
+
+        // Ensure Gen 1 atoms in inventory are reflected as completed substance signals.
+        // No-op once all Gen 1 keys are recorded; only saves when something new is added.
+        try {
+            const gen1Changed = applyGen1Discovery(user, reactions);
+            if (gen1Changed) await user.save();
+        } catch (gen1Err) {
+            console.error('Gen1 discovery update failed for user', user.username, ':', gen1Err);
+        }
+
         const objReactions = reactions.map(reaction => {
-            const discovered = isReactionDiscovered(user, reaction);
-            if (!discovered) {
-                return buildMaskedReaction(reaction);
+            if (reaction.discoveredByDefault) {
+                const reactionObj = reaction.toObject();
+                reactionObj.energyCost = calculateReactionCost(user, reaction.energyCost);
+                reactionObj.unknown = false;
+                return reactionObj;
             }
-            const reactionObj = reaction.toObject();
-            reactionObj.energyCost = calculateReactionCost(user, reaction.energyCost);
-            reactionObj.unknown = false;
-            return reactionObj;
-        });
+
+            const discovery = computeDiscoveryState(reaction, user);
+            if (discovery.state === 'unknown') return null;
+
+            if (discovery.state === 'understood') {
+                const reactionObj = reaction.toObject();
+                reactionObj.energyCost = calculateReactionCost(user, reaction.energyCost);
+                reactionObj.unknown = false;
+                reactionObj.discoveryState = 'understood';
+                const productId = reaction.product?.substance?._id?.toString();
+                const hasProduced = productId && user.runTotals.some(
+                    rt => (rt.substance?._id || rt.substance)?.toString() === productId
+                );
+                reactionObj.isNewlyUnderstood = !hasProduced;
+                return reactionObj;
+            }
+
+            return buildDiscoveryReaction(reaction, discovery);
+        }).filter(Boolean);
+
         return res.status(200).json(objReactions);
     }
     catch (err) {
@@ -434,8 +467,11 @@ router.get("/reactions/:reactionKey", async (req, res) => {
             console.error('Queue resolution error for user', user.username, ':', queueErr);
         }
 
-        if (!isReactionDiscovered(user, reaction)) {
-            return res.status(200).json({ reaction: buildMaskedReaction(reaction), canPerform: false });
+        if (!reaction.discoveredByDefault) {
+            const discovery = computeDiscoveryState(reaction, user);
+            if (discovery.state !== 'understood') {
+                return res.status(200).json({ reaction: buildDiscoveryReaction(reaction, discovery), canPerform: false });
+            }
         }
         const objReaction = reaction.toObject();
         objReaction.energyCost = calculateReactionCost(user, reaction.energyCost);
